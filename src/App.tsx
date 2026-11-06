@@ -77,8 +77,17 @@ export default function App() {
         <>
           <header className="barra-sup">
             <h1>{{ movimientos: 'Movimientos', resumen: 'Resumen', saldos: 'Saldos', ajustes: 'Ajustes' }[pestana]}</h1>
-            <button className="icono" aria-label="Ajustes" onClick={() => setPestana('ajustes')}>
-              ⚙
+            <button
+              className="icono ajustes"
+              aria-label="Ajustes"
+              aria-current={pestana === 'ajustes'}
+              onClick={() => setPestana(pestana === 'ajustes' ? 'movimientos' : 'ajustes')}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="3.5" strokeDasharray="3.14 3.14" />
+                <circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" strokeWidth="2" />
+                <circle cx="12" cy="12" r="2" fill="currentColor" />
+              </svg>
             </button>
           </header>
 

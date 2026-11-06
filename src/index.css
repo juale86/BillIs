@@ -125,6 +125,14 @@ button:disabled {
   min-height: 40px;
   color: var(--lapiz);
 }
+.icono.ajustes {
+  display: grid;
+  place-items: center;
+}
+.icono.ajustes[aria-current='true'] {
+  color: var(--sobre-birome);
+  background: var(--birome);
+}
 .peligro {
   color: var(--gasto);
   background: none;
