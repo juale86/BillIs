@@ -289,14 +289,19 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
       }}
     >
       <header className="form-cab">
-        <div className={'switch switch-' + tipo} role="radiogroup" aria-label="Tipo">
-          <button type="button" role="radio" aria-checked={esGasto} onClick={() => cambiarTipo('gasto')}>
-            Gasto
-          </button>
-          <button type="button" role="radio" aria-checked={!esGasto} onClick={() => cambiarTipo('ingreso')}>
-            Ingreso
-          </button>
-        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={!esGasto}
+          aria-label="Es un ingreso"
+          className={'tipo tipo-' + tipo}
+          onClick={() => cambiarTipo(esGasto ? 'ingreso' : 'gasto')}
+        >
+          <span className="tipo-pista" aria-hidden="true">
+            <span className="tipo-bola" />
+          </span>
+          <span className="tipo-texto">{editando ? 'Editar' : 'Nuevo'} {esGasto ? 'gasto' : 'ingreso'}</span>
+        </button>
         <button type="button" className="icono" aria-label="Cerrar" onClick={onCerrar}>
           ✕
         </button>
@@ -358,18 +363,23 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
         <div className="fila">
           <label className="campo crece">
             <span>{esGasto ? (cant > 1 ? 'Precio unitario *' : 'Precio *') : 'Monto *'}</span>
-            <input
-              ref={refPrecio}
-              className="monto"
-              value={precio}
-              inputMode="decimal"
-              placeholder="0"
-              autoComplete="off"
-              onChange={(e) => {
-                setPrecio(e.target.value)
-                setPrecioTocado(true)
-              }}
-            />
+            <div className="monto-fila">
+              <span className={'signo ' + tipo} aria-hidden="true">
+                {esGasto ? '−' : '+'}
+              </span>
+              <input
+                ref={refPrecio}
+                className="monto"
+                value={precio}
+                inputMode="decimal"
+                placeholder="0"
+                autoComplete="off"
+                onChange={(e) => {
+                  setPrecio(e.target.value)
+                  setPrecioTocado(true)
+                }}
+              />
+            </div>
           </label>
           {multimoneda && (
             <label className="campo">
@@ -456,30 +466,50 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
         {esGasto && (cant > 1 || promo) && precioCent !== null && (
           <p className="calculo">
             Total {fmt(contado, moneda)}
-            {cant > 1 && <> · {fmt(Math.round(contado / cant), moneda)} c/u</>}
-            {ahorro > 0 && <> · ahorrás {fmt(ahorro, moneda)}</>}
+            {cant > 1 && <>, {fmt(Math.round(contado / cant), moneda)} c/u</>}
+            {ahorro > 0 && <>, ahorrás {fmt(ahorro, moneda)}</>}
           </p>
         )}
 
-        <label className="campo">
-          <span>Categoría</span>
-          <select
-            value={categoriaId}
-            onChange={(e) => {
-              if (e.target.value === '+') return void agregarOpcion('categoria')
-              setCategoriaId(e.target.value)
-              setCategoriaManual(true)
-            }}
-          >
-            <option value="">Sin categoría</option>
-            {cats.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nombre}
-              </option>
-            ))}
-            <option value="+">+ Nueva…</option>
-          </select>
-        </label>
+        <div className="fila">
+          <label className="campo crece">
+            <span>Categoría</span>
+            <select
+              value={categoriaId}
+              onChange={(e) => {
+                if (e.target.value === '+') return void agregarOpcion('categoria')
+                setCategoriaId(e.target.value)
+                setCategoriaManual(true)
+              }}
+            >
+              <option value="">Sin categoría</option>
+              {cats.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nombre}
+                </option>
+              ))}
+              <option value="+">+ Nueva…</option>
+            </select>
+          </label>
+          <label className="campo crece">
+            <span>{esGasto ? 'Método de pago' : 'Medio de cobro'}</span>
+            <select
+              value={metodoPagoId}
+              onChange={(e) => {
+                if (e.target.value === '+') return void agregarOpcion('metodo')
+                setMetodoPagoId(e.target.value)
+              }}
+            >
+              <option value="">—</option>
+              {metodos.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.nombre}
+                </option>
+              ))}
+              <option value="+">+ Nuevo…</option>
+            </select>
+          </label>
+        </div>
 
         <label className="campo">
           <span>{esGasto ? 'Lugar de compra' : 'Origen'}</span>
@@ -536,24 +566,6 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
           </div>
         </label>
 
-        <label className="campo">
-          <span>{esGasto ? 'Método de pago' : 'Medio de cobro'}</span>
-          <select
-            value={metodoPagoId}
-            onChange={(e) => {
-              if (e.target.value === '+') return void agregarOpcion('metodo')
-              setMetodoPagoId(e.target.value)
-            }}
-          >
-            <option value="">—</option>
-            {metodos.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.nombre}
-              </option>
-            ))}
-            <option value="+">+ Nuevo…</option>
-          </select>
-        </label>
 
         {esGasto && moneda === 'ARS' && (
           <fieldset className="grupo">
@@ -613,7 +625,7 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
             <label className="campo">
               <span>Pagador</span>
               <input value={pagador} autoComplete="off" onChange={(e) => setPagador(e.target.value)} />
-              <Chips opciones={[nombreYo, ...otrasPersonas]} activo={pagador} onElegir={setPagador} />
+              <Chips opciones={otrasPersonas.length ? [nombreYo, ...otrasPersonas] : []} activo={pagador} onElegir={setPagador} />
             </label>
 
             <div className="campo">

@@ -48,7 +48,7 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar }: Props) {
     if (m.tipo === 'gasto' && m.pagadorId && m.pagadorId !== yo?.id) partes.push(`pagó ${nombre(m.pagadorId)}`)
     if (m.tipo === 'pagoDeuda')
       partes.push(m.pagadorId === yo?.id ? `a ${nombre(m.contraparteId)}` : `de ${nombre(m.pagadorId)}`)
-    return partes.join(' · ')
+    return partes.join(', ')
   }
 
   const fila = (m: Movimiento) => (
@@ -86,7 +86,7 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar }: Props) {
               <div key={g[0].id} className="compra">
                 <div className="compra-cab">
                   <span>
-                    {g[0].lugar || 'Compra'} · {fmtHora(g.at(-1)!.fecha)} · {g.length} ítems
+                    {g[0].lugar || 'Compra'} <small>{fmtHora(g.at(-1)!.fecha)}, {g.length} ítems</small>
                   </span>
                   <span>{fmt(g.reduce((s, m) => s + m.totalCent, 0), g[0].moneda)}</span>
                 </div>
