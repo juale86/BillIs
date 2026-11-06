@@ -11,5 +11,5 @@ npm run build      # build de producción (incluye service worker)
 npm run preview    # servir el build
 ```
 
-Para instalarla en el teléfono hay que servirla por HTTPS (o `localhost`), abrirla en Chrome y elegir **Agregar a pantalla principal**.
+Publicada en **https://juale86.github.io/BillIs/** (cada push a `main` se publica solo vía GitHub Actions). En el teléfono: abrirla en Chrome → **Agregar a pantalla principal**.
 Manteniendo apretado el ícono aparecen los accesos **Gasto** e **Ingreso**.

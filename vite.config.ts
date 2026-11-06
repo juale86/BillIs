@@ -4,6 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // GitHub Pages sirve la app en https://juale86.github.io/BillIs/
+  base: '/BillIs/',
   plugins: [
     react(),
     VitePWA({
@@ -14,7 +16,8 @@ export default defineConfig({
         short_name: 'BillIs',
         description: 'Gastos e ingresos en segundos',
         lang: 'es-AR',
-        start_url: '/',
+        start_url: './',
+        scope: './',
         display: 'standalone',
         orientation: 'portrait',
         theme_color: '#0f766e',
@@ -26,8 +29,8 @@ export default defineConfig({
           { src: 'maskable-icon-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         shortcuts: [
-          { name: 'Nuevo gasto', short_name: 'Gasto', url: '/?nuevo=gasto', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
-          { name: 'Nuevo ingreso', short_name: 'Ingreso', url: '/?nuevo=ingreso', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
+          { name: 'Nuevo gasto', short_name: 'Gasto', url: './?nuevo=gasto', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
+          { name: 'Nuevo ingreso', short_name: 'Ingreso', url: './?nuevo=ingreso', icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }] },
         ],
       },
     }),
