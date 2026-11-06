@@ -1,9 +1,18 @@
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+
 // https://vite.dev/config/
 export default defineConfig({
+  // Versión visible en Ajustes. Subirla con `npm version minor|patch --no-git-tag-version`.
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+    __APP_COMMIT__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
+    __APP_FECHA__: JSON.stringify(new Date().toISOString()),
+  },
   // GitHub Pages sirve la app en https://juale86.github.io/BillIs/
   base: '/BillIs/',
   plugins: [
