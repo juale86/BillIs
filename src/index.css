@@ -36,8 +36,9 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Oscuro: por sistema (salvo que se elija "Claro") o forzado desde Ajustes */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema='claro']) {
     --papel: #14161b;
     --hoja: #1b1e25;
     --tinta: #e4e7ee;
@@ -50,6 +51,19 @@
     --ingreso: #5fd39a;
     color-scheme: dark;
   }
+}
+:root[data-tema='oscuro'] {
+  --papel: #14161b;
+  --hoja: #1b1e25;
+  --tinta: #e4e7ee;
+  --lapiz: #9199a8;
+  --renglon: #2e333d;
+  --birome: #8ea3ff;
+  --birome-suave: #232b47;
+  --sobre-birome: #0d1330;
+  --gasto: #ff7a74;
+  --ingreso: #5fd39a;
+  color-scheme: dark;
 }
 
 * {

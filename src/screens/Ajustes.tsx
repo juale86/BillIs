@@ -1,14 +1,16 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { db, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { exportarCSV, exportarJSON, importarJSON } from '../lib/respaldo'
+import { guardarTema, leerTema, type Tema } from '../lib/tema'
 
 type Tabla = 'metodosPago' | 'categorias'
 
 export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string) => void }) {
   const { yo, metodos, categorias, multimoneda } = datos
   const refArchivo = useRef<HTMLInputElement>(null)
+  const [tema, setTema] = useState<Tema>(leerTema)
 
   async function renombrar(tabla: Tabla, item: MetodoPago | Categoria) {
     const nombre = prompt('Nuevo nombre', item.nombre)?.trim()
@@ -75,6 +77,24 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string)
           >
             Cambiar
           </button>
+        </div>
+      </div>
+
+      <div className="tarjeta">
+        <h3>Apariencia</h3>
+        <div className="segmentos">
+          {(['auto', 'claro', 'oscuro'] as Tema[]).map((t) => (
+            <button
+              key={t}
+              aria-pressed={tema === t}
+              onClick={() => {
+                setTema(t)
+                guardarTema(t)
+              }}
+            >
+              {{ auto: 'Automático', claro: 'Claro', oscuro: 'Oscuro' }[t]}
+            </button>
+          ))}
         </div>
       </div>
 
