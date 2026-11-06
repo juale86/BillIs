@@ -22,6 +22,8 @@ interface Props {
   datos: Datos
   tipoInicial: TipoForm
   editando?: Movimiento
+  /** Datos iniciales (ej. desde la lista de compras). */
+  prefill?: { descripcion: string; marca?: string; cantidad?: number }
   onCerrar: () => void
   onBorrar?: (m: Movimiento) => void
   onGuardado?: (texto: string) => void
@@ -38,7 +40,7 @@ const num = (s: string, def: number) => {
   return Number.isFinite(n) && s.trim() !== '' ? n : def
 }
 
-export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorrar, onGuardado }: Props) {
+export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar, onBorrar, onGuardado }: Props) {
   const { movimientos, personas, metodos, categorias, yo, multimoneda } = datos
   const nombreYo = yo?.nombre ?? 'Yo'
   const [sesion] = useState(sesionActual)
@@ -46,13 +48,19 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
   const nombrePersona = (id?: Id) => personas.find((p) => p.id === id)?.nombre ?? ''
 
   const [tipo, setTipo] = useState<TipoForm>(editando ? (editando.tipo === 'ingreso' ? 'ingreso' : 'gasto') : tipoInicial)
-  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? '')
+  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? prefill?.descripcion ?? '')
   const [verSugDesc, setVerSugDesc] = useState(false)
-  const [marca, setMarca] = useState(editando?.marca ?? '')
-  const [precio, setPrecio] = useState(editando ? montoAInput(editando.precioUnitCent) : '')
+  const [marca, setMarca] = useState(editando?.marca ?? prefill?.marca ?? '')
+  const [precio, setPrecio] = useState(() => {
+    if (editando) return montoAInput(editando.precioUnitCent)
+    const ult = prefill && ultimoPrecio(movimientos, prefill.descripcion, prefill.marca ?? '', sesion.lugar)
+    return ult ? montoAInput(ult.cent) : ''
+  })
   const [precioTocado, setPrecioTocado] = useState(!!editando)
-  const [cantidad, setCantidad] = useState(String(editando?.cantidad ?? 1))
-  const [verCantidad, setVerCantidad] = useState((editando?.cantidad ?? 1) !== 1 || !!editando?.promo)
+  const [cantidad, setCantidad] = useState(String(editando?.cantidad ?? prefill?.cantidad ?? 1))
+  const [verCantidad, setVerCantidad] = useState(
+    (editando?.cantidad ?? prefill?.cantidad ?? 1) !== 1 || !!editando?.promo,
+  )
   const [promoTipo, setPromoTipo] = useState<TipoPromo>(editando?.promo?.tipo ?? '')
   const [promoA, setPromoA] = useState(() => {
     const p = editando?.promo
@@ -68,7 +76,12 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
     if (p?.tipo === 'nesima') return String(p.pct)
     return ''
   })
-  const [categoriaId, setCategoriaId] = useState<Id | ''>(editando?.categoriaId ?? '')
+  const [categoriaId, setCategoriaId] = useState<Id | ''>(
+    () =>
+      editando?.categoriaId ??
+      (prefill ? sugerirCategoria(movimientos, 'gasto', prefill.descripcion, sesion.lugar) : undefined) ??
+      '',
+  )
   const [categoriaManual, setCategoriaManual] = useState(!!editando?.categoriaId)
   const [lugar, setLugar] = useState(editando ? (editando.lugar ?? '') : tipoInicial === 'gasto' ? sesion.lugar : '')
   const [fecha, setFecha] = useState(() => editando?.fecha ?? sesion.fecha ?? Date.now())
@@ -94,8 +107,12 @@ export function FormMovimiento({ datos, tipoInicial, editando, onCerrar, onBorra
   const refPrecio = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!editando) refDesc.current?.focus()
-  }, [editando])
+    if (editando) return
+    // Desde la lista la descripción ya viene: se arranca por el precio.
+    const r = prefill ? refPrecio.current : refDesc.current
+    r?.focus()
+    if (prefill) r?.select()
+  }, [editando, prefill])
 
   const esGasto = tipo === 'gasto'
   const pagadorEsYo = normalizar(pagador || nombreYo) === normalizar(nombreYo)

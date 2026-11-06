@@ -753,3 +753,103 @@ main {
 .bienvenida p {
   margin: 0;
 }
+
+/* ---------- Lista de compras ---------- */
+.lista-cab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--renglon);
+  min-height: 44px;
+}
+.lista-cab strong {
+  font-weight: 600;
+}
+.lista-cab .nota {
+  flex: 1;
+  padding-left: 6px;
+}
+.icono[aria-pressed='true'] {
+  color: var(--sobre-birome);
+  background: var(--birome);
+}
+.boton-chico {
+  min-height: 32px;
+  font-size: var(--t-s);
+}
+.boton-campo {
+  align-self: flex-end;
+  height: var(--alto);
+  min-height: 0;
+}
+.agregar-item,
+.buscador {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.filtros-activos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--birome);
+  color: var(--sobre-birome);
+  font-size: var(--t-s);
+  font-weight: 600;
+  padding-left: 8px;
+}
+.filtro button {
+  background: none;
+  border: 0;
+  color: inherit;
+  min-width: 30px;
+  min-height: 28px;
+  font-size: var(--t-s);
+}
+.item-lista {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-bottom: 1px solid var(--renglon);
+}
+.item-check {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  min-width: 0;
+}
+.item-check input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  accent-color: var(--birome);
+}
+.item-lista.comprado .mov-desc {
+  text-decoration: line-through;
+  color: var(--lapiz);
+}
+.chico-icono {
+  min-width: 36px;
+  min-height: 36px;
+  font-size: var(--t-m);
+}
+.lista-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--t-s);
+  font-weight: 600;
+  color: var(--lapiz);
+  border-bottom: 1px solid var(--tinta);
+  margin-top: 6px;
+}
+.tabs button {
+  max-width: 140px;
+}

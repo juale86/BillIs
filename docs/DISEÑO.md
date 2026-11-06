@@ -61,6 +61,21 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 
 Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
+## Lista de compras compartida
+
+- Pestaña **Lista**. Sincronizada entre teléfonos con Firebase Firestore (proyecto `billis-juale86`, región `southamerica-east1`).
+- Sin cuentas: el id de la lista (20 caracteres al azar) es el permiso. Se comparte como link `…/BillIs/?lista=<id>`; al abrirlo aparece "Unirme a la lista".
+- Reglas (`firestore.rules`): no se pueden listar listas, solo abrir una por id; validación de campos y tamaños. Deploy: `npx firebase-tools deploy --only firestore`.
+- Ítem: nombre*, cantidad (texto libre: "3", "1 kg"), marca, comprado, agregadoPor, compradoPor.
+- Caché persistente: funciona sin señal y sincroniza al volver.
+- Al tildar: pasa a "Comprados" con **Cargar gasto** (abre el formulario con nombre, marca, cantidad y último precio).
+- Lupa: búsqueda por texto + filtros Pendientes / Comprados / Agregó X. Los filtros aplicados se muestran como chips con ✕.
+- Firebase se carga solo al abrir la pestaña (chunk aparte).
+
+## Apariencia
+
+Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo.
+
 ## Fuera de v1 (el modelo lo admite)
 
-Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda, historial de precios, sincronización / lista compartida del súper.
+Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { FormMovimiento } from './components/FormMovimiento'
 import { db, inicializar } from './db/db'
 import type { Movimiento } from './db/types'
@@ -9,9 +9,22 @@ import { Ajustes } from './screens/Ajustes'
 import { Movimientos } from './screens/Movimientos'
 import { Resumen } from './screens/Resumen'
 import { Saldos } from './screens/Saldos'
+import type { PrefillGasto } from './screens/Lista'
 
-type Pestana = 'movimientos' | 'resumen' | 'saldos' | 'ajustes'
-type Form = { tipo: 'gasto' | 'ingreso'; editando?: Movimiento } | null
+// Firebase pesa: la lista se carga recién cuando se abre.
+const Lista = lazy(() => import('./screens/Lista'))
+
+type Pestana = 'movimientos' | 'resumen' | 'saldos' | 'lista' | 'ajustes'
+type Form = { tipo: 'gasto' | 'ingreso'; editando?: Movimiento; prefill?: PrefillGasto } | null
+
+const TITULOS: Record<Pestana, string> = {
+  movimientos: 'Movimientos',
+  resumen: 'Resumen',
+  saldos: 'Saldos',
+  lista: 'Lista de compras',
+  ajustes: 'Ajustes',
+}
+const invitacionUrl = () => new URLSearchParams(location.search).get('lista')
 
 interface Aviso {
   texto: string
@@ -20,6 +33,7 @@ interface Aviso {
 
 /** El ícono abre en "nuevo gasto"; el acceso directo ?nuevo=ingreso abre en ingreso. */
 function formInicial(): Form {
+  if (invitacionUrl()) return null
   const p = new URLSearchParams(location.search).get('nuevo')
   return { tipo: p === 'ingreso' ? 'ingreso' : 'gasto' }
 }
@@ -27,7 +41,8 @@ function formInicial(): Form {
 export default function App() {
   const datos = useDatos()
   const [form, setForm] = useState<Form>(formInicial)
-  const [pestana, setPestana] = useState<Pestana>('movimientos')
+  const [pestana, setPestana] = useState<Pestana>(() => (invitacionUrl() ? 'lista' : 'movimientos'))
+  const [invitacion, setInvitacion] = useState(invitacionUrl)
   const [mes, setMes] = useState(() => claveMes(Date.now()))
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [avisoRespaldo, setAvisoRespaldo] = useState(false)
@@ -62,10 +77,11 @@ export default function App() {
     <div className="app">
       {form ? (
         <FormMovimiento
-          key={form.editando?.id ?? form.tipo}
+          key={form.editando?.id ?? form.prefill?.descripcion ?? form.tipo}
           datos={datos}
           tipoInicial={form.tipo}
           editando={form.editando}
+          prefill={form.prefill}
           onCerrar={() => {
             setForm(null)
             history.replaceState(null, '', location.pathname)
@@ -76,7 +92,7 @@ export default function App() {
       ) : (
         <>
           <header className="barra-sup">
-            <h1>{{ movimientos: 'Movimientos', resumen: 'Resumen', saldos: 'Saldos', ajustes: 'Ajustes' }[pestana]}</h1>
+            <h1>{TITULOS[pestana]}</h1>
             <button
               className="icono ajustes"
               aria-label="Ajustes"
@@ -115,6 +131,20 @@ export default function App() {
             )}
             {pestana === 'resumen' && <Resumen datos={datos} mes={mes} setMes={setMes} />}
             {pestana === 'saldos' && <Saldos datos={datos} onAviso={(texto) => mostrarAviso({ texto })} />}
+            {pestana === 'lista' && (
+              <Suspense fallback={<p className="vacio">Cargando lista…</p>}>
+                <Lista
+                  datos={datos}
+                  invitacion={invitacion}
+                  onInvitacionUsada={() => {
+                    setInvitacion(null)
+                    history.replaceState(null, '', location.pathname)
+                  }}
+                  onCargarGasto={(prefill) => setForm({ tipo: 'gasto', prefill })}
+                  onAviso={(texto) => mostrarAviso({ texto })}
+                />
+              </Suspense>
+            )}
             {pestana === 'ajustes' && (
               <Ajustes
                 datos={datos}
@@ -126,14 +156,16 @@ export default function App() {
             )}
           </main>
 
-          <button className="fab" aria-label="Nuevo gasto" onClick={() => setForm({ tipo: 'gasto' })}>
-            +
-          </button>
+          {pestana !== 'lista' && (
+            <button className="fab" aria-label="Nuevo gasto" onClick={() => setForm({ tipo: 'gasto' })}>
+              +
+            </button>
+          )}
 
           <nav className="tabs">
-            {(['movimientos', 'resumen', 'saldos'] as Pestana[]).map((p) => (
+            {(['movimientos', 'resumen', 'saldos', 'lista'] as Pestana[]).map((p) => (
               <button key={p} aria-current={pestana === p} onClick={() => setPestana(p)}>
-                {{ movimientos: 'Movimientos', resumen: 'Resumen', saldos: 'Saldos', ajustes: '' }[p]}
+                {p === 'lista' ? 'Lista' : TITULOS[p]}
               </button>
             ))}
           </nav>

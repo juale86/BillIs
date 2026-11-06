@@ -9,17 +9,20 @@ export interface Datos {
   categorias: Categoria[]
   yo: Persona | undefined
   multimoneda: boolean
+  /** Lista de compras compartida a la que está unido este teléfono. */
+  listaId: string | null
 }
 
 /** Todos los datos vivos (no borrados), reactivos. Para uso personal el volumen es chico. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [movimientos, personas, metodos, categorias, multimoneda] = await Promise.all([
+    const [movimientos, personas, metodos, categorias, multimoneda, listaId] = await Promise.all([
       db.movimientos.toArray(),
       db.personas.toArray(),
       db.metodosPago.toArray(),
       db.categorias.toArray(),
       getAjuste('multimoneda', false),
+      getAjuste<string | null>('listaId', null),
     ])
     const ps = personas.filter(vivo)
     return {
@@ -29,6 +32,7 @@ export function useDatos(): Datos | undefined {
       categorias: categorias.filter(vivo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
       yo: ps.find((p) => p.esYo),
       multimoneda,
+      listaId,
     }
   })
 }

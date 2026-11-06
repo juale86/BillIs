@@ -1,0 +1,45 @@
+rules_version = '2';
+
+// Lista de compras compartida. Sin cuentas: el id de la lista (largo y al azar)
+// es el permiso. No se pueden listar las listas, solo abrir una conociendo su id.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function listaValida(d) {
+      return d.keys().hasOnly(['nombre', 'creadoEn'])
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 60
+        && d.creadoEn is number;
+    }
+
+    function textoOpcional(v, max) {
+      return v == null || (v is string && v.size() <= max);
+    }
+
+    function itemValido(d) {
+      return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPor', 'compradoPor', 'creadoEn', 'modificadoEn'])
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 100
+        && textoOpcional(d.cantidad, 30)
+        && textoOpcional(d.marca, 60)
+        && d.comprado is bool
+        && d.agregadoPor is string && d.agregadoPor.size() <= 60
+        && textoOpcional(d.compradoPor, 60)
+        && d.creadoEn is number && d.modificadoEn is number;
+    }
+
+    match /listas/{lista} {
+      allow get: if true;
+      allow list: if false;
+      allow create, update: if listaValida(request.resource.data);
+      allow delete: if false;
+
+      match /items/{item} {
+        function listaExiste() {
+          return exists(/databases/$(database)/documents/listas/$(lista));
+        }
+        allow read: if listaExiste();
+        allow create, update: if listaExiste() && itemValido(request.resource.data);
+        allow delete: if listaExiste();
+      }
+    }
+  }
+}
