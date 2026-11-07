@@ -405,6 +405,13 @@ button:disabled {
 .acciones button {
   flex: 1;
 }
+/* Texto más chico y en una sola línea para que entren los tres botones */
+.acciones .primario,
+.acciones .secundario {
+  padding: 0 8px;
+  font-size: var(--t-s);
+  white-space: nowrap;
+}
 .campos > .enlace {
   align-self: flex-start;
 }
