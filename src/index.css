@@ -669,10 +669,26 @@ main {
 }
 
 /* ---------- Navegación ---------- */
-.fab {
+.flotantes {
   position: fixed;
   right: max(16px, calc(50% - 264px));
   bottom: calc(64px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pagar {
+  height: 44px;
+  padding: 0 16px;
+  border: 0;
+  background: var(--gasto);
+  color: #fff;
+  font-family: var(--f-cifra);
+  font-size: var(--t-l);
+  font-weight: 700;
+  box-shadow: 3px 3px 0 var(--tinta);
+}
+.fab {
   width: 52px;
   height: 52px;
   border: 0;
@@ -856,4 +872,201 @@ main {
 
 .version {
   padding: 4px 0 8px;
+}
+
+/* ---------- Cancelar, lupa con testigo ---------- */
+.acciones .cancelar {
+  flex: none;
+  background: none;
+  border: 0;
+  color: var(--lapiz);
+  font-weight: 600;
+  font-size: var(--t-m);
+  padding: 0 6px;
+}
+.lupa {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.lupa.con-filtro::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  background: var(--gasto);
+  border: 1.5px solid var(--papel);
+}
+.barra-sup h1 {
+  flex: 1;
+}
+.filtros-activos {
+  align-items: center;
+}
+.filtrando {
+  font-size: var(--t-xs);
+  font-weight: 600;
+  color: var(--lapiz);
+  margin-right: 2px;
+}
+
+/* ---------- Listas: selector, hoja, ítems ---------- */
+.selector-lista {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  background: none;
+  border: 0;
+  padding: 8px 0;
+  text-align: left;
+  font-size: var(--t-l);
+  min-width: 0;
+}
+.selector-lista strong {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selector-lista small {
+  color: var(--lapiz);
+  font-size: var(--t-s);
+}
+.insignia {
+  margin-left: 6px;
+  align-self: center;
+  background: var(--gasto);
+  color: #fff;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  min-width: 18px;
+  padding: 1px 5px;
+  text-align: center;
+}
+.hoja-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(0 0 0 / 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.hoja {
+  width: 100%;
+  max-width: 560px;
+  max-height: 85dvh;
+  overflow-y: auto;
+  background: var(--papel);
+  border-top: 3px solid var(--birome);
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hoja .acciones {
+  position: static;
+  padding: 8px 0 0;
+  border-top: 0;
+}
+.menu-seccion {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--renglon);
+}
+.menu-seccion h3 {
+  font-size: var(--t-m);
+  font-weight: 600;
+}
+.menu-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--renglon);
+  padding: 9px 0 9px 10px;
+}
+.menu-item small {
+  color: var(--lapiz);
+  font-size: var(--t-xs);
+}
+.menu-item[aria-current='true'] {
+  font-weight: 600;
+  color: var(--birome);
+  box-shadow: inset 3px 0 0 var(--birome);
+}
+.menu-pie {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 0;
+}
+.menu-pie .nota {
+  flex: 1;
+}
+.totales-lista {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.totales-lista strong {
+  font-family: var(--f-cifra);
+  font-size: var(--t-xl);
+  font-weight: 700;
+}
+.item-lista {
+  flex-wrap: wrap;
+}
+.item-boton {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 8px 0;
+}
+.item-boton:active {
+  background: var(--birome-suave);
+}
+.item-boton:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.item-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.item-acciones {
+  flex-basis: 100%;
+  display: flex;
+  gap: 16px;
+  padding: 0 0 8px;
+}
+.cerrar-lista {
+  align-self: flex-start;
+  margin-top: 8px;
+}
+.total-pagar {
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+}
+.total-pagar strong {
+  font-family: var(--f-cifra);
+  font-size: var(--t-cifra);
+  line-height: 1;
 }

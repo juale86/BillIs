@@ -37,6 +37,12 @@ function escribir(clave: string, valor: unknown) {
   }
 }
 
+/** La compra abierta (con al menos un gasto guardado), o null si no hay o venció. */
+export function sesionAbierta(): SesionCompra | null {
+  const s = leer<SesionCompra>(CLAVE_SESION)
+  return s && Date.now() - s.ultimaActividad < VENCE_MS ? s : null
+}
+
 /** Devuelve la sesión vigente o una nueva vacía. */
 export function sesionActual(): SesionCompra {
   const s = leer<SesionCompra>(CLAVE_SESION)

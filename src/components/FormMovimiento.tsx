@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { db, normalizar, nuevoBase, personaPorNombre } from '../db/db'
+import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { Id, ModoParte, Moneda, Movimiento, Parte, Promo } from '../db/types'
 import { MONEDAS } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 import { cantidadSugerida, miParte, totalConPromo } from '../lib/promo'
-import { cerrarSesion, guardarPagador, guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
+import { guardarPagador, guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
 import {
   sugerirCategoria,
   sugerirDescripciones,
@@ -23,10 +23,16 @@ interface Props {
   tipoInicial: TipoForm
   editando?: Movimiento
   /** Datos iniciales (ej. desde la lista de compras). */
-  prefill?: { descripcion: string; marca?: string; cantidad?: number }
+  prefill?: { descripcion: string; marca?: string; cantidad?: number; listaItem?: Movimiento['listaItem'] }
+  /** 'lista': se abrió tocando un ítem de la lista de compras (Cancelar / Guardar, vuelve a la lista). */
+  contexto?: 'lista'
   onCerrar: () => void
   onBorrar?: (m: Movimiento) => void
   onGuardado?: (texto: string) => void
+  /** Se llama con el movimiento guardado (alta o edición). */
+  onGuardadoMov?: (m: Movimiento) => void
+  /** "Ya comprado, sin gasto" (solo desde la lista). */
+  onSinGasto?: () => void
 }
 
 const aInputFecha = (t: number) => {
@@ -40,11 +46,22 @@ const num = (s: string, def: number) => {
   return Number.isFinite(n) && s.trim() !== '' ? n : def
 }
 
-export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar, onBorrar, onGuardado }: Props) {
+export function FormMovimiento({
+  datos,
+  tipoInicial,
+  editando,
+  prefill,
+  contexto,
+  onCerrar,
+  onBorrar,
+  onGuardado,
+  onGuardadoMov,
+  onSinGasto,
+}: Props) {
   const { movimientos, personas, metodos, categorias, yo, multimoneda } = datos
   const nombreYo = yo?.nombre ?? 'Yo'
-  const [sesion] = useState(sesionActual)
-  const [lugarSesion, setLugarSesion] = useState(sesion.lugar)
+  // Compra en curso: se mantiene entre guardados hasta "Pagar" (o 2 h sin actividad).
+  const [sesion, setSesion] = useState(sesionActual)
   const nombrePersona = (id?: Id) => personas.find((p) => p.id === id)?.nombre ?? ''
 
   const [tipo, setTipo] = useState<TipoForm>(editando ? (editando.tipo === 'ingreso' ? 'ingreso' : 'gasto') : tipoInicial)
@@ -86,7 +103,7 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
   const [lugar, setLugar] = useState(editando ? (editando.lugar ?? '') : tipoInicial === 'gasto' ? sesion.lugar : '')
   const [fecha, setFecha] = useState(() => editando?.fecha ?? sesion.fecha ?? Date.now())
   const [fechaManual, setFechaManual] = useState(!!editando || sesion.fecha !== undefined)
-  const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(editando ? (editando.metodoPagoId ?? '') : (sesion.metodoPagoId ?? ''))
+  const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(editando?.metodoPagoId ?? '')
   const [moneda, setMoneda] = useState<Moneda>(editando?.moneda ?? 'ARS')
   const [cuotasN, setCuotasN] = useState(String(editando?.cuotas?.cantidad ?? 1))
   const [totalFin, setTotalFin] = useState(editando?.cuotas ? montoAInput(editando.totalCent) : '')
@@ -182,7 +199,7 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
     setTipo(t)
     setCategoriaId('')
     setCategoriaManual(false)
-    if (!editando) setLugar(t === 'gasto' ? lugarSesion : '')
+    if (!editando) setLugar(t === 'gasto' ? sesion.lugar : '')
   }
 
   function elegirPromo(t: TipoPromo) {
@@ -230,7 +247,8 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
     refDesc.current?.focus()
   }
 
-  async function guardar(cerrar: boolean) {
+  /** otro: después de guardar deja el formulario listo para otro gasto. */
+  async function guardar(otro: boolean) {
     setError('')
     if (!descripcion.trim()) return setError('Falta la descripción')
     if (precioCent === null || precioCent <= 0) return setError(esGasto ? 'Falta el precio' : 'Falta el monto')
@@ -247,6 +265,11 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
         pagadorId = p.id
         if (pagadorEsYo && parteModo !== 'todo') contraparteId = (await personaPorNombre(contraparte)).id
       }
+      // Un gasto con lugar es parte de una compra: el método de pago se elige al "Pagar".
+      const enCompra = esGasto && !editando && !!lugar.trim()
+      let compraId = esGasto ? editando?.compraId : undefined
+      if (enCompra)
+        compraId = sesion.lugar && normalizar(sesion.lugar) !== normalizar(lugar) ? uuid() : sesion.compraId
       const ahora = Date.now()
       const base = editando
         ? { id: editando.id, creadoEn: editando.creadoEn, modificadoEn: ahora, borradoEn: null }
@@ -265,33 +288,29 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
         moneda,
         fecha,
         lugar: lugar.trim() || undefined,
-        metodoPagoId: metodoPagoId || undefined,
+        metodoPagoId: enCompra ? undefined : metodoPagoId || undefined,
         pagadorId,
         contraparteId,
         parte: esGasto ? parte : undefined,
         miParteCent: esGasto ? miParteCent : undefined,
         cuotas: nCuotas > 1 ? { cantidad: nCuotas, precioContadoCent: contado !== total ? contado : undefined } : undefined,
-        compraId: esGasto ? (editando?.compraId ?? sesion.compraId) : undefined,
+        compraId,
+        listaItem: editando?.listaItem ?? prefill?.listaItem,
       }
       await db.movimientos.put(mov)
+      onGuardadoMov?.(mov)
 
       if (editando) return onCerrar()
 
       if (esGasto) guardarPagador(pagador.trim() || nombreYo)
-      onGuardado?.(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} guardado: ${fmt(total, moneda)}`)
-      if (cerrar) {
-        cerrarSesion()
-        onCerrar()
-      } else {
-        guardarSesion({
-          compraId: sesion.compraId,
-          lugar: esGasto ? lugar.trim() : lugarSesion,
-          fecha: fechaManual ? fecha : undefined,
-          metodoPagoId: metodoPagoId || undefined,
-        })
-        if (esGasto) setLugarSesion(lugar.trim())
-        limpiarParaOtro()
+      if (enCompra && compraId) {
+        const nueva = { compraId, lugar: lugar.trim(), fecha: fechaManual ? fecha : undefined }
+        guardarSesion(nueva)
+        setSesion({ ...nueva, ultimaActividad: Date.now() })
       }
+      onGuardado?.(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} guardado: ${fmt(total, moneda)}`)
+      if (otro) limpiarParaOtro()
+      else onCerrar()
     } finally {
       setGuardando(false)
     }
@@ -302,7 +321,7 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
       className="form"
       onSubmit={(e) => {
         e.preventDefault()
-        guardar(false)
+        guardar(!editando && contexto !== 'lista')
       }}
     >
       <header className="form-cab">
@@ -319,12 +338,14 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
           </span>
           <span className="tipo-texto">{editando ? 'Editar' : 'Nuevo'} {esGasto ? 'gasto' : 'ingreso'}</span>
         </button>
-        <button type="button" className="icono" aria-label="Cerrar" onClick={onCerrar}>
-          ✕
-        </button>
       </header>
 
       <div className="campos">
+        {contexto === 'lista' && onSinGasto && (
+          <button type="button" className="enlace" onClick={onSinGasto}>
+            Ya comprado, sin gasto
+          </button>
+        )}
         <label className="campo">
           <span>Descripción *</span>
           <input
@@ -508,6 +529,7 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
               <option value="+">+ Nueva…</option>
             </select>
           </label>
+          {(!esGasto || editando || !lugar.trim()) && (
           <label className="campo crece">
             <span>{esGasto ? 'Método de pago' : 'Medio de cobro'}</span>
             <select
@@ -526,6 +548,7 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
               <option value="+">+ Nuevo…</option>
             </select>
           </label>
+          )}
         </div>
 
         <label className="campo">
@@ -553,6 +576,9 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
             }}
           />
         </label>
+        {esGasto && !editando && lugar.trim() && (
+          <p className="nota">Es parte de una compra: el método de pago se elige al tocar Pagar.</p>
+        )}
 
         <label className="campo">
           <span>Fecha</span>
@@ -700,17 +726,24 @@ export function FormMovimiento({ datos, tipoInicial, editando, prefill, onCerrar
       </div>
 
       <footer className="acciones">
+        <button type="button" className="cancelar" onClick={onCerrar}>
+          Cancelar
+        </button>
         {editando ? (
-          <button type="button" className="primario" disabled={guardando} onClick={() => guardar(true)}>
+          <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
             Guardar cambios
+          </button>
+        ) : contexto === 'lista' ? (
+          <button type="submit" className="primario" disabled={guardando}>
+            Guardar
           </button>
         ) : (
           <>
             <button type="submit" className="secundario" disabled={guardando}>
               Guardar y agregar otro
             </button>
-            <button type="button" className="primario" disabled={guardando} onClick={() => guardar(true)}>
-              Guardar y cerrar
+            <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
+              Guardar
             </button>
           </>
         )}

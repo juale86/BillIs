@@ -60,8 +60,10 @@ export interface Movimiento extends Base {
   /** Gasto: tu parte del total, en centavos. */
   miParteCent?: number
   cuotas?: Cuotas
-  /** Agrupa los gastos cargados seguidos en una misma compra. */
+  /** Agrupa los gastos de una misma compra (mismo lugar, hasta "Pagar"). */
   compraId?: Id
+  /** Ítem de lista de compras que se compró con este gasto. */
+  listaItem?: { listaId: string; itemId: string }
 }
 
 export interface Persona extends Base {

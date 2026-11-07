@@ -61,16 +61,32 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 
 Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
-## Lista de compras compartida
+## Compra y "Pagar"
 
-- Pestaña **Lista**. Sincronizada entre teléfonos con Firebase Firestore (proyecto `billis-juale86`, región `southamerica-east1`).
-- Sin cuentas: el id de la lista (20 caracteres al azar) es el permiso. Se comparte como link `…/BillIs/?lista=<id>`; al abrirlo aparece "Unirme a la lista".
-- Reglas (`firestore.rules`): no se pueden listar listas, solo abrir una por id; validación de campos y tamaños. Deploy: `npx firebase-tools deploy --only firestore`.
-- Ítem: nombre*, cantidad (texto libre: "3", "1 kg"), marca, comprado, agregadoPor, compradoPor.
+- Un gasto **con lugar** es parte de una compra: guardar nunca la cierra; el lugar se repite y los gastos quedan agrupados.
+- Mientras hay una compra abierta aparece **"Pagar $total"** al lado del +. Abre el resumen del ticket, se elige **el método de pago una vez** para todos los gastos y se cierra la compra.
+- Si no se paga, la compra se cierra sola tras 2 h sin actividad.
+- Un gasto **sin lugar** (Netflix, nafta) se guarda directo con su método de pago y no pasa por Pagar.
+- Formulario nuevo: Cancelar / Guardar y agregar otro / Guardar. Editando: Cancelar / Guardar cambios. Desde la lista: Cancelar / Guardar (+ "Ya comprado, sin gasto").
+
+## Listas de compras compartidas
+
+- Pestaña **Listas**. Firestore (proyecto `billis-juale86`, `southamerica-east1`) + inicio de sesión con **Google** (solo para las listas; los gastos siguen locales).
+- **Varias listas**: la pestaña abre la última usada; el nombre con ▾ abre el menú (cambiar de lista, nueva, unirse con link, miembros, cerradas, cerrar sesión).
+- **Compartir** por link; quien lo abre **pide unirse** y el dueño lo **aprueba** (insignia con la cantidad de pedidos).
+- Permisos: el **dueño** renombra, cierra, borra, aprueba y saca miembros; los **miembros** ven, agregan, compran, quitan sus propios ítems y pueden salir. Reglas en `firestore.rules` (probadas con emulador: 30 casos).
+- Tocar un ítem pendiente abre el formulario de gasto completo con nombre, marca, cantidad y último precio. Solo al **guardar** pasa a Comprados (con monto y quién lo compró) y se vuelve a la lista. "Ya comprado, sin gasto" lo marca sin monto.
+- Comprados: tocar ofrece **Volver a pendientes** (si hay gasto propio pregunta si borrarlo) y **Ver gasto**.
+- Gasto ↔ ítem sincronizados: editar el gasto actualiza el monto; borrarlo devuelve el ítem a pendientes (Deshacer lo restaura).
+- **Total gastado** por moneda (suma de montos de comprados) y **estimado de lo pendiente** con tus últimos precios.
+- **Cerrar lista** (dueño): queda archivada, de solo lectura, en "Cerradas"; ofrece abrir una nueva con los pendientes y los mismos miembros.
 - Caché persistente: funciona sin señal y sincroniza al volver.
-- Al tildar: pasa a "Comprados" con **Cargar gasto** (abre el formulario con nombre, marca, cantidad y último precio).
-- Lupa: búsqueda por texto + filtros Pendientes / Comprados / Agregó X. Los filtros aplicados se muestran como chips con ✕.
-- Firebase se carga solo al abrir la pestaña (chunk aparte).
+- Desarrollo con emuladores: `VITE_EMULADORES=1` + `npx firebase-tools emulators:start --only auth,firestore` (requiere Java 21).
+
+## Búsqueda
+
+- Lupa en Movimientos (solo el mes visible: texto en descripción, marca y lugar; chips Gastos / Ingresos / Categoría / Pagó otro; resumen "N resultados, gastaste $X (tu parte)") y en la lista (texto; Pendientes / Comprados / Agregó X).
+- **Testigo**: los filtros siguen aplicados al cerrar la lupa; la lupa muestra un punto y los chips "Filtrando … ✕" quedan visibles.
 
 ## Apariencia
 
@@ -79,3 +95,12 @@ Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guar
 ## Fuera de v1 (el modelo lo admite)
 
 Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.
+
+## Pendientes para charlar
+
+- Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
+- Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.
+- Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquier miembro).
+- "Pagar" un ticket completo en cuotas (hoy las cuotas son por producto).
+- Qué pasa con tus gastos vinculados a una lista si te sacan de ella o se borra (hoy el gasto queda y el vínculo se ignora).
+- Tickets con productos en pesos y dólares mezclados en "Pagar".

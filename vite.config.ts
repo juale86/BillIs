@@ -10,7 +10,6 @@ export default defineConfig({
   // Versión visible en Ajustes. Subirla con `npm version minor|patch --no-git-tag-version`.
   define: {
     __APP_VERSION__: JSON.stringify(version),
-    __APP_COMMIT__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
     __APP_FECHA__: JSON.stringify(new Date().toISOString()),
   },
   // GitHub Pages sirve la app en https://juale86.github.io/BillIs/

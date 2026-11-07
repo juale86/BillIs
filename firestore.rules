@@ -1,44 +1,95 @@
 rules_version = '2';
 
-// Lista de compras compartida. Sin cuentas: el id de la lista (largo y al azar)
-// es el permiso. No se pueden listar las listas, solo abrir una conociendo su id.
+// Listas de compras compartidas. Todos inician sesión con Google.
+// - Dueño: renombra, cierra, borra, aprueba/rechaza pedidos y saca miembros.
+// - Miembros: ven, agregan, compran y quitan sus propios ítems; pueden salir.
+// - Cualquiera con el link (logueado): ve el nombre de la lista y pide unirse.
+// - Una lista cerrada queda de solo lectura (el dueño puede borrarla).
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function listaValida(d) {
-      return d.keys().hasOnly(['nombre', 'creadoEn'])
-        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 60
-        && d.creadoEn is number;
-    }
-
-    function textoOpcional(v, max) {
-      return v == null || (v is string && v.size() <= max);
-    }
-
-    function itemValido(d) {
-      return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPor', 'compradoPor', 'creadoEn', 'modificadoEn'])
-        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 100
-        && textoOpcional(d.cantidad, 30)
-        && textoOpcional(d.marca, 60)
-        && d.comprado is bool
-        && d.agregadoPor is string && d.agregadoPor.size() <= 60
-        && textoOpcional(d.compradoPor, 60)
-        && d.creadoEn is number && d.modificadoEn is number;
+    function logueado() { return request.auth != null; }
+    function uid() { return request.auth.uid; }
+    function nombreOk(v) { return v is string && v.size() > 0 && v.size() <= 60; }
+    function textoOpcional(v, max) { return v == null || (v is string && v.size() <= max); }
+    function soloCambia(campos) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
     }
 
     match /listas/{lista} {
-      allow get: if true;
-      allow list: if false;
-      allow create, update: if listaValida(request.resource.data);
-      allow delete: if false;
+      function esDueno() { return logueado() && resource.data.duenoUid == uid(); }
+      function esMiembro() { return logueado() && uid() in resource.data.miembroUids; }
+
+      allow get: if logueado();
+      allow list: if logueado() && uid() in resource.data.miembroUids;
+
+      allow create: if logueado()
+        && request.resource.data.keys().hasOnly(['nombre', 'duenoUid', 'duenoNombre', 'miembros', 'miembroUids', 'pendientes', 'cerrada', 'cerradaEn', 'creadoEn'])
+        && nombreOk(request.resource.data.nombre)
+        && nombreOk(request.resource.data.duenoNombre)
+        && request.resource.data.duenoUid == uid()
+        && request.resource.data.miembros is map
+        && request.resource.data.miembroUids is list
+        && request.resource.data.miembroUids.size() <= 50
+        && uid() in request.resource.data.miembroUids
+        && request.resource.data.pendientes is map
+        && request.resource.data.pendientes.size() == 0
+        && request.resource.data.cerrada == false
+        && request.resource.data.creadoEn is number;
+
+      allow update: if
+        // Dueño: todo menos cambiar de dueño o reabrir una lista cerrada.
+        (esDueno()
+          && request.resource.data.duenoUid == resource.data.duenoUid
+          && nombreOk(request.resource.data.nombre)
+          && uid() in request.resource.data.miembroUids
+          && request.resource.data.miembroUids.size() <= 50
+          && (resource.data.cerrada == false || request.resource.data.cerrada == true))
+        // Cualquiera logueado: pedir unirse a una lista abierta (o cancelar su pedido).
+        || (logueado()
+          && resource.data.cerrada == false
+          && soloCambia(['pendientes'])
+          && request.resource.data.pendientes.diff(resource.data.pendientes).affectedKeys().hasOnly([uid()])
+          && textoOpcional(request.resource.data.pendientes.get(uid(), null), 60))
+        // Miembro (no dueño): salir de la lista.
+        || (esMiembro() && !esDueno()
+          && soloCambia(['miembros', 'miembroUids'])
+          && request.resource.data.miembroUids == resource.data.miembroUids.removeAll([uid()])
+          && request.resource.data.miembros.diff(resource.data.miembros).affectedKeys().hasOnly([uid()])
+          && !(uid() in request.resource.data.miembros));
+
+      allow delete: if esDueno();
 
       match /items/{item} {
-        function listaExiste() {
-          return exists(/databases/$(database)/documents/listas/$(lista));
+        function datosLista() { return get(/databases/$(database)/documents/listas/$(lista)).data; }
+        function miembro() { return logueado() && uid() in datosLista().miembroUids; }
+        function abierta() { return datosLista().cerrada == false; }
+        function duenoLista() { return logueado() && datosLista().duenoUid == uid(); }
+
+        function itemValido(d) {
+          return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPorUid', 'agregadoPor', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'creadoEn', 'modificadoEn'])
+            && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 100
+            && textoOpcional(d.cantidad, 30)
+            && textoOpcional(d.marca, 60)
+            && d.comprado is bool
+            && d.agregadoPorUid is string
+            && d.agregadoPor is string && d.agregadoPor.size() <= 60
+            && (d.compradoPorUid == null || d.compradoPorUid is string)
+            && textoOpcional(d.compradoPor, 60)
+            && (d.montoCent == null || (d.montoCent is int && d.montoCent >= 0))
+            && (d.moneda == null || d.moneda in ['ARS', 'USD'])
+            && d.creadoEn is number && d.modificadoEn is number;
         }
-        allow read: if listaExiste();
-        allow create, update: if listaExiste() && itemValido(request.resource.data);
-        allow delete: if listaExiste();
+
+        allow read: if miembro();
+        allow create: if miembro() && abierta() && itemValido(request.resource.data)
+          && (request.resource.data.agregadoPorUid == uid() || duenoLista());
+        allow update: if miembro() && abierta() && itemValido(request.resource.data)
+          && request.resource.data.agregadoPorUid == resource.data.agregadoPorUid
+          && request.resource.data.creadoEn == resource.data.creadoEn;
+        allow delete: if miembro()
+          && (abierta() || duenoLista())
+          && (resource.data.agregadoPorUid == uid() || duenoLista());
       }
     }
   }

@@ -139,7 +139,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string)
       </div>
 
       <p className="nota version">
-        BillIs {__APP_VERSION__} ({__APP_COMMIT__}), publicada el{' '}
+        BillIs {__APP_VERSION__}, publicada el{' '}
         {new Date(__APP_FECHA__).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
       </p>
     </section>
