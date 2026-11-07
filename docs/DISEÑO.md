@@ -104,3 +104,4 @@ Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de t
 - "Pagar" un ticket completo en cuotas (hoy las cuotas son por producto).
 - Qué pasa con tus gastos vinculados a una lista si te sacan de ella o se borra (hoy el gasto queda y el vínculo se ignora).
 - Tickets con productos en pesos y dólares mezclados en "Pagar".
+- Monetización (consultado 2026-11-07): AdSense requiere dominio propio (no acepta github.io); AdMob requiere app nativa (Capacitor + Play Store). Alternativas: donaciones (Cafecito / Mercado Pago), freemium, patrocinio. Nunca anuncios en el formulario ni en la lista.
