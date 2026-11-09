@@ -4,7 +4,7 @@ import { FormMovimiento } from './components/FormMovimiento'
 import { Pagar, textoTotal, totalCompra } from './components/Pagar'
 import { db, inicializar } from './db/db'
 import type { Movimiento } from './db/types'
-import { claveMes } from './lib/calculos'
+import { claveCompra, claveMes } from './lib/calculos'
 import { useDatos } from './lib/datos'
 import { hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from './lib/filtrosMov'
 import type { FiltrosLista, ItemLista } from './lib/listaCompras'
@@ -55,7 +55,8 @@ export default function App() {
   const [mes, setMes] = useState(() => claveMes(Date.now()))
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [avisoRespaldo, setAvisoRespaldo] = useState(false)
-  const [pagando, setPagando] = useState(false)
+  // Compra cuyo pago se está viendo (clave de compra), o null.
+  const [pagando, setPagando] = useState<string | null>(null)
   const [verAlertas, setVerAlertas] = useState(false)
   const [, setVersionSesion] = useState(0)
   // Búsquedas: los filtros siguen aplicados aunque se cierre la lupa (testigo).
@@ -130,9 +131,10 @@ export default function App() {
 
   // Compra en curso (gastos con lugar todavía sin pagar).
   const sesion = sesionAbierta()
-  const gastosCompra = sesion
-    ? datos.movimientos.filter((m) => m.tipo === 'gasto' && m.compraId === sesion.compraId)
-    : []
+  const gastosDe = (clave: string) => datos.movimientos.filter((m) => m.tipo === 'gasto' && claveCompra(m) === clave)
+  const gastosCompra = sesion ? gastosDe(sesion.compraId) : []
+  const compraEnCurso = sesion && gastosCompra.length > 0 ? sesion.compraId : null
+  const gastosPagando = pagando ? gastosDe(pagando) : []
   const lupa =
     pestana === 'movimientos'
       ? { abierto: buscandoMov, filtrando: hayFiltrosMov(filtrosMov), onClick: () => setBuscandoMov(!buscandoMov) }
@@ -223,6 +225,8 @@ export default function App() {
                 setMes={setMes}
                 onEditar={(m) => setForm({ tipo: m.tipo === 'ingreso' ? 'ingreso' : 'gasto', editando: m })}
                 onBorrar={borrar}
+                onPagar={setPagando}
+                compraEnCurso={compraEnCurso}
                 buscando={buscandoMov}
                 acciones={
                   <>
@@ -276,7 +280,7 @@ export default function App() {
           {pestana !== 'ajustes' && (
             <div className="flotantes">
               {sesion && gastosCompra.length > 0 && (
-                <button className="pagar" onClick={() => setPagando(true)}>
+                <button className="pagar" onClick={() => setPagando(sesion.compraId)}>
                   Pagar {textoTotal(totalCompra(gastosCompra))}
                 </button>
               )}
@@ -310,14 +314,16 @@ export default function App() {
         </>
       )}
 
-      {pagando && sesion && (
+      {pagando && gastosPagando.length > 0 && (
         <Pagar
+          key={pagando}
           datos={datos}
-          sesion={sesion}
-          gastos={gastosCompra}
-          onCerrar={() => setPagando(false)}
+          lugar={gastosPagando.find((g) => g.lugar)?.lugar}
+          enCurso={pagando === compraEnCurso}
+          gastos={gastosPagando}
+          onCerrar={() => setPagando(null)}
           onPagado={(texto) => {
-            setPagando(false)
+            setPagando(null)
             setVersionSesion((v) => v + 1)
             mostrarAviso({ texto })
           }}

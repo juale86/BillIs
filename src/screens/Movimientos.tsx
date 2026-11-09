@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { Buscador } from '../components/Buscador'
 import type { Movimiento } from '../db/types'
-import { claveMes, parteDe } from '../lib/calculos'
+import { claveCompra, claveMes, parteDe } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
 import { filtrarMovs, hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from '../lib/filtrosMov'
@@ -14,6 +14,10 @@ interface Props {
   setMes: (m: number) => void
   onEditar: (m: Movimiento) => void
   onBorrar: (m: Movimiento) => void
+  /** Abre el pago de una compra (en curso o ya pagada) por su clave. */
+  onPagar: (clave: string) => void
+  /** Clave de la compra en curso, si hay. */
+  compraEnCurso: string | null
   buscando: boolean
   /** Botones al lado del mes (alertas, lupa). */
   acciones: ReactNode
@@ -27,8 +31,9 @@ const fmtDia = (t: number) =>
   new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 const fmtHora = (t: number) => new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
-export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, acciones, panel, filtros, setFiltros }: Props) {
-  const { movimientos, personas, categorias, yo } = datos
+export function Movimientos(props: Props) {
+  const { datos, mes, setMes, onEditar, onBorrar, onPagar, compraEnCurso, buscando, acciones, panel, filtros, setFiltros } = props
+  const { movimientos, personas, categorias, metodos, yo } = datos
   const nombre = (id?: string) => personas.find((p) => p.id === id)?.nombre ?? ''
 
   /** Días → grupos (una compra o un movimiento suelto) → movimientos. */
@@ -41,7 +46,7 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
       const dia = new Date(m.fecha).toDateString()
       let d = res.at(-1)
       if (!d || d.dia !== dia) res.push((d = { dia, grupos: [] }))
-      const g = d.grupos.find((g) => m.compraId && g[0].compraId === m.compraId)
+      const g = m.tipo === 'gasto' ? d.grupos.find((g) => g[0].tipo === 'gasto' && claveCompra(g[0]) === claveCompra(m)) : undefined
       if (g) g.push(m)
       else d.grupos.push([m])
     }
@@ -66,6 +71,43 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
     if (ingresos) partes.push(`cobraste ${ingresos}`)
     return partes.join(', ')
   }, [totales])
+
+  /** Pie de una compra: total, tu parte y cómo se pagó (o que está en curso). */
+  function pieCompra(g: Movimiento[]) {
+    const clave = claveCompra(g[0])
+    const enCurso = clave === compraEnCurso
+    const total = new Map<Movimiento['moneda'], number>()
+    const mia = new Map<Movimiento['moneda'], number>()
+    for (const m of g) {
+      total.set(m.moneda, (total.get(m.moneda) ?? 0) + m.totalCent)
+      mia.set(m.moneda, (mia.get(m.moneda) ?? 0) + parteDe(m))
+    }
+    const txt = (t: Map<Movimiento['moneda'], number>) => [...t].map(([mon, c]) => fmt(c, mon)).join(' + ')
+    const distinta = [...total].some(([mon, c]) => mia.get(mon) !== c)
+    const p = g[0]
+    const pago = enCurso
+      ? 'En curso: tocá para pagar'
+      : [
+          metodos.find((x) => x.id === p.metodoPagoId)?.nombre ?? 'Sin método',
+          p.cuotas && `${p.cuotas.cantidad} cuotas`,
+          p.pagadorId && p.pagadorId !== yo?.id && `pagó ${nombre(p.pagadorId)}`,
+          p.contraparteId && p.parte?.modo !== 'todo' && `con ${nombre(p.contraparteId)}`,
+        ]
+          .filter(Boolean)
+          .join(', ')
+    return (
+      <button className={'compra-pie' + (enCurso ? ' en-curso' : '')} onClick={() => onPagar(clave)}>
+        <span className="compra-pie-fila">
+          <span>Total</span>
+          <strong>{txt(total)}</strong>
+        </span>
+        <span className="compra-pie-fila">
+          <small>{pago}</small>
+          {distinta && <small>tu parte {txt(mia)}</small>}
+        </span>
+      </button>
+    )
+  }
 
   function detalle(m: Movimiento): string {
     const partes: string[] = []
@@ -152,15 +194,20 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
         <div key={d.dia} className="dia">
           <h3>{fmtDia(d.grupos[0][0].fecha)}</h3>
           {d.grupos.map((g) =>
-            g.length > 1 ? (
+            g[0].tipo === 'gasto' ? (
               <div key={g[0].id} className="compra">
-                <div className="compra-cab">
-                  <span>
-                    {g[0].lugar || 'Compra'} <small>{fmtHora(g.at(-1)!.fecha)}, {g.length} ítems</small>
-                  </span>
-                  <span>{fmt(g.reduce((s, m) => s + m.totalCent, 0), g[0].moneda)}</span>
-                </div>
+                {(g.length > 1 || g[0].lugar) && (
+                  <div className="compra-cab">
+                    <span>
+                      {g[0].lugar || 'Compra'}{' '}
+                      <small>
+                        {fmtHora(g.at(-1)!.fecha)}, {g.length} {g.length === 1 ? 'ítem' : 'ítems'}
+                      </small>
+                    </span>
+                  </div>
+                )}
                 <ul className="lista">{g.map(fila)}</ul>
+                {pieCompra(g)}
               </div>
             ) : (
               <ul key={g[0].id} className="lista">
@@ -170,17 +217,6 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
           )}
         </div>
       ))}
-      {dias.length > 0 && (
-        <div className="totales-lista total-pie">
-          <span className="total-fila">
-            Total <strong>{totales.gastos}</strong>
-          </span>
-          <span className="nota">
-            Tu parte de los gastos{hayFiltrosMov(filtros) ? ' filtrados' : ' del mes'}
-            {totales.ingresos && `; cobraste ${totales.ingresos}`}
-          </span>
-        </div>
-      )}
     </section>
   )
 }

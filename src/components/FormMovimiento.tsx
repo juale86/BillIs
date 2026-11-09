@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
-import type { Id, ModoParte, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
+import type { Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 import { cantidadSugerida, miParte, totalConPromo } from '../lib/promo'
-import { guardarPagador, guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
+import { guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
 import {
   sugerirCategoria,
   sugerirDescripciones,
@@ -60,11 +60,10 @@ export function FormMovimiento({
   onGuardadoMov,
   onSinGasto,
 }: Props) {
-  const { movimientos, personas, metodos, categorias, yo, multimoneda } = datos
+  const { movimientos, metodos, categorias, yo, multimoneda } = datos
   const nombreYo = yo?.nombre ?? 'Yo'
   // Compra en curso: se mantiene entre guardados hasta "Pagar" (o 2 h sin actividad).
   const [sesion, setSesion] = useState(sesionActual)
-  const nombrePersona = (id?: Id) => personas.find((p) => p.id === id)?.nombre ?? ''
 
   const [tipo, setTipo] = useState<TipoForm>(editando ? (editando.tipo === 'ingreso' ? 'ingreso' : 'gasto') : tipoInicial)
   const [descripcion, setDescripcion] = useState(editando?.descripcion ?? prefill?.descripcion ?? '')
@@ -110,18 +109,6 @@ export function FormMovimiento({
   const [fechaManual, setFechaManual] = useState(!!editando || sesion.fecha !== undefined)
   const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(editando?.metodoPagoId ?? '')
   const [moneda, setMoneda] = useState<Moneda>(editando?.moneda ?? 'ARS')
-  const [cuotasN, setCuotasN] = useState(String(editando?.cuotas?.cantidad ?? 1))
-  const [totalFin, setTotalFin] = useState(editando?.cuotas ? montoAInput(editando.totalCent) : '')
-  const [valorCuota, setValorCuota] = useState(
-    editando?.cuotas ? montoAInput(Math.round(editando.totalCent / editando.cuotas.cantidad)) : '',
-  )
-  const [finTocado, setFinTocado] = useState(!!editando?.cuotas?.precioContadoCent)
-  const [pagador, setPagador] = useState(
-    editando ? nombrePersona(editando.pagadorId) || nombreYo : (ultimoPagador() ?? nombreYo),
-  )
-  const [parteModo, setParteModo] = useState<ModoParte>(editando?.parte?.modo ?? 'todo')
-  const [partePct, setPartePct] = useState(String(editando?.parte?.pct ?? 50))
-  const [contraparte, setContraparte] = useState(editando ? nombrePersona(editando.contraparteId) : '')
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -137,7 +124,6 @@ export function FormMovimiento({
   }, [editando, prefill])
 
   const esGasto = tipo === 'gasto'
-  const pagadorEsYo = normalizar(pagador || nombreYo) === normalizar(nombreYo)
 
   // ---- Cálculos en vivo ----
   const precioCent = parseMonto(precio)
@@ -158,12 +144,13 @@ export function FormMovimiento({
   }, [promoTipo, promoA, promoB])
   const contado = esGasto ? totalConPromo(precioCent ?? 0, cant, promo) : (precioCent ?? 0)
   const ahorro = esGasto && promo ? (precioCent ?? 0) * cant - contado : 0
-  const nCuotas = esGasto && moneda === 'ARS' ? Math.max(1, Math.round(num(cuotasN, 1))) : 1
-  const total = nCuotas > 1 && finTocado ? (parseMonto(totalFin) ?? contado) : contado
-  const totalFinTxt = finTocado ? totalFin : montoAInput(contado)
-  const valorCuotaTxt = finTocado ? valorCuota : montoAInput(Math.round(contado / nCuotas))
-  const parte: Parte = parteModo === 'pct' ? { modo: 'pct', pct: num(partePct, 50) } : { modo: parteModo }
-  const miParteCent = miParte(total, parte)
+  // Método, cuotas, pagador y tu parte se eligen en Pagar; al editar se conservan como están.
+  // Si el gasto tenía interés de cuotas y el precio no cambió, se mantiene el total financiado.
+  const cuotasPrev = esGasto && moneda === 'ARS' ? editando?.cuotas : undefined
+  const conInteres = !!cuotasPrev?.precioContadoCent && cuotasPrev.precioContadoCent === contado
+  const total = conInteres ? editando!.totalCent : contado
+  const cuotas = cuotasPrev && { cantidad: cuotasPrev.cantidad, precioContadoCent: conInteres ? contado : undefined }
+  const parte: Parte = editando?.parte ?? { modo: 'todo' }
 
   // ---- Sugerencias ----
   const sugDesc = useMemo(
@@ -172,7 +159,6 @@ export function FormMovimiento({
   )
   const sugLugares = useMemo(() => sugerirLugares(movimientos, tipo), [movimientos, tipo])
   const sugMarcas = useMemo(() => (esGasto ? sugerirMarcas(movimientos, descripcion) : []), [esGasto, movimientos, descripcion])
-  const otrasPersonas = personas.filter((p) => !p.esYo).map((p) => p.nombre)
   const cats = categorias.filter((c) => c.tipo === tipo)
 
   function autocompletar(desc: string, mar: string, lug: string, enfocarPrecio: boolean) {
@@ -267,9 +253,6 @@ export function FormMovimiento({
     setPromoTipo('')
     setCategoriaId('')
     setCategoriaManual(false)
-    setCuotasN('1')
-    setFinTocado(false)
-    setParteModo('todo')
     if (!fechaManual) setFecha(Date.now())
     setError('')
     refDesc.current?.focus()
@@ -281,20 +264,20 @@ export function FormMovimiento({
     if (!descripcion.trim()) return setError(esGasto ? 'Falta el producto' : 'Falta el concepto')
     if (precioCent === null || precioCent <= 0) return setError(esGasto ? 'Falta el precio' : 'Falta el monto')
     if (promoTipo === 'manual' && !(parseMonto(promoA) ?? 0)) return setError('Escribí el total que pagaste con la promo')
-    if (esGasto && pagadorEsYo && parteModo !== 'todo' && !contraparte.trim())
-      return setError('¿Con quién compartiste el gasto?')
 
     setGuardando(true)
     try {
-      let pagadorId: Id | undefined
-      let contraparteId: Id | undefined
-      if (esGasto) {
-        const p = pagadorEsYo && yo ? yo : await personaPorNombre(pagador || nombreYo)
-        pagadorId = p.id
-        if (pagadorEsYo && parteModo !== 'todo') contraparteId = (await personaPorNombre(contraparte)).id
+      // Un gasto nuevo queda con el último pagador hasta que se paga la compra.
+      let pagadorId = editando?.pagadorId
+      if (esGasto && !pagadorId) {
+        const ult = ultimoPagador() ?? nombreYo
+        const esYo = normalizar(ult) === normalizar(nombreYo)
+        pagadorId = esYo && yo ? yo.id : (await personaPorNombre(ult)).id
       }
-      // Un gasto con lugar es parte de una compra: el método de pago se elige al "Pagar".
-      const enCompra = esGasto && !editando && !!lugar.trim()
+      const contraparteId = esGasto ? editando?.contraparteId : undefined
+      // Todo gasto nuevo es parte de la compra en curso: método, cuotas, pagador y tu parte se eligen al "Pagar".
+      // Hasta entonces queda con el último pagador y "Todo" como tu parte.
+      const enCompra = esGasto && !editando
       let compraId = esGasto ? editando?.compraId : undefined
       if (enCompra)
         compraId = sesion.lugar && normalizar(sesion.lugar) !== normalizar(lugar) ? uuid() : sesion.compraId
@@ -322,8 +305,8 @@ export function FormMovimiento({
         pagadorId,
         contraparteId,
         parte: esGasto ? parte : undefined,
-        miParteCent: esGasto ? miParteCent : undefined,
-        cuotas: nCuotas > 1 ? { cantidad: nCuotas, precioContadoCent: contado !== total ? contado : undefined } : undefined,
+        miParteCent: esGasto ? miParte(total, parte) : undefined,
+        cuotas: esGasto ? cuotas : undefined,
         compraId,
         listaItem: editando?.listaItem ?? prefill?.listaItem,
       }
@@ -332,7 +315,6 @@ export function FormMovimiento({
 
       if (editando) return onCerrar()
 
-      if (esGasto) guardarPagador(pagador.trim() || nombreYo)
       if (enCompra && compraId) {
         const nueva = { compraId, lugar: lugar.trim(), ubicacion, fecha: fechaManual ? fecha : undefined }
         guardarSesion(nueva)
@@ -464,7 +446,6 @@ export function FormMovimiento({
                 onChange={(e) => {
                   const m = e.target.value as Moneda
                   setMoneda(m)
-                  if (m !== 'ARS') setCuotasN('1')
                 }}
               >
                 {MONEDAS.map((m) => (
@@ -591,58 +572,16 @@ export function FormMovimiento({
               <option value="+">+ Nueva…</option>
             </select>
           </label>
-          {(!esGasto || editando || !lugar.trim()) && (
+          {!esGasto && (
             <MetodoCuotas
               etiqueta={esGasto ? 'Método de pago' : 'Medio de cobro'}
               metodos={metodos}
               metodoId={metodoPagoId}
               onMetodo={setMetodoPagoId}
               onNuevoMetodo={() => void agregarOpcion('metodo')}
-              cuotas={esGasto && moneda === 'ARS' ? cuotasN : undefined}
-              onCuotas={(c) => {
-                setCuotasN(c)
-                setFinTocado(false)
-              }}
             />
           )}
         </div>
-        {nCuotas > 1 && (
-          <fieldset className="grupo">
-            <div className="fila">
-              <label className="campo crece">
-                <span>Total financiado</span>
-                <input
-                  value={totalFinTxt}
-                  inputMode="decimal"
-                  onChange={(e) => {
-                    setFinTocado(true)
-                    setTotalFin(e.target.value)
-                    const c = parseMonto(e.target.value)
-                    setValorCuota(c ? montoAInput(Math.round(c / nCuotas)) : '')
-                  }}
-                />
-              </label>
-              <label className="campo crece">
-                <span>Valor cuota</span>
-                <input
-                  value={valorCuotaTxt}
-                  inputMode="decimal"
-                  onChange={(e) => {
-                    setFinTocado(true)
-                    setValorCuota(e.target.value)
-                    const c = parseMonto(e.target.value)
-                    setTotalFin(c ? montoAInput(c * nCuotas) : '')
-                  }}
-                />
-              </label>
-            </div>
-            {total > contado && contado > 0 && (
-              <p className="calculo">
-                Interés {fmt(total - contado)} ({(((total - contado) / contado) * 100).toFixed(1)}%)
-              </p>
-            )}
-          </fieldset>
-        )}
 
         <div className="campo">
           <div className="fila">
@@ -716,68 +655,15 @@ export function FormMovimiento({
             }}
           />
         </div>
-        {esGasto && !editando && lugar.trim() && (
-          <p className="nota">Es parte de una compra: método de pago, cuotas y pagador se eligen al tocar Pagar.</p>
-        )}
-
-
-
-
         {esGasto && (
-          <>
-            {/* En una compra el pagador se elige al Pagar, para todo el ticket. */}
-            {(editando || !lugar.trim()) && (
-              <label className="campo">
-                <span>Pagador</span>
-                <input value={pagador} autoComplete="off" onChange={(e) => setPagador(e.target.value)} />
-                <Chips opciones={otrasPersonas.length ? [nombreYo, ...otrasPersonas] : []} activo={pagador} onElegir={setPagador} />
-              </label>
-            )}
-
-            <div className="campo">
-              <span>Mi parte</span>
-              <div className="segmentos">
-                {(['todo', 'mitad', 'nada', 'pct'] as ModoParte[]).map((m) => (
-                  <button
-                    type="button"
-                    key={m}
-                    aria-pressed={parteModo === m}
-                    onClick={() => setParteModo(m)}
-                  >
-                    {{ todo: 'Todo', mitad: 'Mitad', nada: 'Nada', pct: '%' }[m]}
-                  </button>
-                ))}
-              </div>
-              {parteModo === 'pct' && (
-                <input
-                  className="chico"
-                  value={partePct}
-                  inputMode="numeric"
-                  aria-label="Porcentaje que te toca"
-                  onChange={(e) => setPartePct(e.target.value)}
-                />
-              )}
-            </div>
-
-            {pagadorEsYo && parteModo !== 'todo' && (
-              <label className="campo">
-                <span>Compartido con *</span>
-                <input value={contraparte} autoComplete="off" onChange={(e) => setContraparte(e.target.value)} />
-                <Chips opciones={otrasPersonas} activo={contraparte} onElegir={setContraparte} />
-              </label>
-            )}
-
-            {precioCent !== null && (parteModo !== 'todo' || !pagadorEsYo) && (
-              <p className="calculo">
-                {pagadorEsYo
-                  ? `${contraparte || 'La otra persona'} te debe ${fmt(total - miParteCent, moneda)}`
-                  : miParteCent > 0
-                    ? `Le debés ${fmt(miParteCent, moneda)} a ${pagador}`
-                    : `Solo registro: no debés nada`}
-              </p>
-            )}
-          </>
+          <p className="nota">
+            {editando
+              ? 'Método de pago, cuotas, pagador y tu parte se cambian tocando el Total de la compra.'
+              : 'Método de pago, cuotas, pagador y tu parte se eligen al tocar Pagar.'}
+          </p>
         )}
+
+        {/* Al cargar se omiten: se eligen en Pagar. Al editar un gasto se pueden corregir acá. */}
 
         <label className="campo">
           <span>Comentarios</span>

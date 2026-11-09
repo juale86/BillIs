@@ -63,10 +63,13 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 ## Compra y "Pagar"
 
-- Un gasto **con lugar** es parte de una compra: guardar nunca la cierra; el lugar se repite y los gastos quedan agrupados.
-- Mientras hay una compra abierta aparece **"Pagar $total"** al lado del +. Abre el resumen del ticket, se elige **el método de pago una vez** para todos los gastos y se cierra la compra.
+- Desde 1.8.3 **todo gasto nuevo** es parte de la compra en curso (con o sin lugar): guardar nunca la cierra; el lugar se repite y los gastos quedan agrupados. Si cambia el lugar, empieza otra compra.
+- El formulario de alta no pide método de pago, cuotas, pagador ni "Mi parte": hasta pagar, el gasto queda con el último pagador y "Todo".
+- Mientras hay una compra abierta aparece **"Pagar $total"** al lado del +. Abre el ticket como formulario: **método de pago + cuotas, pagador, Mi parte y Compartido con**, una vez para todos los gastos, y se cierra la compra.
+- Tampoco aparecen al **editar** un gasto: se corrigen para toda la compra tocando su **Total** en Movimientos, que abre el mismo formulario de Pagar ("Guardar cambios").
+- En Movimientos cada compra, terminada o en curso, tiene su propio **Total** al pie con el método, las cuotas, quién pagó y tu parte. Un gasto sin compra (datos viejos) cuenta como compra de un ítem.
 - Si no se paga, la compra se cierra sola tras 2 h sin actividad.
-- Un gasto **sin lugar** (Netflix, nafta) se guarda directo con su método de pago y no pasa por Pagar.
+- ~~Un gasto sin lugar (Netflix, nafta) se guarda directo~~: reemplazado en 1.8.3, también pasa por Pagar.
 - Formulario nuevo: Cancelar / Guardar y agregar otro / Guardar. Editando: Cancelar / Guardar cambios. Desde la lista: Cancelar / Guardar (+ "Ya comprado, sin gasto").
 
 ## Listas de compras compartidas
@@ -101,7 +104,7 @@ Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de t
 - Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
 - Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.
 - Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquier miembro).
-- ~~"Pagar" un ticket completo en cuotas~~: resuelto en 1.9.0 (cuotas dentro del método, se reparten por producto sin interés). Pendiente: interés al pagar un ticket en cuotas.
+- ~~"Pagar" un ticket completo en cuotas~~: resuelto en 1.8.1 (cuotas dentro del método, se reparten por producto sin interés). Pendiente: interés al pagar un ticket en cuotas.
 - Qué pasa con tus gastos vinculados a una lista si te sacan de ella o se borra (hoy el gasto queda y el vínculo se ignora).
 - Tickets con productos en pesos y dólares mezclados en "Pagar".
 - Monetización (consultado 2026-11-07): AdSense requiere dominio propio (no acepta github.io); AdMob requiere app nativa (Capacitor + Play Store). Alternativas: donaciones (Cafecito / Mercado Pago), freemium, patrocinio. Nunca anuncios en el formulario ni en la lista.

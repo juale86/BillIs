@@ -32,9 +32,9 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - **Pesos y dólares** (opcional), con totales separados por moneda.
 
 ### Compras y "Pagar"
-- Los gastos con lugar forman una **compra** que queda abierta mientras cargás productos.
-- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas y pagador** una sola vez para toda la compra.
-- Los gastos sueltos (Netflix, nafta) se guardan directo, con su método de pago.
+- Cada gasto que cargás se suma a la **compra** en curso; el formulario solo pide qué compraste y cuánto salió.
+- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas, pagador y tu parte** una sola vez para toda la compra.
+- En Movimientos cada compra (terminada o en curso) muestra su **Total** con cómo se pagó; tocándolo se corrige el pago de toda la compra.
 
 ### Deudas compartidas
 - Campo **pagador** y **mi parte** (todo, mitad, nada o %): si pagó otra persona, le debés tu parte; si pagaste vos y compartís, te deben la diferencia.

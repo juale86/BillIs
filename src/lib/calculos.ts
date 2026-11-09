@@ -82,3 +82,6 @@ export function saldos(movs: Movimiento[], yoId: Id): Map<Id, Map<Moneda, number
   }
   return res
 }
+
+/** Una compra agrupa sus gastos; un gasto sin compra es una compra de un solo ítem. */
+export const claveCompra = (m: Movimiento) => m.compraId ?? m.id

@@ -1321,3 +1321,53 @@ main {
   padding-top: 6px;
   border-top: 2px solid var(--tinta);
 }
+/* Pie de cada compra: total y forma de pago; tocándolo se abre el pago. */
+.compra {
+  margin-bottom: 10px;
+}
+.compra-pie {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: none;
+  border: 0;
+  border-top: 2px solid var(--tinta);
+  padding: 6px 0 4px;
+  text-align: left;
+  color: var(--tinta);
+}
+.compra-pie:active {
+  background: var(--birome-suave);
+}
+.compra-pie-fila {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.compra-pie-fila > span {
+  font-weight: 600;
+}
+.compra-pie strong {
+  font-family: var(--f-cifra);
+  font-size: var(--t-l);
+  font-weight: 700;
+}
+.compra-pie small {
+  font-size: var(--t-xs);
+  color: var(--lapiz);
+}
+.compra-pie.en-curso small:first-child {
+  color: var(--gasto);
+  font-weight: 600;
+}
+.compra .lista li:last-child .mov {
+  border-bottom: 0;
+}
+.compra-pie {
+  align-items: stretch;
+}
+.compra-pie-fila {
+  width: 100%;
+}
