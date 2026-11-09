@@ -538,17 +538,6 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
 
   return (
     <>
-      <div className="totales-lista">
-        <span className="total-fila">
-          Total <strong>{fmtTotales(gastado)}</strong>
-        </span>
-        {!cerrada && estimado.conPrecio > 0 && (
-          <span className="nota">
-            Falta ~{fmt(estimado.cent)}
-            {estimado.conPrecio < todosPendientes.length && ` (${estimado.conPrecio} de ${todosPendientes.length} con precio conocido)`}
-          </span>
-        )}
-      </div>
       {pendiente && <p className="nota">Sin conexión: se sincroniza al volver la señal.</p>}
 
       {cerrada && (
@@ -717,6 +706,17 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
           Cerrar lista
         </button>
       )}
+      <div className="totales-lista total-pie">
+        <span className="total-fila">
+          Total <strong>{fmtTotales(gastado)}</strong>
+        </span>
+        {!cerrada && estimado.conPrecio > 0 && (
+          <span className="nota">
+            Falta ~{fmt(estimado.cent)}
+            {estimado.conPrecio < todosPendientes.length && ` (${estimado.conPrecio} de ${todosPendientes.length} con precio conocido)`}
+          </span>
+        )}
+      </div>
     </>
   )
 }

@@ -48,8 +48,8 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
     return res
   }, [movimientos, mes, filtros, yo?.id])
 
-  /** Resumen de lo filtrado: cantidad, tu parte de los gastos e ingresos, por moneda. */
-  const resumen = useMemo(() => {
+  /** Totales de lo que se ve: tu parte de los gastos e ingresos, por moneda. */
+  const totales = useMemo(() => {
     const movs = dias.flatMap((d) => d.grupos.flat())
     const gastos = new Map<string, number>()
     const ingresos = new Map<string, number>()
@@ -58,11 +58,14 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
       if (m.tipo === 'ingreso') ingresos.set(m.moneda, (ingresos.get(m.moneda) ?? 0) + m.totalCent)
     }
     const txt = (t: Map<string, number>) => [...t].map(([mon, c]) => fmt(c, mon as Movimiento['moneda'])).join(' + ')
-    const partes = [`${movs.length} ${movs.length === 1 ? 'resultado' : 'resultados'}`]
-    if (gastos.size) partes.push(`gastaste ${txt(gastos)} (tu parte)`)
-    if (ingresos.size) partes.push(`cobraste ${txt(ingresos)}`)
-    return partes.join(', ')
+    return { cantidad: movs.length, gastos: gastos.size ? txt(gastos) : fmt(0), ingresos: ingresos.size ? txt(ingresos) : null }
   }, [dias])
+  const resumen = useMemo(() => {
+    const { cantidad, gastos, ingresos } = totales
+    const partes = [`${cantidad} ${cantidad === 1 ? 'resultado' : 'resultados'}`, `gastaste ${gastos} (tu parte)`]
+    if (ingresos) partes.push(`cobraste ${ingresos}`)
+    return partes.join(', ')
+  }, [totales])
 
   function detalle(m: Movimiento): string {
     const partes: string[] = []
@@ -167,6 +170,17 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
           )}
         </div>
       ))}
+      {dias.length > 0 && (
+        <div className="totales-lista total-pie">
+          <span className="total-fila">
+            Total <strong>{totales.gastos}</strong>
+          </span>
+          <span className="nota">
+            Tu parte de los gastos{hayFiltrosMov(filtros) ? ' filtrados' : ' del mes'}
+            {totales.ingresos && `; cobraste ${totales.ingresos}`}
+          </span>
+        </div>
+      )}
     </section>
   )
 }

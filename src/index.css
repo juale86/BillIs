@@ -1315,3 +1315,9 @@ main {
   border-bottom: 1px solid var(--tinta);
   padding-bottom: 2px;
 }
+/* Total al pie de Movimientos y de la lista. */
+.total-pie {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 2px solid var(--tinta);
+}
