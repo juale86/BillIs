@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Buscador } from '../components/Buscador'
 import type { Movimiento } from '../db/types'
 import { claveMes, parteDe } from '../lib/calculos'
@@ -15,6 +15,8 @@ interface Props {
   onEditar: (m: Movimiento) => void
   onBorrar: (m: Movimiento) => void
   buscando: boolean
+  /** Botón de búsqueda, al lado del mes. */
+  lupa: ReactNode
   filtros: FiltrosMov
   setFiltros: (f: FiltrosMov) => void
 }
@@ -23,7 +25,7 @@ const fmtDia = (t: number) =>
   new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 const fmtHora = (t: number) => new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
-export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, filtros, setFiltros }: Props) {
+export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, lupa, filtros, setFiltros }: Props) {
   const { movimientos, personas, categorias, yo } = datos
   const nombre = (id?: string) => personas.find((p) => p.id === id)?.nombre ?? ''
 
@@ -71,6 +73,7 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
     if (m.tipo === 'gasto' && m.pagadorId && m.pagadorId !== yo?.id) partes.push(`pagó ${nombre(m.pagadorId)}`)
     if (m.tipo === 'pagoDeuda')
       partes.push(m.pagadorId === yo?.id ? `a ${nombre(m.contraparteId)}` : `de ${nombre(m.pagadorId)}`)
+    if (m.comentario) partes.push(`“${m.comentario}”`)
     return partes.join(', ')
   }
 
@@ -99,7 +102,7 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
 
   return (
     <section className="pantalla">
-      <SelectorMes mes={mes} setMes={setMes} />
+      <SelectorMes mes={mes} setMes={setMes} extra={lupa} />
       <Buscador
         abierto={buscando}
         texto={filtros.texto}

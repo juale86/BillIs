@@ -1,14 +1,16 @@
 import { uuid } from '../db/db'
-import type { Id } from '../db/types'
+import type { Id, Ubicacion } from '../db/types'
 
 /**
  * Estado "pegajoso" de la compra en curso (lugar, fecha manual, método de pago).
- * Vence al "Guardar y cerrar" o tras 2 h sin cargar nada.
+ * Vence al "Pagar" o tras 2 h sin cargar nada.
  * El pagador se recuerda aparte y no vence.
  */
 export interface SesionCompra {
   compraId: Id
   lugar: string
+  /** Ubicación GPS del lugar, si se tomó. */
+  ubicacion?: Ubicacion
   /** Solo si la fecha se cambió a mano. */
   fecha?: number
   metodoPagoId?: Id

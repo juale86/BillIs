@@ -139,14 +139,6 @@ button:disabled {
   min-height: 40px;
   color: var(--lapiz);
 }
-.icono.ajustes {
-  display: grid;
-  place-items: center;
-}
-.icono.ajustes[aria-current='true'] {
-  color: var(--sobre-birome);
-  background: var(--birome);
-}
 .peligro {
   color: var(--gasto);
   background: none;
@@ -417,17 +409,8 @@ button:disabled {
 }
 
 /* ---------- Pantallas ---------- */
-.barra-sup {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 4px 0 16px;
-}
-.barra-sup h1 {
-  font-size: var(--t-xl);
-  font-weight: 600;
-}
 main {
+  padding-top: max(4px, env(safe-area-inset-top));
   padding-bottom: 120px;
 }
 .pantalla {
@@ -443,7 +426,8 @@ main {
   border-bottom: 1px solid var(--renglon);
 }
 .selector-mes strong {
-  display: inline-block;
+  flex: 1;
+  text-align: center;
   font-weight: 600;
 }
 .selector-mes strong::first-letter,
@@ -906,9 +890,6 @@ main {
   background: var(--gasto);
   border: 1.5px solid var(--papel);
 }
-.barra-sup h1 {
-  flex: 1;
-}
 .filtros-activos {
   align-items: center;
 }
@@ -921,7 +902,8 @@ main {
 
 /* ---------- Listas: selector, hoja, ítems ---------- */
 .selector-lista {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
   align-items: baseline;
   gap: 2px;
@@ -1076,4 +1058,81 @@ main {
   font-family: var(--f-cifra);
   font-size: var(--t-cifra);
   line-height: 1;
+}
+
+/* ---------- Engranaje en el menú, campos en fila ---------- */
+.tabs .ajustes {
+  flex: none;
+  width: 52px;
+  max-width: none;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.banner {
+  margin-top: 6px;
+}
+.fila-base {
+  align-items: flex-end;
+}
+.campo.fecha {
+  flex: none;
+  width: 168px;
+}
+.campo.fecha input {
+  font-size: var(--t-s);
+  padding: 0 6px;
+}
+.campo > span:has(.mini) {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.enlace.mini {
+  padding: 0;
+  font-size: var(--t-xs);
+  text-decoration: none;
+}
+.campo.ubicacion {
+  flex: none;
+  width: 104px;
+}
+.ubicar {
+  height: var(--alto);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: var(--hoja);
+  border: 1px dashed var(--birome);
+  color: var(--birome);
+  font-weight: 600;
+  font-size: var(--t-s);
+}
+.ubicado {
+  flex: 1;
+  height: var(--alto);
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  border: 1px solid var(--renglon);
+  background: var(--hoja);
+  font-size: var(--t-s);
+  font-weight: 600;
+  color: var(--ingreso);
+}
+.campo.ubicacion .icono {
+  min-width: 28px;
+  font-size: var(--t-m);
+}
+/* En media fila, las sugerencias pueden ser más anchas que el campo. */
+.fila .sugerencias {
+  right: auto;
+  min-width: 100%;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+}
+/* La lupa va pegada al nombre de la lista; Compartir queda a la derecha. */
+.lista-cab .lupa + * {
+  margin-left: auto;
 }

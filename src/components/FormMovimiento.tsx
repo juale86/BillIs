@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
-import type { Id, ModoParte, Moneda, Movimiento, Parte, Promo } from '../db/types'
+import type { Id, ModoParte, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
@@ -13,6 +13,7 @@ import {
   sugerirMarcas,
   ultimoPrecio,
 } from '../lib/sugerencias'
+import { linkMapa, lugarCercano, obtenerUbicacion } from '../lib/ubicacion'
 import { Chips } from './Chips'
 
 type TipoForm = 'gasto' | 'ingreso'
@@ -68,6 +69,7 @@ export function FormMovimiento({
   const [descripcion, setDescripcion] = useState(editando?.descripcion ?? prefill?.descripcion ?? '')
   const [verSugDesc, setVerSugDesc] = useState(false)
   const [marca, setMarca] = useState(editando?.marca ?? prefill?.marca ?? '')
+  const [comentario, setComentario] = useState(editando?.comentario ?? '')
   const [precio, setPrecio] = useState(() => {
     if (editando) return montoAInput(editando.precioUnitCent)
     const ult = prefill && ultimoPrecio(movimientos, prefill.descripcion, prefill.marca ?? '', sesion.lugar)
@@ -101,6 +103,10 @@ export function FormMovimiento({
   )
   const [categoriaManual, setCategoriaManual] = useState(!!editando?.categoriaId)
   const [lugar, setLugar] = useState(editando ? (editando.lugar ?? '') : tipoInicial === 'gasto' ? sesion.lugar : '')
+  const [ubicacion, setUbicacion] = useState<Ubicacion | undefined>(() =>
+    editando ? editando.ubicacion : tipoInicial === 'gasto' ? sesion.ubicacion : undefined,
+  )
+  const [ubicando, setUbicando] = useState(false)
   const [fecha, setFecha] = useState(() => editando?.fecha ?? sesion.fecha ?? Date.now())
   const [fechaManual, setFechaManual] = useState(!!editando || sesion.fecha !== undefined)
   const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(editando?.metodoPagoId ?? '')
@@ -199,7 +205,29 @@ export function FormMovimiento({
     setTipo(t)
     setCategoriaId('')
     setCategoriaManual(false)
-    if (!editando) setLugar(t === 'gasto' ? sesion.lugar : '')
+    if (!editando) {
+      setLugar(t === 'gasto' ? sesion.lugar : '')
+      setUbicacion(t === 'gasto' ? sesion.ubicacion : undefined)
+    }
+  }
+
+  /** Toma la posición del GPS; si ya compraste cerca y no hay lugar escrito, lo completa. */
+  async function ubicar() {
+    setUbicando(true)
+    setError('')
+    try {
+      const u = await obtenerUbicacion()
+      setUbicacion(u)
+      const cerca = lugar.trim() ? null : lugarCercano(movimientos, u)
+      if (cerca) {
+        setLugar(cerca)
+        autocompletar(descripcion, marca, cerca, false)
+      }
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setUbicando(false)
+    }
   }
 
   function elegirPromo(t: TipoPromo) {
@@ -232,6 +260,7 @@ export function FormMovimiento({
   function limpiarParaOtro() {
     setDescripcion('')
     setMarca('')
+    setComentario('')
     setPrecio('')
     setPrecioTocado(false)
     setCantidad('1')
@@ -250,7 +279,7 @@ export function FormMovimiento({
   /** otro: después de guardar deja el formulario listo para otro gasto. */
   async function guardar(otro: boolean) {
     setError('')
-    if (!descripcion.trim()) return setError('Falta la descripción')
+    if (!descripcion.trim()) return setError(esGasto ? 'Falta el producto' : 'Falta el concepto')
     if (precioCent === null || precioCent <= 0) return setError(esGasto ? 'Falta el precio' : 'Falta el monto')
     if (promoTipo === 'manual' && !(parseMonto(promoA) ?? 0)) return setError('Escribí el total que pagaste con la promo')
     if (esGasto && pagadorEsYo && parteModo !== 'todo' && !contraparte.trim())
@@ -280,6 +309,7 @@ export function FormMovimiento({
         descripcion: descripcion.trim(),
         descripcionNorm: normalizar(descripcion),
         marca: esGasto && marca.trim() ? marca.trim() : undefined,
+        comentario: comentario.trim() || undefined,
         categoriaId: categoriaId || undefined,
         cantidad: esGasto ? cant : 1,
         precioUnitCent: precioCent,
@@ -288,6 +318,7 @@ export function FormMovimiento({
         moneda,
         fecha,
         lugar: lugar.trim() || undefined,
+        ubicacion: esGasto ? ubicacion : undefined,
         metodoPagoId: enCompra ? undefined : metodoPagoId || undefined,
         pagadorId,
         contraparteId,
@@ -304,7 +335,7 @@ export function FormMovimiento({
 
       if (esGasto) guardarPagador(pagador.trim() || nombreYo)
       if (enCompra && compraId) {
-        const nueva = { compraId, lugar: lugar.trim(), fecha: fechaManual ? fecha : undefined }
+        const nueva = { compraId, lugar: lugar.trim(), ubicacion, fecha: fechaManual ? fecha : undefined }
         guardarSesion(nueva)
         setSesion({ ...nueva, ultimaActividad: Date.now() })
       }
@@ -346,36 +377,47 @@ export function FormMovimiento({
             Ya comprado, sin gasto
           </button>
         )}
-        <label className="campo">
-          <span>Descripción *</span>
-          <input
-            ref={refDesc}
-            value={descripcion}
-            placeholder={esGasto ? 'Leche entera' : 'Sueldo'}
-            autoComplete="off"
-            enterKeyHint="next"
-            onChange={(e) => {
-              setDescripcion(e.target.value)
-              setVerSugDesc(true)
-            }}
-            onFocus={() => setVerSugDesc(true)}
-            onBlur={() => {
-              setVerSugDesc(false)
-              if (descripcion.trim() && !precio) autocompletar(descripcion, marca, lugar, false)
-            }}
-          />
-          {sugDesc.length > 0 && (
-            <ul className="sugerencias">
-              {sugDesc.map((s) => (
-                <li key={s}>
-                  <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => elegirDescripcion(s)}>
-                    {s}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </label>
+        <div className="fila">
+          <label className="campo crece">
+            <span>{esGasto ? 'Producto *' : 'Concepto *'}</span>
+            <input
+              ref={refDesc}
+              value={descripcion}
+              placeholder={esGasto ? 'Leche entera' : 'Sueldo'}
+              autoComplete="off"
+              enterKeyHint="next"
+              onChange={(e) => {
+                setDescripcion(e.target.value)
+                setVerSugDesc(true)
+              }}
+              onFocus={() => setVerSugDesc(true)}
+              onBlur={() => {
+                setVerSugDesc(false)
+                if (descripcion.trim() && !precio) autocompletar(descripcion, marca, lugar, false)
+              }}
+            />
+            {sugDesc.length > 0 && (
+              <ul className="sugerencias">
+                {sugDesc.map((s) => (
+                  <li key={s}>
+                    <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => elegirDescripcion(s)}>
+                      {s}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </label>
+          <label className="campo crece">
+            <span>Comentarios</span>
+            <input
+              value={comentario}
+              placeholder="Opcional"
+              autoComplete="off"
+              onChange={(e) => setComentario(e.target.value)}
+            />
+          </label>
+        </div>
 
         {esGasto && (
           <label className="campo">
@@ -398,7 +440,7 @@ export function FormMovimiento({
           </label>
         )}
 
-        <div className="fila">
+        <div className="fila fila-base">
           <label className="campo crece">
             <span>{esGasto ? (cant > 1 ? 'Precio unitario *' : 'Precio *') : 'Monto *'}</span>
             <div className="monto-fila">
@@ -436,6 +478,35 @@ export function FormMovimiento({
               </select>
             </label>
           )}
+          <div className="campo fecha">
+            <span>
+              Fecha
+              {fechaManual && !editando && (
+                <button
+                  type="button"
+                  className="enlace mini"
+                  onClick={() => {
+                    setFecha(Date.now())
+                    setFechaManual(false)
+                  }}
+                >
+                  Ahora
+                </button>
+              )}
+            </span>
+            <input
+              type="datetime-local"
+              aria-label="Fecha"
+              value={aInputFecha(fecha)}
+              onChange={(e) => {
+                const t = new Date(e.target.value).getTime()
+                if (Number.isFinite(t)) {
+                  setFecha(t)
+                  setFechaManual(true)
+                }
+              }}
+            />
+          </div>
         </div>
 
         {esGasto && !verCantidad && (
@@ -551,20 +622,67 @@ export function FormMovimiento({
           )}
         </div>
 
-        <label className="campo">
-          <span>{esGasto ? 'Lugar de compra' : 'Origen'}</span>
-          <div className="con-boton">
-            <input
-              value={lugar}
-              placeholder="Opcional"
-              autoComplete="off"
-              onChange={(e) => setLugar(e.target.value)}
-              onBlur={() => autocompletar(descripcion, marca, lugar, false)}
-            />
-            {lugar && (
-              <button type="button" className="icono" aria-label="Vaciar lugar" onClick={() => setLugar('')}>
-                ✕
-              </button>
+        <div className="campo">
+          <div className="fila">
+            <label className="campo crece">
+              <span>{esGasto ? 'Lugar de compra' : 'Origen'}</span>
+              <div className="con-boton">
+                <input
+                  value={lugar}
+                  placeholder="Opcional"
+                  autoComplete="off"
+                  onChange={(e) => setLugar(e.target.value)}
+                  onBlur={() => autocompletar(descripcion, marca, lugar, false)}
+                />
+                {lugar && (
+                  <button
+                    type="button"
+                    className="icono"
+                    aria-label="Vaciar lugar"
+                    onClick={() => {
+                      setLugar('')
+                      setUbicacion(undefined)
+                    }}
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            </label>
+            {esGasto && (
+              <div className="campo ubicacion">
+                <span>
+                  Ubicación
+                  {ubicacion && (
+                    <a className="enlace mini" href={linkMapa(ubicacion)} target="_blank" rel="noreferrer">
+                      Mapa
+                    </a>
+                  )}
+                </span>
+                {ubicacion ? (
+                  <div className="con-boton">
+                    <span className="ubicado" title={`${ubicacion.lat.toFixed(5)}, ${ubicacion.lon.toFixed(5)}`}>
+                      ±{ubicacion.precision} m
+                    </span>
+                    <button
+                      type="button"
+                      className="icono"
+                      aria-label="Quitar ubicación"
+                      onClick={() => setUbicacion(undefined)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" className="ubicar" disabled={ubicando} onClick={ubicar}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7z" fill="none" stroke="currentColor" strokeWidth="2.5" />
+                      <circle cx="12" cy="9" r="2.5" fill="currentColor" />
+                    </svg>
+                    {ubicando ? 'Buscando…' : 'Ubicar'}
+                  </button>
+                )}
+              </div>
             )}
           </div>
           <Chips
@@ -575,39 +693,11 @@ export function FormMovimiento({
               autocompletar(descripcion, marca, l, false)
             }}
           />
-        </label>
+        </div>
         {esGasto && !editando && lugar.trim() && (
           <p className="nota">Es parte de una compra: el método de pago se elige al tocar Pagar.</p>
         )}
 
-        <label className="campo">
-          <span>Fecha</span>
-          <div className="con-boton">
-            <input
-              type="datetime-local"
-              value={aInputFecha(fecha)}
-              onChange={(e) => {
-                const t = new Date(e.target.value).getTime()
-                if (Number.isFinite(t)) {
-                  setFecha(t)
-                  setFechaManual(true)
-                }
-              }}
-            />
-            {fechaManual && !editando && (
-              <button
-                type="button"
-                className="enlace"
-                onClick={() => {
-                  setFecha(Date.now())
-                  setFechaManual(false)
-                }}
-              >
-                Ahora
-              </button>
-            )}
-          </div>
-        </label>
 
 
         {esGasto && moneda === 'ARS' && (

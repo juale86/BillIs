@@ -32,6 +32,13 @@ export interface Cuotas {
   precioContadoCent?: number
 }
 
+export interface Ubicacion {
+  lat: number
+  lon: number
+  /** Radio de error en metros. */
+  precision: number
+}
+
 export type TipoMovimiento = 'gasto' | 'ingreso' | 'pagoDeuda'
 
 export interface Movimiento extends Base {
@@ -39,6 +46,8 @@ export interface Movimiento extends Base {
   descripcion: string
   descripcionNorm: string
   marca?: string
+  /** Nota libre del usuario. */
+  comentario?: string
   categoriaId?: Id
   cantidad: number
   /** Gasto: precio unitario. Ingreso / pagoDeuda: monto. */
@@ -50,6 +59,8 @@ export interface Movimiento extends Base {
   fecha: number
   /** Gasto: lugar de compra. Ingreso: origen. */
   lugar?: string
+  /** Gasto: dónde se compró, tomado del GPS. */
+  ubicacion?: Ubicacion
   /** Gasto: método de pago. Ingreso: medio de cobro. */
   metodoPagoId?: Id
   /** Gasto / pagoDeuda: quién pagó. */

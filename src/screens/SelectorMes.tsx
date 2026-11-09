@@ -1,6 +1,8 @@
+import type { ReactNode } from 'react'
 import { nombreMes } from '../lib/calculos'
 
-export function SelectorMes({ mes, setMes }: { mes: number; setMes: (m: number) => void }) {
+/** extra: acción al costado (ej. la lupa). */
+export function SelectorMes({ mes, setMes, extra }: { mes: number; setMes: (m: number) => void; extra?: ReactNode }) {
   return (
     <div className="selector-mes">
       <button className="icono" aria-label="Mes anterior" onClick={() => setMes(mes - 1)}>
@@ -10,6 +12,7 @@ export function SelectorMes({ mes, setMes }: { mes: number; setMes: (m: number) 
       <button className="icono" aria-label="Mes siguiente" onClick={() => setMes(mes + 1)}>
         ›
       </button>
+      {extra}
     </div>
   )
 }

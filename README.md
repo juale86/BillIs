@@ -25,8 +25,8 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 
 ### Carga rápida
 - **Gasto o ingreso** con un interruptor; el formulario cambia de campos según el tipo.
-- **Autocompletado** de descripción y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
-- **Lugar, fecha y pagador** se recuerdan entre cargas; la categoría se sugiere sola por producto o por lugar.
+- **Producto y comentarios** en la misma línea; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
+- **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se sugiere sola por producto o por lugar.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
 - **Cuotas** en pesos: cargás el total financiado o el valor de cada cuota y se reparte por mes; calcula el interés.
 - **Pesos y dólares** (opcional), con totales separados por moneda.

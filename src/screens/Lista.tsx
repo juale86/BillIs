@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Buscador } from '../components/Buscador'
 import { db, setAjuste } from '../db/db'
 import type { Moneda, Movimiento } from '../db/types'
@@ -43,6 +43,8 @@ export interface Props {
   invitacion: string | null
   setInvitacion: (id: string | null) => void
   buscando: boolean
+  /** Botón de búsqueda, al lado del nombre de la lista. */
+  lupa: ReactNode
   filtros: FiltrosLista
   setFiltros: (f: FiltrosLista) => void
   onComprar: (listaId: string, item: ItemLista) => void
@@ -173,6 +175,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           <span aria-hidden="true"> ▾</span>
           {pedidos > 0 && <span className="insignia">{pedidos}</span>}
         </button>
+        {props.lupa}
         {!actual.cerrada && <BotonCompartir listaId={actual.id} onAviso={onAviso} />}
       </div>
 

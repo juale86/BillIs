@@ -49,7 +49,7 @@ export async function exportarCSV() {
   ])
   const nombre = (lista: { id: string; nombre: string }[], id?: string) => lista.find((x) => x.id === id)?.nombre ?? ''
   const dec = (c?: number) => (c === undefined ? '' : (c / 100).toFixed(2).replace('.', ','))
-  const cab = ['Fecha', 'Tipo', 'Descripción', 'Marca', 'Categoría', 'Cantidad', 'Precio unitario', 'Promo', 'Total', 'Mi parte', 'Moneda', 'Cuotas', 'Lugar/Origen', 'Método', 'Pagador', 'Compartido con', 'Compra']
+  const cab = ['Fecha', 'Tipo', 'Producto', 'Marca', 'Comentario', 'Categoría', 'Cantidad', 'Precio unitario', 'Promo', 'Total', 'Mi parte', 'Moneda', 'Cuotas', 'Lugar/Origen', 'Ubicación', 'Método', 'Pagador', 'Compartido con', 'Compra']
   const filas = movs
     .filter((m) => !m.borradoEn)
     .sort((a, b) => a.fecha - b.fecha)
@@ -58,6 +58,7 @@ export async function exportarCSV() {
       m.tipo,
       m.descripcion,
       m.marca,
+      m.comentario,
       nombre(categorias, m.categoriaId),
       m.cantidad,
       dec(m.precioUnitCent),
@@ -67,6 +68,7 @@ export async function exportarCSV() {
       m.moneda,
       m.cuotas?.cantidad,
       m.lugar,
+      m.ubicacion ? `${m.ubicacion.lat.toFixed(6)}, ${m.ubicacion.lon.toFixed(6)}` : '',
       nombre(metodos, m.metodoPagoId),
       nombre(personas, m.pagadorId),
       nombre(personas, m.contraparteId),

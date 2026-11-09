@@ -13,12 +13,12 @@ export const SIN_FILTROS_MOV: FiltrosMov = { texto: '', tipo: null, categoriaId:
 
 export const hayFiltrosMov = (f: FiltrosMov) => f.texto !== '' || f.tipo !== null || f.categoriaId !== null || f.pagoOtro
 
-/** Texto en descripción, marca y lugar; más los filtros por chip. */
+/** Texto en producto, marca, comentario y lugar; más los filtros por chip. */
 export function filtrarMovs(movs: Movimiento[], f: FiltrosMov, yoId: Id | undefined): Movimiento[] {
   const q = normalizar(f.texto)
   return movs.filter(
     (m) =>
-      (!q || normalizar(`${m.descripcion} ${m.marca ?? ''} ${m.lugar ?? ''}`).includes(q)) &&
+      (!q || normalizar(`${m.descripcion} ${m.marca ?? ''} ${m.comentario ?? ''} ${m.lugar ?? ''}`).includes(q)) &&
       (f.tipo === null || m.tipo === f.tipo) &&
       (f.categoriaId === null || m.categoriaId === f.categoriaId) &&
       (!f.pagoOtro || (m.tipo === 'gasto' && !!m.pagadorId && m.pagadorId !== yoId)),
