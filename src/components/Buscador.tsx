@@ -1,5 +1,4 @@
 import { useEffect, useRef, type ReactNode } from 'react'
-import { Chips } from './Chips'
 
 export interface FiltroActivo {
   etiqueta: string
@@ -24,7 +23,7 @@ interface Props {
 
 /**
  * Lupa: campo de búsqueda + chips de filtros.
- * Los filtros aplicados se ven siempre (aunque se cierre la lupa) como testigo, con ✕ para quitarlos.
+ * Los filtros aplicados quedan a la izquierda de la fila de chips, con ✕; se ven aunque se cierre la lupa.
  */
 export function Buscador({ abierto, texto, setTexto, placeholder, opciones, activos, resumen, onLimpiar }: Props) {
   const ref = useRef<HTMLInputElement>(null)
@@ -32,29 +31,31 @@ export function Buscador({ abierto, texto, setTexto, placeholder, opciones, acti
     if (abierto) ref.current?.focus()
   }, [abierto])
 
-  const todos: FiltroActivo[] = [...(texto ? [{ etiqueta: `“${texto}”`, onQuitar: () => setTexto('') }] : []), ...activos]
-  if (!abierto && todos.length === 0) return null
+  // Con la lupa abierta el texto ya se ve en el campo; cerrada, queda como filtro con ✕.
+  const todos: FiltroActivo[] = [
+    ...(texto && !abierto ? [{ etiqueta: `“${texto}”`, onQuitar: () => setTexto('') }] : []),
+    ...activos,
+  ]
+  const hayAlgo = todos.length > 0 || !!texto
+  if (!abierto && !hayAlgo) return null
 
   return (
     <div className="buscador">
       {abierto && (
-        <>
-          <div className="campo">
-            <input
-              ref={ref}
-              type="search"
-              value={texto}
-              placeholder={placeholder}
-              aria-label={placeholder}
-              onChange={(e) => setTexto(e.target.value)}
-            />
-          </div>
-          <Chips opciones={opciones.map((o) => o.etiqueta)} onElegir={(e) => opciones.find((o) => o.etiqueta === e)?.onElegir()} />
-        </>
+        <div className="campo">
+          <input
+            ref={ref}
+            type="search"
+            value={texto}
+            placeholder={placeholder}
+            aria-label={placeholder}
+            onChange={(e) => setTexto(e.target.value)}
+          />
+        </div>
       )}
-      {todos.length > 0 && (
-        <div className="filtros-activos" aria-label="Filtros aplicados">
-          <span className="filtrando">Filtrando</span>
+      {(todos.length > 0 || (abierto && opciones.length > 0)) && (
+        <div className="chips" aria-label="Filtros">
+          {/* Los aplicados van primero, a la izquierda, con ✕ para quitarlos. */}
           {todos.map((f) => (
             <span key={f.etiqueta} className="filtro">
               {f.etiqueta}
@@ -63,14 +64,26 @@ export function Buscador({ abierto, texto, setTexto, placeholder, opciones, acti
               </button>
             </span>
           ))}
+          {abierto &&
+            opciones.map((o) => (
+              <button
+                type="button"
+                key={o.etiqueta}
+                className="chip"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={o.onElegir}
+              >
+                {o.etiqueta}
+              </button>
+            ))}
           {todos.length > 1 && (
-            <button type="button" className="enlace" onClick={onLimpiar}>
+            <button type="button" className="enlace quitar-todos" onClick={onLimpiar}>
               Quitar todos
             </button>
           )}
         </div>
       )}
-      {todos.length > 0 && resumen && <p className="calculo">{resumen}</p>}
+      {hayAlgo && resumen && <p className="calculo">{resumen}</p>}
     </div>
   )
 }

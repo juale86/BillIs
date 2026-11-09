@@ -795,12 +795,8 @@ main {
   flex-direction: column;
   gap: 8px;
 }
-.filtros-activos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
 .filtro {
+  flex: none;
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -814,8 +810,8 @@ main {
   background: none;
   border: 0;
   color: inherit;
-  min-width: 30px;
-  min-height: 28px;
+  min-width: 28px;
+  min-height: 26px;
   font-size: var(--t-s);
 }
 .item-lista {
@@ -889,15 +885,6 @@ main {
   height: 8px;
   background: var(--gasto);
   border: 1.5px solid var(--papel);
-}
-.filtros-activos {
-  align-items: center;
-}
-.filtrando {
-  font-size: var(--t-xs);
-  font-weight: 600;
-  color: var(--lapiz);
-  margin-right: 2px;
 }
 
 /* ---------- Listas: selector, hoja, ítems ---------- */
@@ -1169,4 +1156,69 @@ main {
 .chico-icono {
   display: grid;
   place-items: center;
+}
+.quitar-todos {
+  flex: none;
+}
+
+/* ---------- Menú de listas y modal ---------- */
+.menu-fila {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--renglon);
+}
+.menu-fila .menu-item {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+.modal-fondo {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgb(0 0 0 / 0.45);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+.modal {
+  width: 100%;
+  max-width: 360px;
+  background: var(--papel);
+  border-top: 3px solid var(--birome);
+  padding: 14px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 4px 4px 0 var(--tinta);
+}
+.modal h3 {
+  font-size: var(--t-l);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.modal-texto {
+  font-size: var(--t-s);
+  color: var(--lapiz);
+}
+.modal-botones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.modal-botones .cancelar {
+  background: none;
+  border: 0;
+  color: var(--lapiz);
+  font-weight: 600;
+  font-size: var(--t-m);
+  padding: 0 8px;
+}
+.primario.boton-peligro {
+  background: var(--gasto);
+  border-color: var(--gasto);
+  color: #fff;
+}
+.icono.borde[aria-pressed='true'] {
+  color: var(--sobre-birome);
 }

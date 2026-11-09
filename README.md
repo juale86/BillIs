@@ -43,7 +43,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 ### Listas de compras compartidas
 - **Varias listas** (súper, ferretería, un cumpleaños), cada una con su propio link para compartir.
 - Inicio de sesión con **Google**; quien abre el link **pide unirse** y el dueño **aprueba**.
-- El dueño renombra, cierra y borra la lista; los miembros agregan, compran y quitan sus propios ítems.
+- El dueño renombra (lápiz) y borra (✕, con confirmación) cada lista desde el menú; también la cierra; los miembros agregan, compran y quitan sus propios ítems.
 - Tocar un ítem abre el formulario de gasto con todo precargado; al guardar pasa a **Comprados** con su monto, visible para todos. Tocar un comprado abre su gasto y el botón − lo devuelve a pendientes.
 - **Total** de la lista en vivo y **estimado de lo pendiente** según tus últimos precios.
 - **Cerrar** una lista la archiva con su total y ofrece empezar otra con lo que quedó pendiente.
@@ -52,7 +52,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 ### Consulta
 - **Movimientos** del mes agrupados por día y por compra; edición y borrado con deshacer.
 - **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría y cuotas pendientes.
-- **Búsqueda** en movimientos y en las listas, con filtros por chip y un **testigo visible** mientras hay filtros aplicados.
+- **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles aunque se cierre la lupa.
 
 ### Datos y apariencia
 - **Respaldo** completo en JSON (exportar e importar), exportación a **CSV** compatible con Excel y aviso si pasó más de una semana sin respaldo.

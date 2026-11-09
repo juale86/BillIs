@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Buscador } from '../components/Buscador'
+import { Modal } from '../components/Modal'
 import { db, setAjuste } from '../db/db'
 import type { Moneda, Movimiento } from '../db/types'
 import type { Datos } from '../lib/datos'
@@ -315,6 +316,9 @@ function MenuListas(
   const pedidos = Object.entries(actual.pendientes ?? {})
   const accion = (p: Promise<unknown>, ok?: string) =>
     p.then(() => ok && onAviso(ok)).catch(() => alert('No se pudo completar. Revisá la conexión.'))
+  // Lista sobre la que se abrió el modal de renombrar o de borrar/salir.
+  const [modal, setModal] = useState<{ tipo: 'renombrar' | 'borrar'; lista: TLista } | null>(null)
+  const cerrarModal = () => setModal(null)
 
   return (
     <div className="hoja-fondo" onClick={onCerrar}>
@@ -322,14 +326,35 @@ function MenuListas(
         <div className="menu-seccion">
           <h3>Tus listas</h3>
           <ul className="lista">
-            {abiertas.map((l) => (
-              <li key={l.id}>
-                <button className="menu-item" aria-current={l.id === actual.id} onClick={() => elegir(l)}>
-                  {l.nombre}
-                  {l.duenoUid !== uid && <small> de {l.duenoNombre}</small>}
-                </button>
-              </li>
-            ))}
+            {abiertas.map((l) => {
+              const mia = esDueno(l, uid)
+              return (
+                <li key={l.id} className="menu-fila">
+                  <button className="menu-item" aria-current={l.id === actual.id} onClick={() => elegir(l)}>
+                    {l.nombre}
+                    {!mia && <small> de {l.duenoNombre}</small>}
+                  </button>
+                  {mia && (
+                    <button
+                      className="icono chico-icono"
+                      aria-label={`Renombrar ${l.nombre}`}
+                      onClick={() => setModal({ tipo: 'renombrar', lista: l })}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
+                  <button
+                    className="icono chico-icono"
+                    aria-label={mia ? `Borrar ${l.nombre}` : `Salir de ${l.nombre}`}
+                    onClick={() => setModal({ tipo: 'borrar', lista: l })}
+                  >
+                    ✕
+                  </button>
+                </li>
+              )
+            })}
           </ul>
           <div className="botones">
             <button className="enlace" onClick={onNueva}>
@@ -342,7 +367,6 @@ function MenuListas(
         </div>
 
         <div className="menu-seccion">
-          <h3>"{actual.nombre}"</h3>
           {dueno && pedidos.length > 0 && (
             <>
               <p className="nota">Quieren unirse:</p>
@@ -361,7 +385,7 @@ function MenuListas(
               </ul>
             </>
           )}
-          <p className="nota">Miembros:</p>
+          <h3>Miembros</h3>
           <ul className="lista">
             {miembros.map(([u, nombre]) => (
               <li key={u} className="item-ajuste">
@@ -381,40 +405,6 @@ function MenuListas(
               </li>
             ))}
           </ul>
-          <div className="botones">
-            {dueno && !actual.cerrada && (
-              <button
-                className="enlace"
-                onClick={() => {
-                  const n = prompt('Nuevo nombre', actual.nombre)?.trim()
-                  if (n) accion(renombrarLista(actual, n))
-                }}
-              >
-                Renombrar
-              </button>
-            )}
-            {dueno && (
-              <button
-                className="enlace peligro"
-                onClick={() =>
-                  confirm(`¿Borrar "${actual.nombre}" para todos? No se puede deshacer.`) &&
-                  accion(borrarLista(actual).then(onCerrar), 'Lista borrada')
-                }
-              >
-                Borrar lista
-              </button>
-            )}
-            {!dueno && (
-              <button
-                className="enlace peligro"
-                onClick={() =>
-                  confirm(`¿Salir de "${actual.nombre}"?`) && accion(salirDeLista(actual).then(onCerrar), 'Saliste de la lista')
-                }
-              >
-                Salir de la lista
-              </button>
-            )}
-          </div>
         </div>
 
         {cerradas.length > 0 && <ListasCerradas cerradas={cerradas} onElegir={elegir} />}
@@ -429,6 +419,47 @@ function MenuListas(
           </button>
         </div>
       </div>
+
+      {modal?.tipo === 'renombrar' && (
+        <Modal
+          titulo="Renombrar lista"
+          valorInicial={modal.lista.nombre}
+          etiquetaConfirmar="Guardar"
+          onCancelar={cerrarModal}
+          onConfirmar={(n) => {
+            setModal(null)
+            if (n !== modal.lista.nombre) accion(renombrarLista(modal.lista, n), 'Lista renombrada')
+          }}
+        />
+      )}
+      {modal?.tipo === 'borrar' &&
+        (esDueno(modal.lista, uid) ? (
+          <Modal
+            titulo={`¿Borrar "${modal.lista.nombre}"?`}
+            etiquetaConfirmar="Borrar"
+            peligro
+            onCancelar={cerrarModal}
+            onConfirmar={() => {
+              setModal(null)
+              accion(borrarLista(modal.lista).then(() => modal.lista.id === actual.id && onCerrar()), 'Lista borrada')
+            }}
+          >
+            Se borra para todos los miembros, con sus ítems. No se puede deshacer. Tus gastos no se tocan.
+          </Modal>
+        ) : (
+          <Modal
+            titulo={`¿Salir de "${modal.lista.nombre}"?`}
+            etiquetaConfirmar="Salir"
+            peligro
+            onCancelar={cerrarModal}
+            onConfirmar={() => {
+              setModal(null)
+              accion(salirDeLista(modal.lista).then(() => modal.lista.id === actual.id && onCerrar()), 'Saliste de la lista')
+            }}
+          >
+            Para volver a entrar vas a necesitar el link y que {modal.lista.duenoNombre} te acepte.
+          </Modal>
+        ))}
     </div>
   )
 }
