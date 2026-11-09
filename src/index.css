@@ -1412,3 +1412,27 @@ button.compra-cab {
   border-bottom-color: var(--renglon);
   padding: 8px 0;
 }
+
+/* Manija para reordenar los pendientes de la lista (dos rayitas). */
+.manija {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  align-self: stretch;
+  margin-left: -6px;
+  color: var(--lapiz);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.item-lista.arrastrando {
+  background: var(--hoja);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+}
+.item-lista.arrastrando .manija {
+  cursor: grabbing;
+  color: var(--birome);
+}

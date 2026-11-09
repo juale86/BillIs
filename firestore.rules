@@ -67,7 +67,7 @@ service cloud.firestore {
         function duenoLista() { return logueado() && datosLista().duenoUid == uid(); }
 
         function itemValido(d) {
-          return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPorUid', 'agregadoPor', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'creadoEn', 'modificadoEn'])
+          return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPorUid', 'agregadoPor', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'creadoEn', 'modificadoEn', 'orden'])
             && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 100
             && textoOpcional(d.cantidad, 30)
             && textoOpcional(d.marca, 60)
@@ -78,7 +78,8 @@ service cloud.firestore {
             && textoOpcional(d.compradoPor, 60)
             && (d.montoCent == null || (d.montoCent is int && d.montoCent >= 0))
             && (d.moneda == null || d.moneda in ['ARS', 'USD'])
-            && d.creadoEn is number && d.modificadoEn is number;
+            && d.creadoEn is number && d.modificadoEn is number
+            && d.get('orden', 0) is number;
         }
 
         allow read: if miembro();

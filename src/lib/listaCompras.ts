@@ -44,7 +44,7 @@ import { firebaseConfig } from './firebase-config'
  *   pendientes: { uid: nombre }                     ← pidieron unirse, falta aprobar
  * listas/{listaId}/items/{itemId}
  *   nombre, cantidad, marca, comprado, agregadoPorUid, agregadoPor,
- *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn
+ *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn, orden
  *
  * Permisos (firestore.rules): el dueño renombra, cierra, borra y aprueba;
  * los miembros agregan, compran y quitan sus propios ítems.
@@ -77,7 +77,12 @@ export interface ItemLista {
   moneda: Moneda | null
   creadoEn: number
   modificadoEn: number
+  /** Posición entre los pendientes (se ordena de menor a mayor). Los ítems viejos no lo tienen: usan creadoEn. */
+  orden?: number
 }
+
+/** Posición de un ítem en la lista de pendientes. */
+export const ordenDe = (it: ItemLista) => it.orden ?? it.creadoEn
 
 export const sincronizacionDisponible = firebaseConfig !== null
 const EMULADORES = import.meta.env.VITE_EMULADORES === '1'
@@ -279,6 +284,7 @@ export function agregarItem(listaId: string, datos: { nombre: string; cantidad: 
     moneda: null,
     creadoEn: ahora,
     modificadoEn: ahora,
+    orden: ahora,
   }
   // Sin await: con caché local se ve al instante y se sube cuando hay señal.
   return setDoc(doc(items(listaId)), item)
@@ -307,6 +313,10 @@ export const volverAPendiente = (listaId: string, itemId: string) =>
     moneda: null,
     modificadoEn: Date.now(),
   })
+
+/** Cambia la posición de un ítem (arrastrándolo en la lista). */
+export const moverItem = (listaId: string, itemId: string, orden: number) =>
+  updateDoc(doc(items(listaId), itemId), { orden, modificadoEn: Date.now() })
 
 export const borrarItem = (listaId: string, itemId: string) => deleteDoc(doc(items(listaId), itemId))
 

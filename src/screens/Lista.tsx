@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Buscador } from '../components/Buscador'
 import { Modal } from '../components/Modal'
+import { ordenEntre, useArrastre } from '../components/useArrastre'
 import { db, setAjuste } from '../db/db'
 import type { Moneda, Movimiento } from '../db/types'
 import type { Datos } from '../lib/datos'
@@ -18,7 +19,9 @@ import {
   filtrar,
   iniciarSesion,
   linkLista,
+  moverItem,
   nuevaConPendientes,
+  ordenDe,
   pedirUnirse,
   rechazar,
   renombrarLista,
@@ -481,7 +484,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
   )
   const todosPendientes = useMemo(() => items.filter((i) => !i.comprado), [items])
   const visibles = filtrar(items, filtros)
-  const pendientes = visibles.filter((i) => !i.comprado).sort((a, b) => a.creadoEn - b.creadoEn)
+  const pendientes = visibles.filter((i) => !i.comprado).sort((a, b) => ordenDe(a) - ordenDe(b))
   const comprados = visibles.filter((i) => i.comprado).sort((a, b) => b.modificadoEn - a.modificadoEn)
   const personas = [...new Set(items.map((i) => i.agregadoPor))].sort()
   const gastado = totales(items)
@@ -498,6 +501,13 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
     }
     return { cent, conPrecio }
   }, [todosPendientes, datos.movimientos])
+
+  // Los pendientes se reordenan arrastrando la manija de cada fila.
+  const { arrastrando, estilo, manija } = useArrastre((desde, hasta) => {
+    const it = pendientes[desde]
+    const orden = ordenEntre(pendientes.map(ordenDe), desde, hasta)
+    moverItem(lista.id, it.id, orden).catch(() => onAviso('No se pudo mover el ítem'))
+  })
 
   const miGasto = (it: ItemLista) => datos.movimientos.find((m) => m.listaItem?.itemId === it.id)
 
@@ -634,8 +644,15 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
 
       {pendientes.length > 0 && (
         <ul className="lista">
-          {pendientes.map((it) => (
-            <li key={it.id} className="item-lista">
+          {pendientes.map((it, i) => (
+            <li key={it.id} className={'item-lista' + (arrastrando === i ? ' arrastrando' : '')} style={estilo(i)}>
+              {!cerrada && pendientes.length > 1 && (
+                <span className="manija" role="button" aria-label={`Mover ${it.nombre}`} {...manija(i)}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                    <path d="M3 6.5h12M3 11.5h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                  </svg>
+                </span>
+              )}
               <button className="item-boton" disabled={cerrada} onClick={() => onComprar(lista.id, it)}>
                 <span className="mov-desc">{it.nombre}</span>
                 <span className="mov-det">
