@@ -1,11 +1,22 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { Moneda } from '../db/types'
 import { resumenMes } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
+import { Saldos } from './Saldos'
 import { SelectorMes } from './SelectorMes'
 
-export function Resumen({ datos, mes, setMes }: { datos: Datos; mes: number; setMes: (m: number) => void }) {
+interface Props {
+  datos: Datos
+  mes: number
+  setMes: (m: number) => void
+  /** Botón de alertas al lado del mes y su panel. */
+  acciones?: ReactNode
+  panel?: ReactNode
+  onAviso: (t: string) => void
+}
+
+export function Resumen({ datos, mes, setMes, acciones, panel, onAviso }: Props) {
   const { movimientos, categorias } = datos
   const monedas = useMemo(() => {
     const usadas = new Set<Moneda>(movimientos.map((m) => m.moneda))
@@ -15,7 +26,8 @@ export function Resumen({ datos, mes, setMes }: { datos: Datos; mes: number; set
 
   return (
     <section className="pantalla">
-      <SelectorMes mes={mes} setMes={setMes} />
+      <SelectorMes mes={mes} setMes={setMes} extra={acciones} />
+      {panel}
       {monedas.map((moneda) => {
         const r = resumenMes(movimientos, mes, moneda)
         const balance = r.ingresos - r.gastos
@@ -58,6 +70,7 @@ export function Resumen({ datos, mes, setMes }: { datos: Datos; mes: number; set
           </div>
         )
       })}
+      <Saldos datos={datos} onAviso={onAviso} />
     </section>
   )
 }

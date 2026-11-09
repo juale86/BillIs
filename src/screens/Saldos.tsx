@@ -4,6 +4,7 @@ import { saldos } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 
+/** Cuenta corriente con cada persona (no depende del mes), con botón para saldar. */
 export function Saldos({ datos, onAviso }: { datos: Datos; onAviso: (t: string) => void }) {
   const { movimientos, personas, yo } = datos
   if (!yo) return null
@@ -42,9 +43,11 @@ export function Saldos({ datos, onAviso }: { datos: Datos; onAviso: (t: string) 
     onAviso(`Pago registrado: ${fmt(monto, moneda)}`)
   }
 
+  // Dentro de Resumen: si estás al día con todos, la sección no aparece.
+  if (filas.length === 0) return null
   return (
-    <section className="pantalla">
-      {filas.length === 0 && <p className="vacio">Estás al día con todos.</p>}
+    <section className="seccion-saldos">
+      <h3>Saldos con personas</h3>
       <ul className="lista">
         {filas.map(({ persona, moneda, v }) => (
           <li key={persona.id + moneda} className="saldo">

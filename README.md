@@ -33,12 +33,12 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 
 ### Compras y "Pagar"
 - Los gastos con lugar forman una **compra** que queda abierta mientras cargás productos.
-- El botón **Pagar** muestra el ticket y su total, y aplica **un único método de pago** a toda la compra.
+- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas y pagador** una sola vez para toda la compra.
 - Los gastos sueltos (Netflix, nafta) se guardan directo, con su método de pago.
 
 ### Deudas compartidas
 - Campo **pagador** y **mi parte** (todo, mitad, nada o %): si pagó otra persona, le debés tu parte; si pagaste vos y compartís, te deben la diferencia.
-- Pantalla de **saldos** por persona y moneda, con registro de pagos para saldar.
+- **Saldos con personas** dentro de Resumen (solo aparece si hay deudas), por moneda, con registro de pagos para saldar.
 
 ### Listas de compras compartidas
 - **Varias listas** (súper, ferretería, un cumpleaños), cada una con su propio link para compartir.
@@ -51,7 +51,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 
 ### Consulta
 - **Movimientos** del mes agrupados por día y por compra; edición y borrado con deshacer.
-- **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría y cuotas pendientes.
+- **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles aunque se cierre la lupa.
 
 ### Datos y apariencia

@@ -15,6 +15,7 @@ import {
 } from '../lib/sugerencias'
 import { linkMapa, lugarCercano, obtenerUbicacion } from '../lib/ubicacion'
 import { Chips } from './Chips'
+import { MetodoCuotas } from './MetodoCuotas'
 
 type TipoForm = 'gasto' | 'ingreso'
 type TipoPromo = '' | Promo['tipo']
@@ -591,37 +592,18 @@ export function FormMovimiento({
             </select>
           </label>
           {(!esGasto || editando || !lugar.trim()) && (
-          <label className="campo crece">
-            <span>{esGasto ? 'Método de pago' : 'Medio de cobro'}</span>
-            <select
-              value={metodoPagoId}
-              onChange={(e) => {
-                if (e.target.value === '+') return void agregarOpcion('metodo')
-                setMetodoPagoId(e.target.value)
+            <MetodoCuotas
+              etiqueta={esGasto ? 'Método de pago' : 'Medio de cobro'}
+              metodos={metodos}
+              metodoId={metodoPagoId}
+              onMetodo={setMetodoPagoId}
+              onNuevoMetodo={() => void agregarOpcion('metodo')}
+              cuotas={esGasto && moneda === 'ARS' ? cuotasN : undefined}
+              onCuotas={(c) => {
+                setCuotasN(c)
+                setFinTocado(false)
               }}
-            >
-              <option value="">—</option>
-              {metodos.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.nombre}
-                </option>
-              ))}
-              <option value="+">+ Nuevo…</option>
-            </select>
-          </label>
-          )}
-          {esGasto && moneda === 'ARS' && (
-            <label className="campo cant">
-              <span>Cuotas</span>
-              <input
-                value={cuotasN}
-                inputMode="numeric"
-                onChange={(e) => {
-                  setCuotasN(e.target.value)
-                  setFinTocado(false)
-                }}
-              />
-            </label>
+            />
           )}
         </div>
         {nCuotas > 1 && (
@@ -735,7 +717,7 @@ export function FormMovimiento({
           />
         </div>
         {esGasto && !editando && lugar.trim() && (
-          <p className="nota">Es parte de una compra: el método de pago se elige al tocar Pagar.</p>
+          <p className="nota">Es parte de una compra: método de pago, cuotas y pagador se eligen al tocar Pagar.</p>
         )}
 
 
@@ -743,11 +725,14 @@ export function FormMovimiento({
 
         {esGasto && (
           <>
-            <label className="campo">
-              <span>Pagador</span>
-              <input value={pagador} autoComplete="off" onChange={(e) => setPagador(e.target.value)} />
-              <Chips opciones={otrasPersonas.length ? [nombreYo, ...otrasPersonas] : []} activo={pagador} onElegir={setPagador} />
-            </label>
+            {/* En una compra el pagador se elige al Pagar, para todo el ticket. */}
+            {(editando || !lugar.trim()) && (
+              <label className="campo">
+                <span>Pagador</span>
+                <input value={pagador} autoComplete="off" onChange={(e) => setPagador(e.target.value)} />
+                <Chips opciones={otrasPersonas.length ? [nombreYo, ...otrasPersonas] : []} activo={pagador} onElegir={setPagador} />
+              </label>
+            )}
 
             <div className="campo">
               <span>Mi parte</span>

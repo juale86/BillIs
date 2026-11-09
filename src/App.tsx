@@ -13,13 +13,12 @@ import { sesionAbierta } from './lib/sesion'
 import { Ajustes } from './screens/Ajustes'
 import { Movimientos } from './screens/Movimientos'
 import { Resumen } from './screens/Resumen'
-import { Saldos } from './screens/Saldos'
 
 // Firebase pesa: la lista se carga recién cuando se abre.
 const Lista = lazy(() => import('./screens/Lista'))
 const listaCompras = () => import('./lib/listaCompras')
 
-type Pestana = 'movimientos' | 'resumen' | 'saldos' | 'lista' | 'ajustes'
+type Pestana = 'movimientos' | 'resumen' | 'lista' | 'ajustes'
 interface Form {
   tipo: 'gasto' | 'ingreso'
   editando?: Movimiento
@@ -30,7 +29,6 @@ interface Form {
 const TITULOS: Record<Pestana, string> = {
   movimientos: 'Movimientos',
   resumen: 'Resumen',
-  saldos: 'Saldos',
   lista: 'Listas',
   ajustes: 'Ajustes',
 }
@@ -58,6 +56,7 @@ export default function App() {
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [avisoRespaldo, setAvisoRespaldo] = useState(false)
   const [pagando, setPagando] = useState(false)
+  const [verAlertas, setVerAlertas] = useState(false)
   const [, setVersionSesion] = useState(0)
   // Búsquedas: los filtros siguen aplicados aunque se cierre la lupa (testigo).
   const [buscandoMov, setBuscandoMov] = useState(false)
@@ -145,6 +144,49 @@ export default function App() {
           }
         : null
 
+  // Alertas: se avisan con un botón al lado del mes y se leen debajo de él.
+  const alertas = avisoRespaldo
+    ? [
+        {
+          id: 'respaldo',
+          texto: 'Hace más de una semana que no hacés un respaldo.',
+          accion: { etiqueta: 'Ir a respaldo', onClick: () => setPestana('ajustes') },
+          descartar: () => setAvisoRespaldo(false),
+        },
+      ]
+    : []
+  const botonAlertas = alertas.length > 0 && (
+    <button
+      className="icono borde alertas"
+      aria-label={`Alertas (${alertas.length})`}
+      aria-pressed={verAlertas}
+      onClick={() => setVerAlertas(!verAlertas)}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 17V11a6 6 0 0 1 12 0v6l2 2H4z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinejoin="round" />
+        <path d="M10 21h4" stroke="currentColor" strokeWidth="2.2" />
+      </svg>
+      <span className="insignia-alerta">{alertas.length}</span>
+    </button>
+  )
+  const panelAlertas = verAlertas && alertas.length > 0 && (
+    <ul className="alertas-panel" aria-label="Alertas">
+      {alertas.map((a) => (
+        <li key={a.id} className="banner">
+          <span className="alerta-texto">
+            {a.texto}{' '}
+            <button className="enlace" onClick={a.accion.onClick}>
+              {a.accion.etiqueta}
+            </button>
+          </span>
+          <button className="icono" aria-label="Descartar alerta" onClick={a.descartar}>
+            ✕
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+
   return (
     <div className="app">
       {form ? (
@@ -173,18 +215,6 @@ export default function App() {
         />
       ) : (
         <>
-          {avisoRespaldo && pestana !== 'ajustes' && (
-            <div className="banner">
-              Hace más de una semana que no hacés un respaldo.
-              <button className="enlace" onClick={() => setPestana('ajustes')}>
-                Ir a respaldo
-              </button>
-              <button className="icono" aria-label="Cerrar aviso" onClick={() => setAvisoRespaldo(false)}>
-                ✕
-              </button>
-            </div>
-          )}
-
           <main>
             {pestana === 'movimientos' && (
               <Movimientos
@@ -194,13 +224,27 @@ export default function App() {
                 onEditar={(m) => setForm({ tipo: m.tipo === 'ingreso' ? 'ingreso' : 'gasto', editando: m })}
                 onBorrar={borrar}
                 buscando={buscandoMov}
-                lupa={lupa && <BotonLupa {...lupa} />}
+                acciones={
+                  <>
+                    {botonAlertas}
+                    {lupa && <BotonLupa {...lupa} />}
+                  </>
+                }
+                panel={panelAlertas}
                 filtros={filtrosMov}
                 setFiltros={setFiltrosMov}
               />
             )}
-            {pestana === 'resumen' && <Resumen datos={datos} mes={mes} setMes={setMes} />}
-            {pestana === 'saldos' && <Saldos datos={datos} onAviso={(texto) => mostrarAviso({ texto })} />}
+            {pestana === 'resumen' && (
+              <Resumen
+                datos={datos}
+                mes={mes}
+                setMes={setMes}
+                acciones={botonAlertas}
+                panel={panelAlertas}
+                onAviso={(texto) => mostrarAviso({ texto })}
+              />
+            )}
             {pestana === 'lista' && (
               <Suspense fallback={<p className="vacio">Cargando…</p>}>
                 <Lista
@@ -245,7 +289,7 @@ export default function App() {
           )}
 
           <nav className="tabs">
-            {(['movimientos', 'resumen', 'saldos', 'lista'] as Pestana[]).map((p) => (
+            {(['movimientos', 'resumen', 'lista'] as Pestana[]).map((p) => (
               <button key={p} aria-current={pestana === p} onClick={() => setPestana(p)}>
                 {TITULOS[p]}
               </button>

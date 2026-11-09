@@ -15,8 +15,10 @@ interface Props {
   onEditar: (m: Movimiento) => void
   onBorrar: (m: Movimiento) => void
   buscando: boolean
-  /** Botón de búsqueda, al lado del mes. */
-  lupa: ReactNode
+  /** Botones al lado del mes (alertas, lupa). */
+  acciones: ReactNode
+  /** Se muestra debajo del mes (alertas abiertas). */
+  panel?: ReactNode
   filtros: FiltrosMov
   setFiltros: (f: FiltrosMov) => void
 }
@@ -25,7 +27,7 @@ const fmtDia = (t: number) =>
   new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
 const fmtHora = (t: number) => new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
 
-export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, lupa, filtros, setFiltros }: Props) {
+export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, acciones, panel, filtros, setFiltros }: Props) {
   const { movimientos, personas, categorias, yo } = datos
   const nombre = (id?: string) => personas.find((p) => p.id === id)?.nombre ?? ''
 
@@ -102,7 +104,8 @@ export function Movimientos({ datos, mes, setMes, onEditar, onBorrar, buscando, 
 
   return (
     <section className="pantalla">
-      <SelectorMes mes={mes} setMes={setMes} extra={lupa} />
+      <SelectorMes mes={mes} setMes={setMes} extra={acciones} />
+      {panel}
       <Buscador
         abierto={buscando}
         texto={filtros.texto}

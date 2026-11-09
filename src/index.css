@@ -1222,3 +1222,96 @@ main {
 .icono.borde[aria-pressed='true'] {
   color: var(--sobre-birome);
 }
+/* Método de pago con cuotas dentro del mismo campo. */
+.campo.metodo {
+  flex: 1.5;
+}
+.metodo-caja {
+  display: flex;
+  height: var(--alto);
+  background: var(--hoja);
+  border: 1px solid var(--renglon);
+}
+.metodo-caja:focus-within {
+  border-color: var(--birome);
+  box-shadow: inset 0 -2px 0 var(--birome);
+}
+.campo .metodo-caja select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.metodo-cuotas {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px 0 6px;
+  border-left: 1px solid var(--renglon);
+}
+.campo .metodo-cuotas input {
+  width: 28px;
+  height: 100%;
+  border: 0;
+  background: none;
+  padding: 0;
+  text-align: center;
+  box-shadow: none;
+}
+.metodo-cuotas small {
+  font-size: var(--t-xs);
+  color: var(--lapiz);
+}
+/* Alertas: botón al lado del mes y panel debajo. */
+.selector-mes .borde + .borde {
+  margin-left: 6px;
+}
+.alertas {
+  position: relative;
+}
+.insignia-alerta {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  background: var(--gasto);
+  color: #fff;
+  font-size: var(--t-xs);
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+}
+.alertas-panel {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.alertas-panel .banner {
+  margin: 0;
+}
+.alertas-panel .banner {
+  flex-wrap: nowrap;
+}
+.alerta-texto {
+  flex: 1;
+}
+/* Saldos dentro de Resumen. */
+.seccion-saldos {
+  display: flex;
+  flex-direction: column;
+  margin-top: 8px;
+}
+.seccion-saldos h3 {
+  font-size: var(--t-m);
+  font-weight: 600;
+  border-bottom: 1px solid var(--tinta);
+  padding-bottom: 2px;
+}
