@@ -24,7 +24,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 ## Funcionalidades
 
 ### Carga rápida
-- **Gasto o ingreso** con un interruptor; el formulario cambia de campos según el tipo.
+- **Gasto o ingreso** con un interruptor; formulario compacto, sin títulos: cada campo se explica con un ejemplo.
 - **Producto, marca y cantidad** en una línea; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
 - **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se sugiere sola por producto o por lugar.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
@@ -50,7 +50,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - Funciona **sin señal** y se sincroniza al volver la conexión.
 
 ### Consulta
-- **Movimientos** del mes agrupados por día y por compra; edición y borrado con deshacer.
+- **Movimientos** del mes agrupados por día y por compra: la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer.
 - **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles aunque se cierre la lupa.
 

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Buscador } from '../components/Buscador'
 import type { Movimiento } from '../db/types'
 import { claveCompra, claveMes, parteDe } from '../lib/calculos'
@@ -72,8 +72,22 @@ export function Movimientos(props: Props) {
     return partes.join(', ')
   }, [totales])
 
-  /** Pie de una compra: total, tu parte y cómo se pagó (o que está en curso). */
-  function pieCompra(g: Movimiento[]) {
+  // Solo la última compra (y la que está en curso) se ven abiertas; el resto se pliega.
+  // Con filtros se abren todas para ver qué coincidió. Tocar la cabecera invierte.
+  const [invertidas, setInvertidas] = useState<Set<string>>(() => new Set())
+  const ultima = dias.flatMap((d) => d.grupos).find((g) => g[0].tipo === 'gasto')
+  const abierta = (clave: string) =>
+    (clave === (ultima && claveCompra(ultima[0])) || clave === compraEnCurso || hayFiltrosMov(filtros)) !==
+    invertidas.has(clave)
+  const alternar = (clave: string) =>
+    setInvertidas((prev) => {
+      const n = new Set(prev)
+      if (!n.delete(clave)) n.add(clave)
+      return n
+    })
+
+  /** Total, tu parte y cómo se pagó (o que está en curso). */
+  function infoCompra(g: Movimiento[]) {
     const clave = claveCompra(g[0])
     const enCurso = clave === compraEnCurso
     const total = new Map<Movimiento['moneda'], number>()
@@ -95,17 +109,44 @@ export function Movimientos(props: Props) {
         ]
           .filter(Boolean)
           .join(', ')
+    return { clave, enCurso, total: txt(total), mia: distinta ? txt(mia) : null, pago }
+  }
+
+  function compra(g: Movimiento[]) {
+    const { clave, enCurso, total, mia, pago } = infoCompra(g)
+    const abierto = abierta(clave)
+    const titulo = g[0].lugar || (g.length === 1 ? g[0].descripcion : 'Compra')
     return (
-      <button className={'compra-pie' + (enCurso ? ' en-curso' : '')} onClick={() => onPagar(clave)}>
-        <span className="compra-pie-fila">
-          <span>Total</span>
-          <strong>{txt(total)}</strong>
-        </span>
-        <span className="compra-pie-fila">
-          <small>{pago}</small>
-          {distinta && <small>tu parte {txt(mia)}</small>}
-        </span>
-      </button>
+      <div key={clave} className={'compra' + (abierto ? '' : ' plegada')}>
+        <button className="compra-cab" aria-expanded={abierto} onClick={() => alternar(clave)}>
+          <span>
+            {titulo}{' '}
+            <small>
+              {fmtHora(g.at(-1)!.fecha)}, {g.length} {g.length === 1 ? 'ítem' : 'ítems'}
+              {!abierto && `, ${pago}`}
+            </small>
+          </span>
+          <span className="compra-cab-der">
+            {!abierto && <strong>{total}</strong>}
+            <span aria-hidden="true">{abierto ? '▾' : '▸'}</span>
+          </span>
+        </button>
+        {abierto && (
+          <>
+            <ul className="lista">{g.map(fila)}</ul>
+            <button className={'compra-pie' + (enCurso ? ' en-curso' : '')} onClick={() => onPagar(clave)}>
+              <span className="compra-pie-fila">
+                <span>Total</span>
+                <strong>{total}</strong>
+              </span>
+              <span className="compra-pie-fila">
+                <small>{pago}</small>
+                {mia && <small>tu parte {mia}</small>}
+              </span>
+            </button>
+          </>
+        )}
+      </div>
     )
   }
 
@@ -195,20 +236,7 @@ export function Movimientos(props: Props) {
           <h3>{fmtDia(d.grupos[0][0].fecha)}</h3>
           {d.grupos.map((g) =>
             g[0].tipo === 'gasto' ? (
-              <div key={g[0].id} className="compra">
-                {(g.length > 1 || g[0].lugar) && (
-                  <div className="compra-cab">
-                    <span>
-                      {g[0].lugar || 'Compra'}{' '}
-                      <small>
-                        {fmtHora(g.at(-1)!.fecha)}, {g.length} {g.length === 1 ? 'ítem' : 'ítems'}
-                      </small>
-                    </span>
-                  </div>
-                )}
-                <ul className="lista">{g.map(fila)}</ul>
-                {pieCompra(g)}
-              </div>
+              compra(g)
             ) : (
               <ul key={g[0].id} className="lista">
                 {fila(g[0])}

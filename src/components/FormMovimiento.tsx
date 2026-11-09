@@ -360,11 +360,11 @@ export function FormMovimiento({
         )}
         <div className="fila">
           <label className="campo crece">
-            <span>{esGasto ? 'Producto *' : 'Concepto *'}</span>
             <input
               ref={refDesc}
               value={descripcion}
-              placeholder={esGasto ? 'Leche entera' : 'Sueldo'}
+              placeholder={esGasto ? 'Ej. Leche entera' : 'Concepto, ej. Sueldo'}
+              aria-label={esGasto ? 'Producto' : 'Concepto'}
               autoComplete="off"
               enterKeyHint="next"
               onChange={(e) => {
@@ -392,10 +392,10 @@ export function FormMovimiento({
           {esGasto && (
             <>
               <label className="campo crece">
-                <span>Marca</span>
                 <input
                   value={marca}
-                  placeholder="Opcional"
+                  placeholder="Marca"
+                  aria-label="Marca"
                   autoComplete="off"
                   onChange={(e) => setMarca(e.target.value)}
                   onBlur={() => autocompletar(descripcion, marca, lugar, false)}
@@ -410,8 +410,7 @@ export function FormMovimiento({
                 />
               </label>
               <label className="campo cant">
-                <span>Cant.</span>
-                <input value={cantidad} inputMode="numeric" onChange={(e) => setCantidad(e.target.value)} />
+                <input value={cantidad} aria-label="Cantidad" inputMode="numeric" onChange={(e) => setCantidad(e.target.value)} />
               </label>
             </>
           )}
@@ -419,14 +418,14 @@ export function FormMovimiento({
 
         <div className="fila fila-base">
           <label className="campo crece">
-            <span>{esGasto ? (cant > 1 ? 'Precio unitario *' : 'Precio *') : 'Monto *'}</span>
             <div className="monto-fila">
               <span className={'signo ' + tipo} aria-hidden="true">
-                {esGasto ? '−' : '+'}
+                {moneda === 'USD' ? 'US$' : '$'}
               </span>
               <input
                 ref={refPrecio}
                 className="monto"
+                aria-label={esGasto ? (cant > 1 ? 'Precio unitario' : 'Precio') : 'Monto'}
                 value={precio}
                 inputMode="decimal"
                 placeholder="0"
@@ -440,8 +439,8 @@ export function FormMovimiento({
           </label>
           {multimoneda && (
             <label className="campo">
-              <span>Moneda</span>
               <select
+                aria-label="Moneda"
                 value={moneda}
                 onChange={(e) => {
                   const m = e.target.value as Moneda
@@ -455,21 +454,18 @@ export function FormMovimiento({
             </label>
           )}
           <div className="campo fecha">
-            <span>
-              Fecha
-              {fechaManual && !editando && (
-                <button
-                  type="button"
-                  className="enlace mini"
-                  onClick={() => {
-                    setFecha(Date.now())
-                    setFechaManual(false)
-                  }}
-                >
-                  Ahora
-                </button>
-              )}
-            </span>
+            {fechaManual && !editando && (
+              <button
+                type="button"
+                className="enlace mini ahora"
+                onClick={() => {
+                  setFecha(Date.now())
+                  setFechaManual(false)
+                }}
+              >
+                Ahora
+              </button>
+            )}
             <input
               type="datetime-local"
               aria-label="Fecha"
@@ -554,8 +550,8 @@ export function FormMovimiento({
 
         <div className="fila">
           <label className="campo crece">
-            <span>Categoría</span>
             <select
+              aria-label="Categoría"
               value={categoriaId}
               onChange={(e) => {
                 if (e.target.value === '+') return void agregarOpcion('categoria')
@@ -563,7 +559,7 @@ export function FormMovimiento({
                 setCategoriaManual(true)
               }}
             >
-              <option value="">Sin categoría</option>
+              <option value="">Categoría</option>
               {cats.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.nombre}
@@ -574,7 +570,9 @@ export function FormMovimiento({
           </label>
           {!esGasto && (
             <MetodoCuotas
-              etiqueta={esGasto ? 'Método de pago' : 'Medio de cobro'}
+              etiqueta="Medio de cobro"
+              sinEtiqueta
+              vacio="Medio de cobro"
               metodos={metodos}
               metodoId={metodoPagoId}
               onMetodo={setMetodoPagoId}
@@ -586,11 +584,11 @@ export function FormMovimiento({
         <div className="campo">
           <div className="fila">
             <label className="campo crece">
-              <span>{esGasto ? 'Lugar de compra' : 'Origen'}</span>
               <div className="con-boton">
                 <input
                   value={lugar}
-                  placeholder="Opcional"
+                  placeholder={esGasto ? 'Almacén de Juan' : 'Origen, ej. Empresa'}
+                  aria-label={esGasto ? 'Lugar de compra' : 'Origen'}
                   autoComplete="off"
                   onChange={(e) => setLugar(e.target.value)}
                   onBlur={() => autocompletar(descripcion, marca, lugar, false)}
@@ -612,19 +610,17 @@ export function FormMovimiento({
             </label>
             {esGasto && (
               <div className="campo ubicacion">
-                <span>
-                  Ubicación
-                  {ubicacion && (
-                    <a className="enlace mini" href={linkMapa(ubicacion)} target="_blank" rel="noreferrer">
-                      Mapa
-                    </a>
-                  )}
-                </span>
                 {ubicacion ? (
                   <div className="con-boton">
-                    <span className="ubicado" title={`${ubicacion.lat.toFixed(5)}, ${ubicacion.lon.toFixed(5)}`}>
+                    <a
+                      className="ubicado"
+                      href={linkMapa(ubicacion)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Ver en el mapa"
+                    >
                       ±{ubicacion.precision} m
-                    </span>
+                    </a>
                     <button
                       type="button"
                       className="icono"
@@ -666,10 +662,10 @@ export function FormMovimiento({
         {/* Al cargar se omiten: se eligen en Pagar. Al editar un gasto se pueden corregir acá. */}
 
         <label className="campo">
-          <span>Comentarios</span>
           <input
             value={comentario}
-            placeholder="Opcional"
+            placeholder="Comentario - Opcional"
+            aria-label="Comentario"
             autoComplete="off"
             onChange={(e) => setComentario(e.target.value)}
           />

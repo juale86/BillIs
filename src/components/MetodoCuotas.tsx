@@ -11,13 +11,15 @@ interface Props {
   onCuotas?: (c: string) => void
   /** Texto de la opción vacía. */
   vacio?: string
+  /** Sin título arriba (la opción vacía dice qué es). */
+  sinEtiqueta?: boolean
 }
 
 /** Método de pago con las cuotas dentro del mismo campo: [Crédito ▾ | 3 cuotas]. */
-export function MetodoCuotas({ etiqueta, metodos, metodoId, onMetodo, onNuevoMetodo, cuotas, onCuotas, vacio = '—' }: Props) {
+export function MetodoCuotas({ etiqueta, metodos, metodoId, onMetodo, onNuevoMetodo, cuotas, onCuotas, vacio = '—', sinEtiqueta }: Props) {
   return (
     <div className="campo crece metodo">
-      <span>{etiqueta}</span>
+      {!sinEtiqueta && <span>{etiqueta}</span>}
       <div className="metodo-caja">
         <select
           value={metodoId}

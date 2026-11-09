@@ -1371,3 +1371,44 @@ main {
 .compra-pie-fila {
   width: 100%;
 }
+/* Formulario sin títulos: "Ahora" sobre la fecha, ubicación como link al mapa. */
+.campo.fecha {
+  position: relative;
+}
+.enlace.ahora {
+  position: absolute;
+  top: -16px;
+  right: 0;
+}
+a.ubicado {
+  text-decoration: none;
+}
+/* Compras plegables: la cabecera es un botón. */
+button.compra-cab {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--tinta);
+  color: var(--tinta);
+  text-align: left;
+  align-items: baseline;
+  gap: 8px;
+}
+.compra-cab-der {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  flex: none;
+}
+.compra-cab-der strong {
+  font-family: var(--f-cifra);
+  font-size: var(--t-m);
+  font-weight: 700;
+}
+.compra.plegada {
+  margin-bottom: 2px;
+}
+.compra.plegada button.compra-cab {
+  border-bottom-color: var(--renglon);
+  padding: 8px 0;
+}
