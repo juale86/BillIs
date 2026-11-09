@@ -79,7 +79,7 @@ export function Buscador({ abierto, texto, setTexto, placeholder, opciones, acti
 export function BotonLupa({ abierto, filtrando, onClick }: { abierto: boolean; filtrando: boolean; onClick: () => void }) {
   return (
     <button
-      className={'icono lupa' + (filtrando ? ' con-filtro' : '')}
+      className={'icono borde lupa' + (filtrando ? ' con-filtro' : '')}
       aria-label={filtrando ? 'Buscar (hay filtros aplicados)' : 'Buscar'}
       aria-pressed={abierto}
       onClick={onClick}

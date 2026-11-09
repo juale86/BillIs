@@ -175,8 +175,8 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           <span aria-hidden="true"> ▾</span>
           {pedidos > 0 && <span className="insignia">{pedidos}</span>}
         </button>
-        {props.lupa}
         {!actual.cerrada && <BotonCompartir listaId={actual.id} onAviso={onAviso} />}
+        {props.lupa}
       </div>
 
       {menu && (
@@ -200,7 +200,8 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
 function BotonCompartir({ listaId, onAviso }: { listaId: string; onAviso: (t: string) => void }) {
   return (
     <button
-      className="secundario boton-chico"
+      className="icono borde"
+      aria-label="Compartir lista"
       onClick={async () => {
         const url = linkLista(listaId)
         try {
@@ -215,7 +216,12 @@ function BotonCompartir({ listaId, onAviso }: { listaId: string; onAviso: (t: st
         }
       }}
     >
-      Compartir
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="18" cy="5" r="2.8" fill="currentColor" />
+        <circle cx="6" cy="12" r="2.8" fill="currentColor" />
+        <circle cx="18" cy="19" r="2.8" fill="currentColor" />
+        <path d="M8.5 10.7l7-4.2M8.5 13.3l7 4.2" stroke="currentColor" strokeWidth="2" />
+      </svg>
     </button>
   )
 }
@@ -437,7 +443,6 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
   const [cantidad, setCantidad] = useState('')
   const [marca, setMarca] = useState('')
   const [verSug, setVerSug] = useState(false)
-  const [abierto, setAbierto] = useState<string | null>(null)
 
   const sugerencias = useMemo(
     () => (verSug ? sugerirDescripciones(datos.movimientos, 'gasto', nuevo).slice(0, 4) : []),
@@ -475,7 +480,6 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
 
   async function aPendiente(it: ItemLista) {
     const g = miGasto(it)
-    setAbierto(null)
     if (g && confirm(`¿Borrar también el gasto de ${fmt(g.totalCent, g.moneda)}?`)) return onBorrarGasto(g)
     if (g) await db.movimientos.update(g.id, { listaItem: undefined, modificadoEn: Date.now() })
     volverAPendiente(lista.id, it.id).catch(() => onAviso('No se pudo actualizar el ítem'))
@@ -504,8 +508,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
   return (
     <>
       <div className="totales-lista">
-        <span>
-          Gastado <strong>{fmtTotales(gastado)}</strong>
+        <span className="total-fila">
+          Total <strong>{fmtTotales(gastado)}</strong>
         </span>
         {!cerrada && estimado.conPrecio > 0 && (
           <span className="nota">
@@ -643,7 +647,12 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
               const g = miGasto(it)
               return (
                 <li key={it.id} className="item-lista comprado">
-                  <button className="item-boton" onClick={() => setAbierto(abierto === it.id ? null : it.id)} aria-expanded={abierto === it.id}>
+                  <button
+                    className="item-boton"
+                    disabled={!g}
+                    aria-label={g ? `Ver gasto de ${it.nombre}` : undefined}
+                    onClick={() => g && onVerGasto(g)}
+                  >
                     <span className="item-fila">
                       <span className="mov-desc">{it.nombre}</span>
                       <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin gasto'}</span>
@@ -653,19 +662,17 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
                       {(it.cantidad || it.marca) && ' — '}compró {it.compradoPor ?? '—'}
                     </span>
                   </button>
-                  {abierto === it.id && (
-                    <div className="item-acciones">
-                      {!cerrada && (
-                        <button className="enlace" onClick={() => aPendiente(it)}>
-                          Volver a pendientes
-                        </button>
-                      )}
-                      {g && (
-                        <button className="enlace" onClick={() => onVerGasto(g)}>
-                          Ver gasto
-                        </button>
-                      )}
-                    </div>
+                  {!cerrada && (
+                    <button
+                      className="icono chico-icono"
+                      aria-label={`Volver ${it.nombre} a pendientes`}
+                      title="Volver a pendientes"
+                      onClick={() => aPendiente(it)}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                        <path d="M1 7h12" stroke="currentColor" strokeWidth="2.5" />
+                      </svg>
+                    </button>
                   )}
                 </li>
               )

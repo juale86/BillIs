@@ -1005,6 +1005,13 @@ main {
   justify-content: space-between;
   gap: 4px 12px;
 }
+.total-fila {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 600;
+}
 .totales-lista strong {
   font-family: var(--f-cifra);
   font-size: var(--t-xl);
@@ -1133,6 +1140,33 @@ main {
   max-width: calc(100vw - 32px);
 }
 /* La lupa va pegada al nombre de la lista; Compartir queda a la derecha. */
-.lista-cab .lupa + * {
-  margin-left: auto;
+.lista-cab .selector-lista {
+  margin-right: auto;
+}
+.lista-cab .borde + .borde {
+  margin-left: 6px;
+}
+/* Botón ícono con borde azul (lupa, compartir). */
+.icono.borde {
+  display: grid;
+  place-items: center;
+  color: var(--birome);
+  border: 1.5px solid var(--birome);
+  min-width: 38px;
+  min-height: 38px;
+}
+.selector-mes .borde {
+  margin: 2px 0;
+}
+.campo.cant {
+  flex: none;
+  width: 52px;
+}
+.campo.cant input {
+  text-align: center;
+  padding: 0 4px;
+}
+.chico-icono {
+  display: grid;
+  place-items: center;
 }

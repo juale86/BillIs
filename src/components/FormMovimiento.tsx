@@ -77,9 +77,7 @@ export function FormMovimiento({
   })
   const [precioTocado, setPrecioTocado] = useState(!!editando)
   const [cantidad, setCantidad] = useState(String(editando?.cantidad ?? prefill?.cantidad ?? 1))
-  const [verCantidad, setVerCantidad] = useState(
-    (editando?.cantidad ?? prefill?.cantidad ?? 1) !== 1 || !!editando?.promo,
-  )
+  const [verPromo, setVerPromo] = useState(!!editando?.promo)
   const [promoTipo, setPromoTipo] = useState<TipoPromo>(editando?.promo?.tipo ?? '')
   const [promoA, setPromoA] = useState(() => {
     const p = editando?.promo
@@ -264,7 +262,7 @@ export function FormMovimiento({
     setPrecio('')
     setPrecioTocado(false)
     setCantidad('1')
-    setVerCantidad(false)
+    setVerPromo(false)
     setPromoTipo('')
     setCategoriaId('')
     setCategoriaManual(false)
@@ -408,37 +406,33 @@ export function FormMovimiento({
               </ul>
             )}
           </label>
-          <label className="campo crece">
-            <span>Comentarios</span>
-            <input
-              value={comentario}
-              placeholder="Opcional"
-              autoComplete="off"
-              onChange={(e) => setComentario(e.target.value)}
-            />
-          </label>
+          {esGasto && (
+            <>
+              <label className="campo crece">
+                <span>Marca</span>
+                <input
+                  value={marca}
+                  placeholder="Opcional"
+                  autoComplete="off"
+                  onChange={(e) => setMarca(e.target.value)}
+                  onBlur={() => autocompletar(descripcion, marca, lugar, false)}
+                />
+                <Chips
+                  opciones={sugMarcas}
+                  activo={marca}
+                  onElegir={(m) => {
+                    setMarca(m)
+                    autocompletar(descripcion, m, lugar, true)
+                  }}
+                />
+              </label>
+              <label className="campo cant">
+                <span>Cant.</span>
+                <input value={cantidad} inputMode="numeric" onChange={(e) => setCantidad(e.target.value)} />
+              </label>
+            </>
+          )}
         </div>
-
-        {esGasto && (
-          <label className="campo">
-            <span>Marca</span>
-            <input
-              value={marca}
-              placeholder="Opcional"
-              autoComplete="off"
-              onChange={(e) => setMarca(e.target.value)}
-              onBlur={() => autocompletar(descripcion, marca, lugar, false)}
-            />
-            <Chips
-              opciones={sugMarcas}
-              activo={marca}
-              onElegir={(m) => {
-                setMarca(m)
-                autocompletar(descripcion, m, lugar, true)
-              }}
-            />
-          </label>
-        )}
 
         <div className="fila fila-base">
           <label className="campo crece">
@@ -509,19 +503,15 @@ export function FormMovimiento({
           </div>
         </div>
 
-        {esGasto && !verCantidad && (
-          <button type="button" className="enlace" onClick={() => setVerCantidad(true)}>
-            + Cantidad o promo
+        {esGasto && !verPromo && (
+          <button type="button" className="enlace" onClick={() => setVerPromo(true)}>
+            + Promo
           </button>
         )}
 
-        {esGasto && verCantidad && (
+        {esGasto && verPromo && (
           <fieldset className="grupo">
             <div className="fila">
-              <label className="campo chico">
-                <span>Cantidad</span>
-                <input value={cantidad} inputMode="numeric" onChange={(e) => setCantidad(e.target.value)} />
-              </label>
               <label className="campo crece">
                 <span>Promo</span>
                 <select value={promoTipo} onChange={(e) => elegirPromo(e.target.value as TipoPromo)}>
@@ -620,7 +610,57 @@ export function FormMovimiento({
             </select>
           </label>
           )}
+          {esGasto && moneda === 'ARS' && (
+            <label className="campo cant">
+              <span>Cuotas</span>
+              <input
+                value={cuotasN}
+                inputMode="numeric"
+                onChange={(e) => {
+                  setCuotasN(e.target.value)
+                  setFinTocado(false)
+                }}
+              />
+            </label>
+          )}
         </div>
+        {nCuotas > 1 && (
+          <fieldset className="grupo">
+            <div className="fila">
+              <label className="campo crece">
+                <span>Total financiado</span>
+                <input
+                  value={totalFinTxt}
+                  inputMode="decimal"
+                  onChange={(e) => {
+                    setFinTocado(true)
+                    setTotalFin(e.target.value)
+                    const c = parseMonto(e.target.value)
+                    setValorCuota(c ? montoAInput(Math.round(c / nCuotas)) : '')
+                  }}
+                />
+              </label>
+              <label className="campo crece">
+                <span>Valor cuota</span>
+                <input
+                  value={valorCuotaTxt}
+                  inputMode="decimal"
+                  onChange={(e) => {
+                    setFinTocado(true)
+                    setValorCuota(e.target.value)
+                    const c = parseMonto(e.target.value)
+                    setTotalFin(c ? montoAInput(c * nCuotas) : '')
+                  }}
+                />
+              </label>
+            </div>
+            {total > contado && contado > 0 && (
+              <p className="calculo">
+                Interés {fmt(total - contado)} ({(((total - contado) / contado) * 100).toFixed(1)}%)
+              </p>
+            )}
+          </fieldset>
+        )}
 
         <div className="campo">
           <div className="fila">
@@ -700,58 +740,6 @@ export function FormMovimiento({
 
 
 
-        {esGasto && moneda === 'ARS' && (
-          <fieldset className="grupo">
-            <div className="fila">
-              <label className="campo chico">
-                <span>Cuotas</span>
-                <input
-                  value={cuotasN}
-                  inputMode="numeric"
-                  onChange={(e) => {
-                    setCuotasN(e.target.value)
-                    setFinTocado(false)
-                  }}
-                />
-              </label>
-              {nCuotas > 1 && (
-                <>
-                  <label className="campo crece">
-                    <span>Total financiado</span>
-                    <input
-                      value={totalFinTxt}
-                      inputMode="decimal"
-                      onChange={(e) => {
-                        setFinTocado(true)
-                        setTotalFin(e.target.value)
-                        const c = parseMonto(e.target.value)
-                        setValorCuota(c ? montoAInput(Math.round(c / nCuotas)) : '')
-                      }}
-                    />
-                  </label>
-                  <label className="campo crece">
-                    <span>Valor cuota</span>
-                    <input
-                      value={valorCuotaTxt}
-                      inputMode="decimal"
-                      onChange={(e) => {
-                        setFinTocado(true)
-                        setValorCuota(e.target.value)
-                        const c = parseMonto(e.target.value)
-                        setTotalFin(c ? montoAInput(c * nCuotas) : '')
-                      }}
-                    />
-                  </label>
-                </>
-              )}
-            </div>
-            {nCuotas > 1 && total > contado && contado > 0 && (
-              <p className="calculo">
-                Interés {fmt(total - contado)} ({(((total - contado) / contado) * 100).toFixed(1)}%)
-              </p>
-            )}
-          </fieldset>
-        )}
 
         {esGasto && (
           <>
@@ -805,6 +793,16 @@ export function FormMovimiento({
             )}
           </>
         )}
+
+        <label className="campo">
+          <span>Comentarios</span>
+          <input
+            value={comentario}
+            placeholder="Opcional"
+            autoComplete="off"
+            onChange={(e) => setComentario(e.target.value)}
+          />
+        </label>
 
         {error && <p className="error">{error}</p>}
 
