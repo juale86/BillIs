@@ -48,7 +48,7 @@ import {
 } from '../lib/listaCompras'
 import { GRUPOS, grupoPorId, sugerirGrupo } from '../lib/grupos'
 import { fmt } from '../lib/money'
-import { sugerirDescripciones, ultimoPrecio } from '../lib/sugerencias'
+import { sugerirDescripciones } from '../lib/sugerencias'
 
 export interface Props {
   datos: Datos
@@ -534,15 +534,19 @@ function BotonOrden({ orden, onCambiar }: { orden: OrdenLista; onCambiar: (o: Or
     >
       {orden === 'alfabetico' ? (
         <span className="orden-az" aria-hidden="true">
-          AZ
+          A..Z
         </span>
       ) : orden === 'grupos' ? (
-        <span className="orden-grupos" aria-hidden="true">
-          Grupos
-        </span>
+        // Cuatro cuadraditos: categorías.
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3.5" y="3.5" width="7" height="7" />
+          <rect x="13.5" y="3.5" width="7" height="7" />
+          <rect x="3.5" y="13.5" width="7" height="7" />
+          <rect x="13.5" y="13.5" width="7" height="7" />
+        </svg>
       ) : (
-        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
-          {/* Mano abierta: ordenás vos, arrastrando. */}
+        // Mano abierta: ordenás vos, arrastrando. El viewBox la centra (el trazo cae un poco a la izquierda y abajo).
+        <svg width="22" height="22" viewBox="-0.3 0.25 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
           <path
             strokeWidth="1.8"
             d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5M14 11V5.5a1.5 1.5 0 0 1 3 0V12M17 10a1.5 1.5 0 0 1 3 0v5a7 7 0 0 1-7 7h-.8a6 6 0 0 1-4.9-2.6L3.7 15.6a1.5 1.5 0 0 1 2.4-1.8L8 16"
@@ -600,19 +604,6 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   const idsRecientes = orden === 'manual' ? [] : recientesDe(lista.id)
   const recientes = idsRecientes.flatMap((id) => pendientes.filter((it) => it.id === id))
   const resto = pendientes.filter((it) => !idsRecientes.includes(it.id)).sort(alfabetico)
-
-  // Estimado de lo pendiente con los últimos precios que pagaste.
-  const estimado = useMemo(() => {
-    let cent = 0
-    let conPrecio = 0
-    for (const it of todosPendientes) {
-      const p = ultimoPrecio(datos.movimientos, it.nombre, it.marca ?? '', '')
-      if (!p || p.moneda !== 'ARS') continue
-      cent += p.cent * (/^\d+$/.test(it.cantidad ?? '') ? Number(it.cantidad) : 1)
-      conPrecio++
-    }
-    return { cent, conPrecio }
-  }, [todosPendientes, datos.movimientos])
 
   // Los pendientes se reordenan arrastrando la manija de cada fila (solo en orden manual).
   const { arrastrando, estilo, manija } = useArrastre((desde, hasta) => {
@@ -696,12 +687,10 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             </svg>
           </span>
         )}
-        <button className="item-boton" disabled={cerrada} onClick={() => onComprar(lista.id, it)}>
+        <button className="item-boton item-renglon" disabled={cerrada} onClick={() => onComprar(lista.id, it)}>
           <span className="mov-desc">{it.nombre}</span>
-          <span className="mov-det">
-            {[it.cantidad, it.marca].filter(Boolean).join(', ')}
-            {(it.cantidad || it.marca) && ' — '}agregó {it.agregadoPor}
-          </span>
+          {it.marca && <span className="item-marca">{it.marca}</span>}
+          {it.cantidad && <span className="item-cant">{/^\d+([.,]\d+)?$/.test(it.cantidad) ? `x${it.cantidad}` : it.cantidad}</span>}
         </button>
         {!cerrada && (
           <button
@@ -728,10 +717,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   const seccion = (titulo: string, lista: ItemLista[]) =>
     lista.length > 0 && (
       <Fragment key={titulo}>
-        <div className="lista-sub">
-          <span>
-            {titulo} ({lista.length})
-          </span>
+        <div className="lista-sub grupo-tit">
+          <span>{titulo}</span>
         </div>
         <ul className="lista">{lista.map((it) => filaPendiente(it))}</ul>
       </Fragment>
@@ -888,7 +875,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
       {orden !== 'manual' && seccion('Recién agregados', recientes)}
       {orden === 'alfabetico' && resto.length > 0 && (
         <>
-          {recientes.length > 0 && <div className="lista-sub"><span>Pendientes ({resto.length})</span></div>}
+          {recientes.length > 0 && <div className="lista-sub grupo-tit"><span>Pendientes</span></div>}
           <ul className="lista">{resto.map((it) => filaPendiente(it))}</ul>
         </>
       )}
@@ -943,21 +930,18 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         </>
       )}
 
-      {dueno && !cerrada && items.length > 0 && !buscando && (
-        <button className="enlace cerrar-lista" onClick={cerrar}>
-          Cerrar lista
-        </button>
-      )}
       <div className="totales-lista total-pie">
         <span className="total-fila">
-          Total <strong>{fmtTotales(gastado)}</strong>
-        </span>
-        {!cerrada && estimado.conPrecio > 0 && (
-          <span className="nota">
-            Falta ~{fmt(estimado.cent)}
-            {estimado.conPrecio < todosPendientes.length && ` (${estimado.conPrecio} de ${todosPendientes.length} con precio conocido)`}
+          <span>
+            Total
+            {dueno && !cerrada && items.length > 0 && (
+              <button className="enlace cerrar-lista" onClick={cerrar}>
+                Cerrar lista
+              </button>
+            )}
           </span>
-        )}
+          <strong>{fmtTotales(gastado)}</strong>
+        </span>
       </div>
 
       {eligiendoGrupo && (

@@ -22,7 +22,7 @@ type Pestana = 'movimientos' | 'resumen' | 'lista' | 'ajustes'
 interface Form {
   tipo: 'gasto' | 'ingreso'
   editando?: Movimiento
-  prefill?: { descripcion: string; marca?: string; cantidad?: number; listaItem?: Movimiento['listaItem'] }
+  prefill?: { descripcion: string; marca?: string; cantidad?: number; listaItem?: Movimiento['listaItem']; agregadoPor?: string }
   contexto?: 'lista'
 }
 
@@ -121,6 +121,7 @@ export default function App() {
         marca: item.marca ?? undefined,
         cantidad: /^\d+$/.test(item.cantidad ?? '') ? Number(item.cantidad) : undefined,
         listaItem: { listaId, itemId: item.id },
+        agregadoPor: item.agregadoPor,
       },
     })
   }

@@ -25,7 +25,7 @@ interface Props {
   tipoInicial: TipoForm
   editando?: Movimiento
   /** Datos iniciales (ej. desde la lista de compras). */
-  prefill?: { descripcion: string; marca?: string; cantidad?: number; listaItem?: Movimiento['listaItem'] }
+  prefill?: { descripcion: string; marca?: string; cantidad?: number; listaItem?: Movimiento['listaItem']; agregadoPor?: string }
   /** 'lista': se abrió tocando un ítem de la lista de compras (Cancelar / Guardar, vuelve a la lista). */
   contexto?: 'lista'
   onCerrar: () => void
@@ -705,6 +705,7 @@ export function FormMovimiento({
             Borrar movimiento
           </button>
         )}
+        {prefill?.agregadoPor && <p className="nota agregado-por">Lo agregó a la lista {prefill.agregadoPor}</p>}
       </div>
 
       <footer className="acciones">

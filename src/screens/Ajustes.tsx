@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { db, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
 import type { Datos } from '../lib/datos'
+import { GRUPOS } from '../lib/grupos'
 import { exportarCSV, exportarJSON, importarJSON } from '../lib/respaldo'
 import { guardarTema, leerTema, type Tema } from '../lib/tema'
 
@@ -108,6 +109,16 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string)
       {lista('Métodos de pago', 'metodosPago', metodos)}
       {lista('Categorías de gasto', 'categorias', categorias.filter((c) => c.tipo === 'gasto'), 'gasto')}
       {lista('Categorías de ingreso', 'categorias', categorias.filter((c) => c.tipo === 'ingreso'), 'ingreso')}
+
+      <div className="tarjeta">
+        <h3>Grupos de la lista de compras</h3>
+        <p className="nota">El orden "Por grupos" de la lista sigue este recorrido del súper.</p>
+        <ol className="grupos-ajustes">
+          {GRUPOS.map((g) => (
+            <li key={g.id}>{g.nombre}</li>
+          ))}
+        </ol>
+      </div>
 
       <div className="tarjeta">
         <h3>Respaldo</h3>

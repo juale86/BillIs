@@ -1037,9 +1037,11 @@ main {
   gap: 16px;
   padding: 0 0 8px;
 }
+/* "Cerrar lista" va al lado de Total, como enlace sin borde. */
 .cerrar-lista {
-  align-self: flex-start;
-  margin-top: 8px;
+  margin-left: 12px;
+  font-size: var(--t-s);
+  font-weight: 500;
 }
 .total-pagar {
   margin: 4px 0;
@@ -1493,10 +1495,66 @@ button.compra-cab {
   font-family: var(--f-cifra);
   font-weight: 700;
   font-size: var(--t-m);
-  letter-spacing: -0.5px;
+  letter-spacing: 1px;
 }
-.orden-grupos {
-  font-size: 0.6875rem;
+/* Mismo tamaño en los tres órdenes, un poco más grande que los otros botones. */
+.boton-orden {
+  width: 46px;
+  min-width: 46px;
+  height: 40px;
+}
+
+/* Pendiente en un renglón: producto, marca y a la derecha la cantidad. */
+.item-renglon {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  padding: 11px 0;
+}
+.item-renglon .mov-desc {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.item-marca {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--lapiz);
+}
+.item-cant {
+  flex: none;
+  margin-left: auto;
+  padding-left: 4px;
+  color: var(--lapiz);
+  font-family: var(--f-cifra);
   font-weight: 600;
-  padding: 0 3px;
+}
+/* Títulos de grupo: discretos, sin la raya fuerte. */
+.lista-sub.grupo-tit {
+  font-size: var(--t-xs);
+  font-weight: 500;
+  color: var(--lapiz);
+  opacity: 0.75;
+  border-bottom: 1px solid var(--renglon);
+  margin-top: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.agregado-por {
+  font-size: var(--t-xs);
+  text-align: right;
+}
+
+/* Ajustes: grupos de la lista en orden. */
+.grupos-ajustes {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
