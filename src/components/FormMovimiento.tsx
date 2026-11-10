@@ -14,6 +14,7 @@ import {
   ultimoPrecio,
 } from '../lib/sugerencias'
 import { linkMapa, lugarCercano, obtenerUbicacion } from '../lib/ubicacion'
+import { BotonCerrar } from './BotonCerrar'
 import { Chips } from './Chips'
 import { MetodoCuotas } from './MetodoCuotas'
 
@@ -361,6 +362,7 @@ export function FormMovimiento({
           </span>
           <span className="tipo-texto">{editando ? 'Editar' : 'Nuevo'} {esGasto ? 'gasto' : 'ingreso'}</span>
         </button>
+        <BotonCerrar onClick={onCerrar} />
       </header>
 
       <div className="campos">
@@ -709,9 +711,6 @@ export function FormMovimiento({
       </div>
 
       <footer className="acciones">
-        <button type="button" className="cancelar" onClick={onCerrar}>
-          Cancelar
-        </button>
         {editando ? (
           <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
             Guardar cambios

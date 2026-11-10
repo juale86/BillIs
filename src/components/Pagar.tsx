@@ -5,8 +5,20 @@ import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
 import { miParte } from '../lib/promo'
 import { cerrarSesion, guardarPagador, ultimoPagador } from '../lib/sesion'
+import { BotonCerrar } from './BotonCerrar'
 import { Chips } from './Chips'
 import { MetodoCuotas } from './MetodoCuotas'
+
+/** Sin repetidos (sin distinguir mayúsculas ni acentos), conservando el primero. */
+function unicos(nombres: string[]): string[] {
+  const vistos = new Set<string>()
+  return nombres.filter((n) => {
+    const k = normalizar(n)
+    if (!k || vistos.has(k)) return false
+    vistos.add(k)
+    return true
+  })
+}
 
 /** Total por moneda de los gastos de una compra. */
 export function totalCompra(gastos: Movimiento[]): [Moneda, number][] {
@@ -38,7 +50,10 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const n = Math.max(1, Math.round(Number(cuotas) || 1))
   const totalPesos = enPesos.reduce((t, g) => t + g.totalCent, 0)
   const nombreYo = datos.yo?.nombre ?? 'Yo'
-  const otras = datos.personas.filter((p) => !p.esYo).map((p) => p.nombre)
+  // Para "Compartido con": las personas ya cargadas y con quienes compartís la lista.
+  const otras = unicos([...datos.personas.filter((p) => !p.esYo).map((p) => p.nombre), ...datos.miembrosLista]).filter(
+    (n) => normalizar(n) !== normalizar(nombreYo),
+  )
   // Arranca con lo que ya tiene la compra (al corregir un pago) o con el último pagador (al pagar).
   const primero = gastos[0]
   const nombreDe = (id?: Id) => datos.personas.find((x) => x.id === id)?.nombre
@@ -50,6 +65,8 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const [contraparte, setContraparte] = useState(() => (enCurso ? '' : (nombreDe(primero?.contraparteId) ?? '')))
   const [error, setError] = useState('')
   const pagadorEsYo = normalizar(pagador.trim() || nombreYo) === normalizar(nombreYo)
+  // Pagador: vos o alguien con quien compartís la lista (y el que ya tenía la compra, si es otro).
+  const pagadores = unicos([nombreYo, ...datos.miembrosLista, pagador])
   const parte: Parte =
     parteModo === 'pct' ? { modo: 'pct', pct: Math.min(100, Math.max(0, Number(partePct) || 0)) } : { modo: parteModo }
   // Lo que te toca y lo que le toca al otro, por moneda.
@@ -102,10 +119,13 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
     <div className="hoja-fondo" onClick={onCerrar}>
       <div className="hoja" role="dialog" aria-label="Pagar compra" onClick={(e) => e.stopPropagation()}>
         <div className="menu-seccion">
-          <h3>
-            {enCurso ? 'Pagar' : 'Pago'}
-            {lugar ? ` en ${lugar}` : ''}
-          </h3>
+          <div className="hoja-cab">
+            <h3>
+              {enCurso ? 'Pagar' : 'Pago'}
+              {lugar ? ` en ${lugar}` : ''}
+            </h3>
+            <BotonCerrar onClick={onCerrar} />
+          </div>
           <ul className="lista">
             {gastos.map((g) => (
               <li key={g.id} className="item-ajuste">
@@ -139,8 +159,13 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
           )}
           <label className="campo">
             <span>Pagador</span>
-            <input value={pagador} autoComplete="off" onChange={(e) => setPagador(e.target.value)} />
-            <Chips opciones={otras.length ? [nombreYo, ...otras] : []} activo={pagador} onElegir={setPagador} />
+            <select value={pagador} onChange={(e) => setPagador(e.target.value)}>
+              {pagadores.map((n) => (
+                <option key={n} value={n}>
+                  {normalizar(n) === normalizar(nombreYo) ? `${n} (vos)` : n}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="campo">
             <span>Mi parte</span>
@@ -194,9 +219,6 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
           {error && <p className="error">{error}</p>}
         </div>
         <div className="acciones">
-          <button type="button" className="cancelar" onClick={onCerrar}>
-            Cancelar
-          </button>
           <button type="button" className="primario" disabled={ocupado} onClick={confirmar}>
             {enCurso ? 'Confirmar pago' : 'Guardar cambios'}
           </button>

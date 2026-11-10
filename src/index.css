@@ -1558,3 +1558,18 @@ button.compra-cab {
   flex-direction: column;
   gap: 4px;
 }
+
+/* X para cerrar un formulario sin guardar, arriba a la derecha del título. */
+.cerrar-x {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  min-height: 40px;
+  color: var(--lapiz);
+}
+.hoja-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

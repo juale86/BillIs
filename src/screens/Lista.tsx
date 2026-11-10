@@ -30,6 +30,7 @@ import {
   ordenDe,
   pedirUnirse,
   recientesDe,
+  restaurarItem,
   rechazar,
   renombrarLista,
   sacarMiembro,
@@ -60,7 +61,8 @@ export interface Props {
   onComprar: (listaId: string, item: ItemLista) => void
   onVerGasto: (m: Movimiento) => void
   onBorrarGasto: (m: Movimiento) => void
-  onAviso: (t: string) => void
+  /** deshacer: muestra el botón Deshacer en el aviso. */
+  onAviso: (t: string, deshacer?: () => void) => void
 }
 
 const fmtFecha = (t: number) => new Date(t).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })
@@ -130,6 +132,13 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
       setInvitacion(null)
     }
   }, [invitacion, yaEsMiembro, setInvitacion])
+
+  // Los miembros de la lista actual quedan en el teléfono: Pagar los ofrece como pagadores.
+  const miembrosActual = actual ? Object.entries(actual.miembros ?? {}).filter(([u]) => u !== uid).map(([, n]) => n) : null
+  const claveMiembros = miembrosActual ? JSON.stringify(miembrosActual.sort()) : null
+  useEffect(() => {
+    if (claveMiembros && claveMiembros !== JSON.stringify(datos.miembrosLista)) setAjuste('miembrosLista', JSON.parse(claveMiembros))
+  }, [claveMiembros, datos.miembrosLista])
 
   if (error) return <p className="error pantalla">No se pudieron leer tus listas: {error}</p>
   if (cargando) return <p className="vacio pantalla">Cargando listas…</p>
@@ -595,7 +604,10 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   const todosPendientes = useMemo(() => items.filter((i) => !i.comprado), [items])
   const pendientes = filtrar(todosPendientes, filtros)
   const comprados = buscando ? [] : items.filter((i) => i.comprado).sort((a, b) => b.modificadoEn - a.modificadoEn)
-  const personas = [...new Set(items.map((i) => i.agregadoPor))].sort()
+  // Quién puede haber agregado: los miembros de la lista y quien haya agregado algo (aunque ya no esté).
+  const quienes = new Map<string, string>(items.map((i) => [i.agregadoPorUid, i.agregadoPor]))
+  for (const [u, n] of Object.entries(lista.miembros ?? {})) quienes.set(u, n)
+  const personas = [...quienes].sort((a, b) => a[1].localeCompare(b[1], 'es'))
   const gastado = totales(items)
 
   const alfabetico = (a: ItemLista, b: ItemLista) => a.nombre.localeCompare(b.nombre, 'es')
@@ -667,8 +679,16 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   }
 
   const filtrosActivos = filtros.persona
-    ? [{ etiqueta: `Agregó ${filtros.persona}`, onQuitar: () => setFiltros({ ...filtros, persona: null }) }]
+    ? [{ etiqueta: `Agregado por ${quienes.get(filtros.persona) ?? 'otro'}`, onQuitar: () => setFiltros({ ...filtros, persona: null }) }]
     : []
+
+  /** Quita un ítem y ofrece deshacerlo. */
+  function quitar(it: ItemLista) {
+    borrarItem(lista.id, it.id).catch(() => onAviso('No se pudo quitar'))
+    onAviso(`Quitaste ${it.nombre}`, () => {
+      restaurarItem(lista.id, it).catch(() => onAviso('No se pudo volver a agregar'))
+    })
+  }
 
   /** Fila de un pendiente. i: posición en la lista manual, si se puede arrastrar. */
   function filaPendiente(it: ItemLista, i?: number) {
@@ -705,7 +725,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           <button
             className="icono chico-icono"
             aria-label={`Quitar ${it.nombre}`}
-            onClick={() => borrarItem(lista.id, it.id).catch(() => onAviso('No se pudo quitar'))}
+            onClick={() => quitar(it)}
           >
             ✕
           </button>
@@ -857,7 +877,9 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         setTexto={(texto) => setFiltros({ ...filtros, texto })}
         placeholder="Buscar y filtrar"
         opciones={
-          filtros.persona ? [] : personas.map((p) => ({ etiqueta: `Agregó ${p}`, onElegir: () => setFiltros({ ...filtros, persona: p }) }))
+          filtros.persona
+            ? []
+            : personas.map(([u, n]) => ({ etiqueta: `Agregado por ${n}`, onElegir: () => setFiltros({ ...filtros, persona: u }) }))
         }
         activos={filtrosActivos}
         resumen={`${pendientes.length} de ${todosPendientes.length} pendientes`}

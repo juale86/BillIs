@@ -13,12 +13,14 @@ export interface Datos {
   listaId: string | null
   /** Grupo elegido a mano para cada producto de la lista (nombre normalizado → grupo). */
   gruposAprendidos: Record<string, string>
+  /** Con quiénes compartís la lista actual (sus nombres), para elegir pagador. */
+  miembrosLista: string[]
 }
 
 /** Todos los datos vivos (no borrados), reactivos. Para uso personal el volumen es chico. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos] = await Promise.all([
+    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista] = await Promise.all([
       db.movimientos.toArray(),
       db.personas.toArray(),
       db.metodosPago.toArray(),
@@ -26,6 +28,7 @@ export function useDatos(): Datos | undefined {
       getAjuste('multimoneda', false),
       getAjuste<string | null>('listaId', null),
       getAjuste<Record<string, string>>('gruposLista', {}),
+      getAjuste<string[]>('miembrosLista', []),
     ])
     const ps = personas.filter(vivo)
     return {
@@ -37,6 +40,7 @@ export function useDatos(): Datos | undefined {
       multimoneda,
       listaId,
       gruposAprendidos,
+      miembrosLista,
     }
   })
 }

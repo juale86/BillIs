@@ -113,6 +113,8 @@ export default function App() {
   }
 
   function comprarDesdeLista(listaId: string, item: ItemLista) {
+    // Al volver a la lista, el campo de búsqueda arranca vacío.
+    setFiltrosLista((f) => ({ ...f, texto: '' }))
     setForm({
       tipo: 'gasto',
       contexto: 'lista',
@@ -255,7 +257,7 @@ export default function App() {
                   onComprar={comprarDesdeLista}
                   onVerGasto={(m) => setForm({ tipo: 'gasto', editando: m })}
                   onBorrarGasto={borrar}
-                  onAviso={(texto) => mostrarAviso({ texto })}
+                  onAviso={(texto, deshacer) => mostrarAviso({ texto, deshacer })}
                 />
               </Suspense>
             )}

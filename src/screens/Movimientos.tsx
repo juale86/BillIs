@@ -53,6 +53,12 @@ export function Movimientos(props: Props) {
     return res
   }, [movimientos, mes, filtros, yo?.id])
 
+  // Las flechas del mes saltan entre los meses con movimientos (y el actual, para poder volver).
+  const mesesConMovs = useMemo(
+    () => [...new Set([...movimientos.map((m) => claveMes(m.fecha)), claveMes(Date.now())])],
+    [movimientos],
+  )
+
   /** Totales de lo que se ve: tu parte de los gastos e ingresos, por moneda. */
   const totales = useMemo(() => {
     const movs = dias.flatMap((d) => d.grupos.flat())
@@ -190,7 +196,7 @@ export function Movimientos(props: Props) {
 
   return (
     <section className="pantalla">
-      <SelectorMes mes={mes} setMes={setMes} extra={acciones} />
+      <SelectorMes mes={mes} setMes={setMes} extra={acciones} meses={mesesConMovs} />
       {panel}
       <Buscador
         abierto={buscando}

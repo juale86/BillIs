@@ -331,6 +331,12 @@ export const moverItem = (listaId: string, itemId: string, orden: number) =>
 export const cambiarGrupo = (listaId: string, itemId: string, grupo: string | null) =>
   updateDoc(doc(items(listaId), itemId), { grupo, modificadoEn: Date.now() })
 
+/** Vuelve a crear un ítem quitado, igual que estaba (Deshacer). */
+export function restaurarItem(listaId: string, item: ItemLista) {
+  const { id, ...datos } = item
+  return setDoc(doc(items(listaId), id), datos)
+}
+
 export const borrarItem = (listaId: string, itemId: string) => deleteDoc(doc(items(listaId), itemId))
 
 export interface EstadoItems {
@@ -382,6 +388,7 @@ export function totales(lista: ItemLista[]): [Moneda, number][] {
 /** Búsqueda en la lista. Solo mira los pendientes: sirve para encontrar lo que falta comprar. */
 export interface FiltrosLista {
   texto: string
+  /** uid de quien agregó el ítem. */
   persona: string | null
 }
 export const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', persona: null }
@@ -392,7 +399,7 @@ export function filtrar(lista: ItemLista[], f: FiltrosLista): ItemLista[] {
   return lista.filter(
     (it) =>
       (!q || normalizar(`${it.nombre} ${it.marca ?? ''}`).includes(q)) &&
-      (f.persona === null || it.agregadoPor === f.persona),
+      (f.persona === null || it.agregadoPorUid === f.persona),
   )
 }
 
