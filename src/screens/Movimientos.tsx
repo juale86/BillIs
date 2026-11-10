@@ -1,10 +1,14 @@
-import { useMemo, useState, type ReactNode } from 'react'
-import { Buscador } from '../components/Buscador'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { BotonOrden } from '../components/BotonOrden'
+import { BotonLupa, Buscador } from '../components/Buscador'
+import { normalizar } from '../db/db'
 import type { Movimiento } from '../db/types'
 import { claveCompra, claveMes, parteDe } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
 import { filtrarMovs, hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from '../lib/filtrosMov'
+import { sugerirGrupo } from '../lib/grupos'
+import type { OrdenLista } from '../lib/orden'
 import { describirPromo } from '../lib/promo'
 import { SelectorMes } from './SelectorMes'
 
@@ -92,6 +96,32 @@ export function Movimientos(props: Props) {
       return n
     })
 
+  // Cada compra tiene su propio orden y su propia lupa (texto; ausente = lupa cerrada). Viven mientras la app está abierta.
+  const [ordenes, setOrdenes] = useState<Record<string, OrdenLista>>({})
+  const [lupas, setLupas] = useState<Record<string, string>>({})
+  const setLupa = (clave: string, texto: string | null) =>
+    setLupas((prev) => {
+      const n = { ...prev }
+      if (texto === null) delete n[clave]
+      else n[clave] = texto
+      return n
+    })
+
+  /** Los ítems de una compra filtrados por su lupa y en su orden, en secciones (una sola salvo "por grupos"). */
+  function itemsDe(clave: string, g: Movimiento[]): { titulo: string | null; items: Movimiento[] }[] {
+    const q = normalizar(lupas[clave] ?? '')
+    const vistos = q ? g.filter((m) => normalizar(`${m.descripcion} ${m.marca ?? ''}`).includes(q)) : g
+    const orden = ordenes[clave] ?? 'manual'
+    // Manual: como se fueron cargando (lo que ya se ve).
+    if (orden === 'manual') return [{ titulo: null, items: vistos }]
+    const az = [...vistos].sort((a, b) => a.descripcion.localeCompare(b.descripcion, 'es'))
+    if (orden === 'alfabetico') return [{ titulo: null, items: az }]
+    const grupoDe = (m: Movimiento) => sugerirGrupo(m.descripcion, m.marca ?? '', datos.gruposAprendidos, [], datos.grupos)
+    const secciones = datos.grupos.map((gr) => ({ titulo: gr.nombre, items: az.filter((m) => grupoDe(m) === gr.id) }))
+    secciones.push({ titulo: 'Sin grupo', items: az.filter((m) => !grupoDe(m)) })
+    return secciones.filter((x) => x.items.length > 0)
+  }
+
   /** Total, tu parte y cómo se pagó (o que está en curso). */
   function infoCompra(g: Movimiento[]) {
     const clave = claveCompra(g[0])
@@ -122,24 +152,65 @@ export function Movimientos(props: Props) {
     const { clave, enCurso, total, mia, pago } = infoCompra(g)
     const abierto = abierta(clave)
     const titulo = g[0].lugar || (g.length === 1 ? g[0].descripcion : 'Compra')
+    // Lupa y orden solo tienen sentido abierta y con más de un ítem.
+    const conAcciones = abierto && g.length > 1
+    const lupa = lupas[clave]
+    const secciones = conAcciones ? itemsDe(clave, g) : [{ titulo: null, items: g }]
     return (
       <div key={clave} className={'compra' + (abierto ? '' : ' plegada')}>
-        <button className="compra-cab" aria-expanded={abierto} onClick={() => alternar(clave)}>
-          <span>
-            {titulo}{' '}
-            <small>
-              {fmtHora(g.at(-1)!.fecha)}, {g.length} {g.length === 1 ? 'ítem' : 'ítems'}
-              {!abierto && `, ${pago}`}
-            </small>
-          </span>
-          <span className="compra-cab-der">
-            {!abierto && <strong>{total}</strong>}
-            <span aria-hidden="true">{abierto ? '▾' : '▸'}</span>
-          </span>
-        </button>
+        <div className="compra-cab-fila">
+          <button className="compra-cab" aria-expanded={abierto} onClick={() => alternar(clave)}>
+            <span>
+              {titulo}{' '}
+              <small>
+                {fmtHora(g.at(-1)!.fecha)}, {g.length} {g.length === 1 ? 'ítem' : 'ítems'}
+                {!abierto && `, ${pago}`}
+              </small>
+            </span>
+            <span className="compra-cab-der">
+              {!abierto && <strong>{total}</strong>}
+              <span aria-hidden="true">{abierto ? '▾' : '▸'}</span>
+            </span>
+          </button>
+          {conAcciones && (
+            <span className="compra-acciones">
+              <BotonLupa
+                abierto={lupa !== undefined}
+                filtrando={!!lupa}
+                chico
+                onClick={() => setLupa(clave, lupa === undefined ? '' : null)}
+              />
+              <BotonOrden
+                chico
+                orden={ordenes[clave] ?? 'manual'}
+                onCambiar={(o) => setOrdenes((prev) => ({ ...prev, [clave]: o }))}
+              />
+            </span>
+          )}
+        </div>
+        {conAcciones && lupa !== undefined && (
+          <input
+            className="compra-buscar"
+            autoFocus
+            value={lupa}
+            onChange={(e) => setLupa(clave, e.target.value)}
+            placeholder={`Buscar en ${titulo}`}
+            aria-label={`Buscar en ${titulo}`}
+          />
+        )}
         {abierto && (
           <>
-            <ul className="lista">{g.map(fila)}</ul>
+            {secciones.length === 0 && <p className="vacio chico">Nada coincide en esta compra.</p>}
+            {secciones.map((sec) => (
+              <Fragment key={sec.titulo ?? ''}>
+                {sec.titulo && (
+                  <div className="lista-sub grupo-tit">
+                    <span>{sec.titulo}</span>
+                  </div>
+                )}
+                <ul className="lista">{sec.items.map(fila)}</ul>
+              </Fragment>
+            ))}
             <button className={'compra-pie' + (enCurso ? ' en-curso' : '')} onClick={() => onPagar(clave)}>
               <span className="compra-pie-fila">
                 <span>Total</span>

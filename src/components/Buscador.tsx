@@ -91,10 +91,11 @@ export function Buscador({ abierto, texto, setTexto, placeholder, opciones, acti
 }
 
 /** Ícono de lupa con punto cuando hay filtros aplicados. */
-export function BotonLupa({ abierto, filtrando, onClick }: { abierto: boolean; filtrando: boolean; onClick: () => void }) {
+export function BotonLupa(props: { abierto: boolean; filtrando: boolean; onClick: () => void; chico?: boolean }) {
+  const { abierto, filtrando, onClick, chico } = props
   return (
     <button
-      className={'icono borde lupa' + (filtrando ? ' con-filtro' : '')}
+      className={'icono borde lupa' + (filtrando ? ' con-filtro' : '') + (chico ? ' chico' : '')}
       aria-label={filtrando ? 'Buscar (hay filtros aplicados)' : 'Buscar'}
       aria-pressed={abierto}
       onClick={onClick}

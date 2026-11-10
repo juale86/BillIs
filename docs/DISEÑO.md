@@ -46,7 +46,7 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 
 ## Pantallas
 
-1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer.
+1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer. Cada compra abierta con más de un ítem tiene, a la derecha del título, **su propia lupa** (busca en descripción y marca de esa compra) y **su botón de orden**: manual (como se cargó), A..Z o por grupos (el grupo se adivina como en la lista). Duran mientras la app está abierta (desde 1.15).
 2. **Resumen del mes**: ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
 4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista, respaldo. Métodos, categorías y grupos se renombran, borran y agregan; renombrar y borrar muestran un aviso con **Deshacer** (borrar ya no pide confirmación) (desde 1.14).

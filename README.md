@@ -54,7 +54,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - Funciona **sin señal** y se sincroniza al volver la conexión.
 
 ### Consulta
-- **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer.
+- **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos).
 - **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles.
 

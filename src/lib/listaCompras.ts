@@ -1,3 +1,4 @@
+import type { OrdenLista } from './orden'
 import { initializeApp, type FirebaseApp } from 'firebase/app'
 import {
   connectAuthEmulator,
@@ -419,7 +420,7 @@ export function filtrar(lista: ItemLista[], f: FiltrosLista): ItemLista[] {
 
 // ---------- Orden (por teléfono) ----------
 
-export type OrdenLista = 'manual' | 'alfabetico' | 'grupos'
+export type { OrdenLista }
 const CLAVE_ORDEN = 'billis.ordenLista'
 
 export function leerOrden(): OrdenLista {

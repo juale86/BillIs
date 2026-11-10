@@ -1412,8 +1412,60 @@ button.compra-cab {
   margin-bottom: 2px;
 }
 .compra.plegada button.compra-cab {
-  border-bottom-color: var(--renglon);
   padding: 8px 0;
+}
+/* Cabecera de la compra: el título (pliega) y, abierta, la lupa y el orden de esa compra. */
+.compra-cab-fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid var(--tinta);
+}
+.compra.plegada .compra-cab-fila {
+  border-bottom-color: var(--renglon);
+}
+.compra-cab-fila button.compra-cab {
+  border-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+.compra-acciones {
+  display: flex;
+  gap: 6px;
+  flex: none;
+  padding: 3px 0;
+}
+.icono.borde.chico {
+  width: 34px;
+  min-width: 34px;
+  min-height: 30px;
+  height: 30px;
+}
+.lupa.chico.con-filtro::after {
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+}
+.boton-orden.chico {
+  width: 40px;
+  min-width: 40px;
+}
+.icono.borde.chico svg {
+  width: 17px;
+  height: 17px;
+}
+.boton-orden.chico .orden-az {
+  font-size: var(--t-s);
+  letter-spacing: 0.5px;
+}
+.compra-buscar {
+  width: 100%;
+  margin: 6px 0 2px;
+}
+.vacio.chico {
+  padding: 8px 0;
+  font-size: var(--t-s);
 }
 
 /* Manija para reordenar los pendientes de la lista (dos rayitas). */
