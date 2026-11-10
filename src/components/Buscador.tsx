@@ -19,21 +19,23 @@ interface Props {
   resumen?: ReactNode
   /** Quita todos los filtros y el texto. */
   onLimpiar: () => void
+  /** false: el campo de texto lo dibuja quien lo usa (siempre visible), acá solo van los chips. */
+  conCampo?: boolean
 }
 
 /**
  * Lupa: campo de búsqueda + chips de filtros.
  * Los filtros aplicados quedan a la izquierda de la fila de chips, con ✕; se ven aunque se cierre la lupa.
  */
-export function Buscador({ abierto, texto, setTexto, placeholder, opciones, activos, resumen, onLimpiar }: Props) {
+export function Buscador({ abierto, texto, setTexto, placeholder, opciones, activos, resumen, onLimpiar, conCampo = true }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   useEffect(() => {
-    if (abierto) ref.current?.focus()
-  }, [abierto])
+    if (abierto && conCampo) ref.current?.focus()
+  }, [abierto, conCampo])
 
   // Con la lupa abierta el texto ya se ve en el campo; cerrada, queda como filtro con ✕.
   const todos: FiltroActivo[] = [
-    ...(texto && !abierto ? [{ etiqueta: `“${texto}”`, onQuitar: () => setTexto('') }] : []),
+    ...(texto && !abierto && conCampo ? [{ etiqueta: `“${texto}”`, onQuitar: () => setTexto('') }] : []),
     ...activos,
   ]
   const hayAlgo = todos.length > 0 || !!texto
@@ -41,7 +43,7 @@ export function Buscador({ abierto, texto, setTexto, placeholder, opciones, acti
 
   return (
     <div className="buscador">
-      {abierto && (
+      {abierto && conCampo && (
         <div className="campo">
           <input
             ref={ref}

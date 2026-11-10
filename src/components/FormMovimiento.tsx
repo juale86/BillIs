@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
@@ -43,6 +43,13 @@ const aInputFecha = (t: number) => {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
+/** Al tocar el campo se selecciona todo, para escribir encima (como con doble clic). */
+const seleccionarTodo = (e: FocusEvent<HTMLInputElement>) => {
+  const el = e.currentTarget
+  // En el celular el toque mueve el cursor después del foco: se selecciona un instante después.
+  setTimeout(() => el.setSelectionRange(0, el.value.length), 0)
+}
+
 const num = (s: string, def: number) => {
   const n = Number(s.replace(',', '.'))
   return Number.isFinite(n) && s.trim() !== '' ? n : def
@@ -76,7 +83,11 @@ export function FormMovimiento({
     return ult ? montoAInput(ult.cent) : ''
   })
   const [precioTocado, setPrecioTocado] = useState(!!editando)
-  const [cantidad, setCantidad] = useState(String(editando?.cantidad ?? prefill?.cantidad ?? 1))
+  // Vacío = 1: así se ve el placeholder "Cant". Solo se escribe cuando es más de uno.
+  const [cantidad, setCantidad] = useState(() => {
+    const c = editando?.cantidad ?? prefill?.cantidad ?? 1
+    return c > 1 ? String(c) : ''
+  })
   const [verPromo, setVerPromo] = useState(!!editando?.promo)
   const [promoTipo, setPromoTipo] = useState<TipoPromo>(editando?.promo?.tipo ?? '')
   const [promoA, setPromoA] = useState(() => {
@@ -248,7 +259,7 @@ export function FormMovimiento({
     setComentario('')
     setPrecio('')
     setPrecioTocado(false)
-    setCantidad('1')
+    setCantidad('')
     setVerPromo(false)
     setPromoTipo('')
     setCategoriaId('')
@@ -371,6 +382,15 @@ export function FormMovimiento({
                 setDescripcion(e.target.value)
                 setVerSugDesc(true)
               }}
+              onKeyDown={(e) => {
+                // "Siguiente" del teclado: salta al precio en vez de intentar guardar.
+                if (e.key !== 'Enter') return
+                e.preventDefault()
+                setVerSugDesc(false)
+                refPrecio.current?.focus()
+                // Si conoce el último precio lo completa y lo deja seleccionado para escribir encima.
+                if (descripcion.trim()) autocompletar(descripcion, marca, lugar, true)
+              }}
               onFocus={() => setVerSugDesc(true)}
               onBlur={() => {
                 setVerSugDesc(false)
@@ -410,7 +430,14 @@ export function FormMovimiento({
                 />
               </label>
               <label className="campo cant">
-                <input value={cantidad} aria-label="Cantidad" inputMode="numeric" onChange={(e) => setCantidad(e.target.value)} />
+                <input
+                  value={cantidad}
+                  placeholder="Cant"
+                  aria-label="Cantidad"
+                  inputMode="numeric"
+                  onChange={(e) => setCantidad(e.target.value)}
+                  onFocus={seleccionarTodo}
+                />
               </label>
             </>
           )}

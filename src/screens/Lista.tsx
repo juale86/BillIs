@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Buscador } from '../components/Buscador'
 import { Modal } from '../components/Modal'
 import { ordenEntre, useArrastre } from '../components/useArrastre'
-import { db, setAjuste } from '../db/db'
+import { db, normalizar, setAjuste } from '../db/db'
 import type { Moneda, Movimiento } from '../db/types'
 import type { Datos } from '../lib/datos'
 import {
   agregarItem,
+  cambiarGrupo,
   aprobar,
   borrarItem,
   borrarLista,
@@ -17,12 +18,18 @@ import {
   esDueno,
   extraerListaId,
   filtrar,
+  guardarOrden,
+  hayFiltrosLista,
   iniciarSesion,
+  leerOrden,
   linkLista,
+  marcarReciente,
   moverItem,
   nuevaConPendientes,
+  olvidarRecientes,
   ordenDe,
   pedirUnirse,
+  recientesDe,
   rechazar,
   renombrarLista,
   sacarMiembro,
@@ -36,8 +43,10 @@ import {
   volverAPendiente,
   type FiltrosLista,
   type ItemLista,
+  type OrdenLista,
   type Lista as TLista,
 } from '../lib/listaCompras'
+import { GRUPOS, grupoPorId, sugerirGrupo } from '../lib/grupos'
 import { fmt } from '../lib/money'
 import { sugerirDescripciones, ultimoPrecio } from '../lib/sugerencias'
 
@@ -46,9 +55,6 @@ export interface Props {
   /** Código recibido por link (?lista=...). */
   invitacion: string | null
   setInvitacion: (id: string | null) => void
-  buscando: boolean
-  /** Botón de búsqueda, al lado del nombre de la lista. */
-  lupa: ReactNode
   filtros: FiltrosLista
   setFiltros: (f: FiltrosLista) => void
   onComprar: (listaId: string, item: ItemLista) => void
@@ -109,6 +115,11 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const yo = datos.yo?.nombre ?? 'Yo'
   const { listas, cargando, error } = useMisListas(uid)
   const [menu, setMenu] = useState(false)
+  // Orden de los pendientes, elegido por teléfono.
+  const [orden, setOrden] = useState<OrdenLista>(leerOrden)
+  const [eligiendoOrden, setEligiendoOrden] = useState(false)
+  // Redibuja aunque se elija el mismo orden (para soltar los recién agregados).
+  const [, setVueltas] = useState(0)
 
   const abiertas = listas.filter((l) => !l.cerrada)
   const cerradas = listas.filter((l) => l.cerrada).sort((a, b) => (b.cerradaEn ?? 0) - (a.cerradaEn ?? 0))
@@ -180,8 +191,32 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           {pedidos > 0 && <span className="insignia">{pedidos}</span>}
         </button>
         {!actual.cerrada && <BotonCompartir listaId={actual.id} onAviso={onAviso} />}
-        {props.lupa}
+        <button
+          className="icono borde"
+          aria-label={`Ordenar lista (${OPCIONES_ORDEN.find((o) => o.id === orden)?.etiqueta})`}
+          onClick={() => setEligiendoOrden(true)}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6h16M4 12h11M4 18h6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" />
+          </svg>
+        </button>
       </div>
+
+      {eligiendoOrden && (
+        <HojaOpciones
+          titulo="Ordenar lista"
+          opciones={OPCIONES_ORDEN}
+          actual={orden}
+          onElegir={(id) => {
+            // Elegir un orden (aunque sea el mismo) acomoda también lo recién agregado.
+            olvidarRecientes(actual.id)
+            guardarOrden(id as OrdenLista)
+            setOrden(id as OrdenLista)
+            setVueltas((v) => v + 1)
+          }}
+          onCerrar={() => setEligiendoOrden(false)}
+        />
+      )}
 
       {menu && (
         <MenuListas
@@ -196,7 +231,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
         />
       )}
 
-      <VistaLista {...props} key={actual.id} lista={actual} yo={yo} />
+      <VistaLista {...props} key={actual.id} lista={actual} yo={yo} orden={orden} />
     </section>
   )
 }
@@ -467,27 +502,90 @@ function MenuListas(
   )
 }
 
-function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
-  const { datos, lista, uid, yo, buscando, filtros, setFiltros, onComprar, onVerGasto, onBorrarGasto, onAviso } = props
+/** Hoja de abajo con opciones para elegir una (orden de la lista, grupo de un ítem). */
+function HojaOpciones(props: {
+  titulo: string
+  opciones: { id: string; etiqueta: string; detalle?: string }[]
+  actual: string | null
+  onElegir: (id: string) => void
+  onCerrar: () => void
+}) {
+  const { titulo, opciones, actual, onElegir, onCerrar } = props
+  return (
+    <div className="hoja-fondo" onClick={onCerrar}>
+      <div className="hoja" role="dialog" aria-label={titulo} onClick={(e) => e.stopPropagation()}>
+        <div className="menu-seccion">
+          <h3>{titulo}</h3>
+          <ul className="lista">
+            {opciones.map((o) => (
+              <li key={o.id}>
+                <button
+                  className="menu-item"
+                  aria-current={o.id === actual}
+                  onClick={() => {
+                    onElegir(o.id)
+                    onCerrar()
+                  }}
+                >
+                  {o.etiqueta}
+                  {o.detalle && <small> {o.detalle}</small>}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const OPCIONES_ORDEN: { id: OrdenLista; etiqueta: string; detalle: string }[] = [
+  { id: 'manual', etiqueta: 'Manual', detalle: 'lo último agregado primero; arrastrá ≡ para mover' },
+  { id: 'alfabetico', etiqueta: 'Alfabético', detalle: 'de la A a la Z' },
+  { id: 'grupos', etiqueta: 'Por grupos', detalle: 'en el orden del súper' },
+]
+
+function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; orden: OrdenLista }) {
+  const { datos, lista, uid, yo, orden, filtros, setFiltros, onComprar, onVerGasto, onBorrarGasto, onAviso } = props
   const { items, cargando, error, pendiente } = useItems(lista.id)
   const dueno = esDueno(lista, uid)
   const cerrada = lista.cerrada
 
+  // Qué se muestra debajo de los dos campos: el formulario de agregar o los filtros de búsqueda.
+  const [modo, setModo] = useState<'agregar' | 'buscar' | null>(null)
   const [nuevo, setNuevo] = useState('')
   const [cantidad, setCantidad] = useState('')
   const [marca, setMarca] = useState('')
+  // undefined = el grupo lo propone la app; string/null = elegido a mano.
+  const [grupoElegido, setGrupoElegido] = useState<string | null | undefined>(undefined)
   const [verSug, setVerSug] = useState(false)
+  const [eligiendoGrupo, setEligiendoGrupo] = useState<ItemLista | null>(null)
+  // Para redibujar al agregar (los recientes viven fuera de React).
+  const [, setVersion] = useState(0)
+  const refNuevo = useRef<HTMLInputElement>(null)
+  const refDetalle = useRef<HTMLDivElement>(null)
 
   const sugerencias = useMemo(
     () => (verSug ? sugerirDescripciones(datos.movimientos, 'gasto', nuevo).slice(0, 4) : []),
     [verSug, datos.movimientos, nuevo],
   )
+  const grupoPropuesto = sugerirGrupo(nuevo, marca, datos.gruposAprendidos, items)
+  const grupoNuevo = grupoElegido === undefined ? grupoPropuesto : grupoElegido
+
+  // Al buscar solo importan los pendientes: lo comprado no se muestra.
+  const buscando = modo === 'buscar' || hayFiltrosLista(filtros)
   const todosPendientes = useMemo(() => items.filter((i) => !i.comprado), [items])
-  const visibles = filtrar(items, filtros)
-  const pendientes = visibles.filter((i) => !i.comprado).sort((a, b) => ordenDe(a) - ordenDe(b))
-  const comprados = visibles.filter((i) => i.comprado).sort((a, b) => b.modificadoEn - a.modificadoEn)
+  const pendientes = filtrar(todosPendientes, filtros)
+  const comprados = buscando ? [] : items.filter((i) => i.comprado).sort((a, b) => b.modificadoEn - a.modificadoEn)
   const personas = [...new Set(items.map((i) => i.agregadoPor))].sort()
   const gastado = totales(items)
+
+  const alfabetico = (a: ItemLista, b: ItemLista) => a.nombre.localeCompare(b.nombre, 'es')
+  // Manual: por orden (lo último agregado tiene el menor). Los otros órdenes dejan arriba lo recién agregado.
+  const enManual = [...pendientes].sort((a, b) => ordenDe(a) - ordenDe(b))
+  const idsRecientes = orden === 'manual' ? [] : recientesDe(lista.id)
+  const recientes = idsRecientes.flatMap((id) => pendientes.filter((it) => it.id === id))
+  const resto = pendientes.filter((it) => !idsRecientes.includes(it.id)).sort(alfabetico)
 
   // Estimado de lo pendiente con los últimos precios que pagaste.
   const estimado = useMemo(() => {
@@ -502,21 +600,45 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
     return { cent, conPrecio }
   }, [todosPendientes, datos.movimientos])
 
-  // Los pendientes se reordenan arrastrando la manija de cada fila.
+  // Los pendientes se reordenan arrastrando la manija de cada fila (solo en orden manual).
   const { arrastrando, estilo, manija } = useArrastre((desde, hasta) => {
-    const it = pendientes[desde]
-    const orden = ordenEntre(pendientes.map(ordenDe), desde, hasta)
-    moverItem(lista.id, it.id, orden).catch(() => onAviso('No se pudo mover el ítem'))
+    const it = enManual[desde]
+    const nuevoOrden = ordenEntre(enManual.map(ordenDe), desde, hasta)
+    moverItem(lista.id, it.id, nuevoOrden).catch(() => onAviso('No se pudo mover el ítem'))
   })
 
   const miGasto = (it: ItemLista) => datos.movimientos.find((m) => m.listaItem?.itemId === it.id)
 
-  function agregar() {
+  /** Recuerda en este teléfono el grupo elegido a mano para un producto. */
+  function aprender(nombre: string, grupo: string | null) {
+    const n = normalizar(nombre)
+    if (!n || !grupo) return
+    if (datos.gruposAprendidos[n] !== grupo) setAjuste('gruposLista', { ...datos.gruposAprendidos, [n]: grupo })
+  }
+
+  /** Agrega arriba de todo. comprar: además abre el gasto, por si lo encontraste en el súper. */
+  function agregar(comprar: boolean) {
     if (!nuevo.trim()) return
-    agregarItem(lista.id, { nombre: nuevo, cantidad, marca }, yo).catch(() => onAviso('No se pudo guardar el ítem'))
+    if (grupoElegido !== undefined) aprender(nuevo, grupoElegido)
+    const { id, item, guardado } = agregarItem(lista.id, { nombre: nuevo, cantidad, marca, grupo: grupoNuevo }, yo)
+    guardado.catch(() => onAviso('No se pudo guardar el ítem'))
+    marcarReciente(lista.id, id)
+    setVersion((v) => v + 1)
     setNuevo('')
     setCantidad('')
     setMarca('')
+    setGrupoElegido(undefined)
+    if (comprar) onComprar(lista.id, item)
+    else refNuevo.current?.focus()
+  }
+
+  /** Si el foco sale del formulario de agregar sin nada escrito, se cierra. */
+  function quizasCerrarAgregar() {
+    setTimeout(() => {
+      const a = document.activeElement
+      const adentro = a === refNuevo.current || !!refDetalle.current?.contains(a)
+      if (!adentro && !refNuevo.current?.value.trim()) setModo((m) => (m === 'agregar' ? null : m))
+    }, 200)
   }
 
   async function aPendiente(it: ItemLista) {
@@ -539,12 +661,67 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
     onAviso('Lista nueva creada')
   }
 
-  const filtrosActivos = [
-    ...(filtros.estado
-      ? [{ etiqueta: filtros.estado === 'pendientes' ? 'Pendientes' : 'Comprados', onQuitar: () => setFiltros({ ...filtros, estado: null }) }]
-      : []),
-    ...(filtros.persona ? [{ etiqueta: `Agregó ${filtros.persona}`, onQuitar: () => setFiltros({ ...filtros, persona: null }) }] : []),
-  ]
+  const filtrosActivos = filtros.persona
+    ? [{ etiqueta: `Agregó ${filtros.persona}`, onQuitar: () => setFiltros({ ...filtros, persona: null }) }]
+    : []
+
+  /** Fila de un pendiente. i: posición en la lista manual, si se puede arrastrar. */
+  function filaPendiente(it: ItemLista, i?: number) {
+    const g = grupoPorId(it.grupo)
+    const arrastrable = i !== undefined && !cerrada && enManual.length > 1
+    return (
+      <li
+        key={it.id}
+        className={'item-lista' + (arrastrable && arrastrando === i ? ' arrastrando' : '')}
+        style={arrastrable ? estilo(i) : undefined}
+      >
+        {arrastrable && (
+          <span className="manija" role="button" aria-label={`Mover ${it.nombre}`} {...manija(i)}>
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+              <path d="M3 6.5h12M3 11.5h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            </svg>
+          </span>
+        )}
+        <button className="item-boton" disabled={cerrada} onClick={() => onComprar(lista.id, it)}>
+          <span className="mov-desc">{it.nombre}</span>
+          <span className="mov-det">
+            {[it.cantidad, it.marca].filter(Boolean).join(', ')}
+            {(it.cantidad || it.marca) && ' — '}agregó {it.agregadoPor}
+          </span>
+        </button>
+        {!cerrada && (
+          <button
+            className={'chip-grupo' + (g ? '' : ' vacio')}
+            aria-label={g ? `Grupo ${g.corto}, cambiar` : `Elegir grupo de ${it.nombre}`}
+            onClick={() => setEligiendoGrupo(it)}
+          >
+            {g ? g.corto : 'Grupo'} ▾
+          </button>
+        )}
+        {!cerrada && (it.agregadoPorUid === uid || dueno) && (
+          <button
+            className="icono chico-icono"
+            aria-label={`Quitar ${it.nombre}`}
+            onClick={() => borrarItem(lista.id, it.id).catch(() => onAviso('No se pudo quitar'))}
+          >
+            ✕
+          </button>
+        )}
+      </li>
+    )
+  }
+
+  const seccion = (titulo: string, lista: ItemLista[]) =>
+    lista.length > 0 && (
+      <Fragment key={titulo}>
+        <div className="lista-sub">
+          <span>
+            {titulo} ({lista.length})
+          </span>
+        </div>
+        <ul className="lista">{lista.map((it) => filaPendiente(it))}</ul>
+      </Fragment>
+    )
 
   return (
     <>
@@ -561,117 +738,151 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
         </div>
       )}
 
-      <Buscador
-        abierto={buscando}
-        texto={filtros.texto}
-        setTexto={(texto) => setFiltros({ ...filtros, texto })}
-        placeholder="Buscar en la lista"
-        opciones={[
-          ...(filtros.estado
-            ? []
-            : [
-                { etiqueta: 'Pendientes', onElegir: () => setFiltros({ ...filtros, estado: 'pendientes' }) },
-                { etiqueta: 'Comprados', onElegir: () => setFiltros({ ...filtros, estado: 'comprados' }) },
-              ]),
-          ...(filtros.persona ? [] : personas.map((p) => ({ etiqueta: `Agregó ${p}`, onElegir: () => setFiltros({ ...filtros, persona: p }) }))),
-        ]}
-        activos={filtrosActivos}
-        resumen={`${visibles.length} de ${items.length} ítems`}
-        onLimpiar={() => setFiltros({ texto: '', estado: null, persona: null })}
-      />
-
-      {!cerrada && !buscando && (
-        <form
-          className="agregar-item"
-          onSubmit={(e) => {
-            e.preventDefault()
-            agregar()
-          }}
-        >
-          <div className="campo">
-            <input
-              value={nuevo}
-              placeholder="Agregar a la lista"
-              aria-label="Agregar a la lista"
-              autoComplete="off"
-              enterKeyHint="done"
-              onChange={(e) => {
-                setNuevo(e.target.value)
-                setVerSug(true)
-              }}
-              onFocus={() => setVerSug(true)}
-              onBlur={() => setVerSug(false)}
-            />
-            {sugerencias.length > 0 && (
-              <ul className="sugerencias">
-                {sugerencias.map((s) => (
-                  <li key={s}>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setNuevo(s)
-                        setVerSug(false)
-                      }}
-                    >
-                      {s}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          {nuevo.trim() && (
-            <div className="fila">
-              <label className="campo chico">
-                <span>Cantidad</span>
-                <input value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="3, 1 kg" />
-              </label>
-              <label className="campo crece">
-                <span>Marca</span>
-                <input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Opcional" />
-              </label>
-              <button className="primario boton-campo">Agregar</button>
+      <form
+        className="agregar-item"
+        onSubmit={(e) => {
+          e.preventDefault()
+          agregar(false)
+        }}
+      >
+        <div className="entradas-lista">
+          {!cerrada && (
+            <div className="campo">
+              <input
+                ref={refNuevo}
+                value={nuevo}
+                placeholder="Agregar a la lista"
+                aria-label="Agregar a la lista"
+                autoComplete="off"
+                enterKeyHint="done"
+                onChange={(e) => {
+                  setNuevo(e.target.value)
+                  setVerSug(true)
+                }}
+                onFocus={() => {
+                  setModo('agregar')
+                  setVerSug(true)
+                }}
+                onBlur={() => {
+                  setVerSug(false)
+                  quizasCerrarAgregar()
+                }}
+              />
+              {sugerencias.length > 0 && (
+                <ul className="sugerencias">
+                  {sugerencias.map((s) => (
+                    <li key={s}>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setNuevo(s)
+                          setVerSug(false)
+                        }}
+                      >
+                        {s}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
-        </form>
-      )}
+          <div className="campo">
+            <input
+              type="search"
+              value={filtros.texto}
+              placeholder="Buscar y filtrar"
+              aria-label="Buscar y filtrar"
+              autoComplete="off"
+              enterKeyHint="search"
+              onChange={(e) => setFiltros({ ...filtros, texto: e.target.value })}
+              onFocus={() => setModo('buscar')}
+              onBlur={() => {
+                if (!hayFiltrosLista(filtros)) setModo((m) => (m === 'buscar' ? null : m))
+              }}
+              onKeyDown={(e) => {
+                // Enter acá busca (cierra el teclado), no agrega.
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.currentTarget.blur()
+                }
+              }}
+            />
+          </div>
+        </div>
+
+        {modo === 'agregar' && !cerrada && (
+          <div className="agregar-detalle" ref={refDetalle} onBlur={quizasCerrarAgregar}>
+            <div className="fila">
+              <label className="campo chico">
+                <input value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="Cant" aria-label="Cantidad" />
+              </label>
+              <label className="campo crece">
+                <input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Marca" aria-label="Marca" />
+              </label>
+              <label className="campo grupo-campo">
+                <select
+                  aria-label="Grupo"
+                  className={grupoNuevo ? '' : 'resaltado'}
+                  value={grupoNuevo ?? ''}
+                  onChange={(e) => setGrupoElegido(e.target.value || null)}
+                >
+                  <option value="">Grupo</option>
+                  {GRUPOS.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.corto}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="fila botones-agregar">
+              <button type="submit" className="primario" disabled={!nuevo.trim()}>
+                Agregar
+              </button>
+              <button type="button" className="secundario" disabled={!nuevo.trim()} onClick={() => agregar(true)}>
+                Agregar y comprar
+              </button>
+            </div>
+          </div>
+        )}
+      </form>
+
+      <Buscador
+        abierto={modo === 'buscar'}
+        conCampo={false}
+        texto={filtros.texto}
+        setTexto={(texto) => setFiltros({ ...filtros, texto })}
+        placeholder="Buscar y filtrar"
+        opciones={
+          filtros.persona ? [] : personas.map((p) => ({ etiqueta: `Agregó ${p}`, onElegir: () => setFiltros({ ...filtros, persona: p }) }))
+        }
+        activos={filtrosActivos}
+        resumen={`${pendientes.length} de ${todosPendientes.length} pendientes`}
+        onLimpiar={() => setFiltros({ texto: '', persona: null })}
+      />
 
       {error && <p className="error">No se pudo leer la lista: {error}</p>}
       {cargando && !error && <p className="vacio">Cargando…</p>}
       {!cargando && items.length === 0 && !cerrada && <p className="vacio">La lista está vacía. Anotá lo que falta.</p>}
-      {!cargando && items.length > 0 && visibles.length === 0 && <p className="vacio">Nada coincide con los filtros.</p>}
+      {!cargando && buscando && hayFiltrosLista(filtros) && todosPendientes.length > 0 && pendientes.length === 0 && (
+        <p className="vacio">Nada pendiente coincide con la búsqueda.</p>
+      )}
 
-      {pendientes.length > 0 && (
-        <ul className="lista">
-          {pendientes.map((it, i) => (
-            <li key={it.id} className={'item-lista' + (arrastrando === i ? ' arrastrando' : '')} style={estilo(i)}>
-              {!cerrada && pendientes.length > 1 && (
-                <span className="manija" role="button" aria-label={`Mover ${it.nombre}`} {...manija(i)}>
-                  <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-                    <path d="M3 6.5h12M3 11.5h12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                  </svg>
-                </span>
-              )}
-              <button className="item-boton" disabled={cerrada} onClick={() => onComprar(lista.id, it)}>
-                <span className="mov-desc">{it.nombre}</span>
-                <span className="mov-det">
-                  {[it.cantidad, it.marca].filter(Boolean).join(', ')}
-                  {(it.cantidad || it.marca) && ' — '}agregó {it.agregadoPor}
-                </span>
-              </button>
-              {!cerrada && (it.agregadoPorUid === uid || dueno) && (
-                <button
-                  className="icono chico-icono"
-                  aria-label={`Quitar ${it.nombre}`}
-                  onClick={() => borrarItem(lista.id, it.id).catch(() => onAviso('No se pudo quitar'))}
-                >
-                  ✕
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
+      {orden === 'manual' && enManual.length > 0 && <ul className="lista">{enManual.map((it, i) => filaPendiente(it, i))}</ul>}
+      {orden !== 'manual' && seccion('Recién agregados', recientes)}
+      {orden === 'alfabetico' && resto.length > 0 && (
+        <>
+          {recientes.length > 0 && <div className="lista-sub"><span>Pendientes ({resto.length})</span></div>}
+          <ul className="lista">{resto.map((it) => filaPendiente(it))}</ul>
+        </>
+      )}
+      {orden === 'grupos' && (
+        <>
+          {GRUPOS.map((g) => seccion(g.nombre, resto.filter((it) => it.grupo === g.id)))}
+          {seccion('Sin grupo', resto.filter((it) => !grupoPorId(it.grupo)))}
+        </>
       )}
 
       {comprados.length > 0 && (
@@ -718,7 +929,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
         </>
       )}
 
-      {dueno && !cerrada && items.length > 0 && (
+      {dueno && !cerrada && items.length > 0 && !buscando && (
         <button className="enlace cerrar-lista" onClick={cerrar}>
           Cerrar lista
         </button>
@@ -734,6 +945,20 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string }) {
           </span>
         )}
       </div>
+
+      {eligiendoGrupo && (
+        <HojaOpciones
+          titulo={`Grupo de ${eligiendoGrupo.nombre}`}
+          opciones={[...GRUPOS.map((g) => ({ id: g.id, etiqueta: g.nombre })), { id: '', etiqueta: 'Sin grupo' }]}
+          actual={eligiendoGrupo.grupo ?? ''}
+          onElegir={(id) => {
+            const it = eligiendoGrupo
+            aprender(it.nombre, id || null)
+            cambiarGrupo(lista.id, it.id, id || null).catch(() => onAviso('No se pudo cambiar el grupo'))
+          }}
+          onCerrar={() => setEligiendoGrupo(null)}
+        />
+      )}
     </>
   )
 }

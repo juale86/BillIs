@@ -32,7 +32,7 @@ const TITULOS: Record<Pestana, string> = {
   lista: 'Listas',
   ajustes: 'Ajustes',
 }
-const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', estado: null, persona: null }
+const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', persona: null }
 const invitacionUrl = () => new URLSearchParams(location.search).get('lista')
 
 interface Aviso {
@@ -62,7 +62,6 @@ export default function App() {
   // Búsquedas: los filtros siguen aplicados aunque se cierre la lupa (testigo).
   const [buscandoMov, setBuscandoMov] = useState(false)
   const [filtrosMov, setFiltrosMov] = useState<FiltrosMov>(SIN_FILTROS_MOV)
-  const [buscandoLista, setBuscandoLista] = useState(false)
   const [filtrosLista, setFiltrosLista] = useState<FiltrosLista>(SIN_FILTROS_LISTA)
   const timer = useRef<number>(undefined)
 
@@ -135,16 +134,11 @@ export default function App() {
   const gastosCompra = sesion ? gastosDe(sesion.compraId) : []
   const compraEnCurso = sesion && gastosCompra.length > 0 ? sesion.compraId : null
   const gastosPagando = pagando ? gastosDe(pagando) : []
+  // La lista tiene su propio campo de búsqueda siempre visible; la lupa es solo de Movimientos.
   const lupa =
     pestana === 'movimientos'
       ? { abierto: buscandoMov, filtrando: hayFiltrosMov(filtrosMov), onClick: () => setBuscandoMov(!buscandoMov) }
-      : pestana === 'lista'
-        ? {
-            abierto: buscandoLista,
-            filtrando: filtrosLista.texto !== '' || filtrosLista.estado !== null || filtrosLista.persona !== null,
-            onClick: () => setBuscandoLista(!buscandoLista),
-          }
-        : null
+      : null
 
   // Alertas: se avisan con un botón al lado del mes y se leen debajo de él.
   const alertas = avisoRespaldo
@@ -255,8 +249,6 @@ export default function App() {
                   datos={datos}
                   invitacion={invitacion}
                   setInvitacion={setInvitacion}
-                  buscando={buscandoLista}
-                  lupa={lupa && <BotonLupa {...lupa} />}
                   filtros={filtrosLista}
                   setFiltros={setFiltrosLista}
                   onComprar={comprarDesdeLista}

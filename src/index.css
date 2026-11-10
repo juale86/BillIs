@@ -1436,3 +1436,54 @@ button.compra-cab {
   cursor: grabbing;
   color: var(--birome);
 }
+
+/* Lista: "Agregar a la lista" y "Buscar y filtrar", siempre uno al lado del otro. */
+.entradas-lista {
+  display: flex;
+  gap: 6px;
+}
+.entradas-lista > .campo {
+  flex: 1;
+}
+.agregar-detalle {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.grupo-campo {
+  flex: none;
+  width: 118px;
+}
+/* Sin grupo: el campo se marca para que se note, pero sigue siendo opcional. */
+.campo select.resaltado {
+  border-color: var(--birome);
+  background: var(--birome-suave);
+  color: var(--birome);
+  font-weight: 600;
+}
+.botones-agregar > button {
+  flex: 1;
+}
+.chip-grupo {
+  flex: none;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--renglon);
+  background: none;
+  color: var(--lapiz);
+  font-size: var(--t-xs);
+  padding: 3px 6px;
+}
+.chip-grupo.vacio {
+  border-color: var(--birome);
+  background: var(--birome-suave);
+  color: var(--birome);
+  font-weight: 600;
+}
+
+/* Cantidad del gasto: "Cant" en letra más chica para que entre. */
+.campo.cant input::placeholder {
+  font-size: var(--t-s);
+}

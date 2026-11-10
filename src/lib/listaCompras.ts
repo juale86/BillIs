@@ -44,7 +44,7 @@ import { firebaseConfig } from './firebase-config'
  *   pendientes: { uid: nombre }                     ← pidieron unirse, falta aprobar
  * listas/{listaId}/items/{itemId}
  *   nombre, cantidad, marca, comprado, agregadoPorUid, agregadoPor,
- *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn, orden
+ *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn, orden, grupo
  *
  * Permisos (firestore.rules): el dueño renombra, cierra, borra y aprueba;
  * los miembros agregan, compran y quitan sus propios ítems.
@@ -79,6 +79,8 @@ export interface ItemLista {
   modificadoEn: number
   /** Posición entre los pendientes (se ordena de menor a mayor). Los ítems viejos no lo tienen: usan creadoEn. */
   orden?: number
+  /** Grupo de compra (lib/grupos.ts). null o ausente = sin grupo. */
+  grupo?: string | null
 }
 
 /** Posición de un ítem en la lista de pendientes. */
@@ -269,7 +271,12 @@ export function extraerListaId(texto: string): string | null {
 
 // ---------- Ítems ----------
 
-export function agregarItem(listaId: string, datos: { nombre: string; cantidad: string; marca: string }, quien: string) {
+/** Agrega un ítem arriba de todo y devuelve su id (la escritura sigue en segundo plano). */
+export function agregarItem(
+  listaId: string,
+  datos: { nombre: string; cantidad: string; marca: string; grupo: string | null },
+  quien: string,
+): { id: string; item: ItemLista; guardado: Promise<void> } {
   const ahora = Date.now()
   const item: Omit<ItemLista, 'id'> = {
     nombre: datos.nombre.trim().slice(0, 100),
@@ -284,10 +291,13 @@ export function agregarItem(listaId: string, datos: { nombre: string; cantidad: 
     moneda: null,
     creadoEn: ahora,
     modificadoEn: ahora,
-    orden: ahora,
+    // Negativo y decreciente: lo último agregado queda primero en el orden manual.
+    orden: -ahora,
+    grupo: datos.grupo,
   }
   // Sin await: con caché local se ve al instante y se sube cuando hay señal.
-  return setDoc(doc(items(listaId)), item)
+  const ref = doc(items(listaId))
+  return { id: ref.id, item: { ...item, id: ref.id }, guardado: setDoc(ref, item) }
 }
 
 /** Marca comprado. montoCent null = "ya comprado, sin gasto". */
@@ -317,6 +327,9 @@ export const volverAPendiente = (listaId: string, itemId: string) =>
 /** Cambia la posición de un ítem (arrastrándolo en la lista). */
 export const moverItem = (listaId: string, itemId: string, orden: number) =>
   updateDoc(doc(items(listaId), itemId), { orden, modificadoEn: Date.now() })
+
+export const cambiarGrupo = (listaId: string, itemId: string, grupo: string | null) =>
+  updateDoc(doc(items(listaId), itemId), { grupo, modificadoEn: Date.now() })
 
 export const borrarItem = (listaId: string, itemId: string) => deleteDoc(doc(items(listaId), itemId))
 
@@ -366,19 +379,52 @@ export function totales(lista: ItemLista[]): [Moneda, number][] {
   return [...t.entries()]
 }
 
+/** Búsqueda en la lista. Solo mira los pendientes: sirve para encontrar lo que falta comprar. */
 export interface FiltrosLista {
   texto: string
-  estado: 'pendientes' | 'comprados' | null
   persona: string | null
 }
-export const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', estado: null, persona: null }
+export const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', persona: null }
+export const hayFiltrosLista = (f: FiltrosLista) => f.texto.trim() !== '' || f.persona !== null
 
 export function filtrar(lista: ItemLista[], f: FiltrosLista): ItemLista[] {
   const q = normalizar(f.texto)
   return lista.filter(
     (it) =>
       (!q || normalizar(`${it.nombre} ${it.marca ?? ''}`).includes(q)) &&
-      (f.estado === null || (f.estado === 'comprados') === it.comprado) &&
       (f.persona === null || it.agregadoPor === f.persona),
   )
 }
+
+// ---------- Orden (por teléfono) ----------
+
+export type OrdenLista = 'manual' | 'alfabetico' | 'grupos'
+const CLAVE_ORDEN = 'billis.ordenLista'
+
+export function leerOrden(): OrdenLista {
+  try {
+    const o = localStorage.getItem(CLAVE_ORDEN)
+    return o === 'alfabetico' || o === 'grupos' ? o : 'manual'
+  } catch {
+    return 'manual'
+  }
+}
+
+export function guardarOrden(o: OrdenLista) {
+  try {
+    localStorage.setItem(CLAVE_ORDEN, o)
+  } catch {
+    /* sin almacenamiento: dura hasta cerrar */
+  }
+}
+
+/**
+ * Ítems recién agregados por lista: se muestran arriba de todo, sin importar el orden,
+ * hasta que se vuelve a elegir un orden. Vive en memoria (sobrevive a abrir el formulario de gasto).
+ */
+const recientes = new Map<string, string[]>()
+export const recientesDe = (listaId: string) => recientes.get(listaId) ?? []
+export function marcarReciente(listaId: string, itemId: string) {
+  recientes.set(listaId, [itemId, ...recientesDe(listaId)])
+}
+export const olvidarRecientes = (listaId: string) => recientes.delete(listaId)
