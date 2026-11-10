@@ -4,6 +4,7 @@
  * Esquinas rectas, controles compactos. Lo único grande: el monto, escrito sobre un renglón.
  */
 :root {
+  --alto-tabs: 42px;
   --papel: #f5f6f4;
   --hoja: #ffffff;
   --tinta: #1d2433;
@@ -1572,4 +1573,56 @@ button.compra-cab {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* Lápiz para corregir el nombre de un ítem, y la barra mientras se corrige. */
+.lapiz {
+  color: var(--lapiz);
+}
+.editando-nombre {
+  align-items: center;
+}
+.editando-nombre .nota {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Por grupos: ítems más juntos dentro del grupo y un poco más de aire entre grupos. */
+.lista.en-grupo .item-renglon {
+  padding: 7px 0;
+}
+.lista.en-grupo .chico-icono {
+  min-height: 32px;
+}
+.lista-sub.grupo-tit {
+  margin-top: 16px;
+}
+
+/* Total de la lista: fijo abajo, sobre las pestañas, siempre visible. */
+.total-fijo {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--alto-tabs) + env(safe-area-inset-bottom));
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 8px 16px;
+  background: var(--papel);
+  z-index: 3;
+}
+.total-fijo .total-fila {
+  font-size: var(--t-l);
+}
+.total-fijo strong {
+  font-size: 1.5rem;
+}
+/* En Listas, "Pagar" flota por encima del Total. */
+.flotantes.sobre-total {
+  bottom: calc(var(--alto-tabs) + 64px + env(safe-area-inset-bottom));
+}
+/* Las pestañas miden exactamente --alto-tabs, así lo fijo de abajo (Total, Pagar) se apoya justo encima. */
+.tabs > button {
+  height: var(--alto-tabs);
+  padding-top: 0;
+  padding-bottom: 0;
 }

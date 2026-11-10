@@ -9,6 +9,7 @@ Registro rápido de gastos e ingresos personales. PWA instalable en Android.
 - 100 % local, pero preparado para sincronizar:
   - IDs UUID, `creadoEn` / `modificadoEn` en cada registro.
   - Borrado lógico (`borradoEn`).
+- Si algo falla al dibujar, se muestra el error con un botón **Recargar** en lugar de la pantalla vacía. Si iOS corta la conexión a IndexedDB (app instalada que vuelve de segundo plano), se recarga sola una vez por minuto como máximo (desde 1.8.5).
 
 ## Formulario de gasto
 
@@ -16,10 +17,10 @@ Un interruptor arriba alterna Gasto / Ingreso (cambian los campos).
 
 | Campo | Comportamiento |
 |---|---|
-| Descripción* | Autocompleta del historial. Al elegir precarga el último precio (busca por producto+marca+lugar → producto+marca → producto). Se guarda normalizada para agrupar. |
+| Descripción* | El "Siguiente" del teclado salta al precio (desde 1.10). Autocompleta del historial. Al elegir precarga el último precio (busca por producto+marca+lugar → producto+marca → producto). Se guarda normalizada para agrupar. |
 | Marca | Opcional. Sugiere marcas ya compradas de ese producto. |
 | Precio* | Unitario. Precargado y seleccionado para pisar. |
-| Cantidad | Default 1, colapsada. |
+| Cantidad | Vacía con placeholder "Cant" en letra chica; vacío = 1. Al tocarla se selecciona todo para escribir encima (desde 1.10). |
 | Promo | NxM, N-ésima unidad al X % off, % de descuento, Otra/manual (escribís el total). Extensible: unión discriminada por `tipo`. |
 | Categoría | Una por movimiento, lista editable. Se autocompleta por producto y, si no, por lugar. |
 | Lugar | Se mantiene durante la compra; se borra al "Guardar y cerrar" o tras ~2 h sin cargar. Chips con los más usados. |
@@ -27,10 +28,10 @@ Un interruptor arriba alterna Gasto / Ingreso (cambian los campos).
 | Método de pago | Lista editable (pocos y fijos). Se mantiene durante la compra. |
 | Cuotas | Solo ARS. Cargás total financiado o valor de cuota y se calcula el otro. La 1ª cuota cae en el mes de compra. (`diaCierre` previsto en métodos de pago, sin uso todavía.) |
 | Moneda | ARS por defecto; USD si se activa "Usar otras monedas". Sin conversión. |
-| Pagador | Por defecto vos (nombre pedido al primer uso). Se mantiene siempre (último usado). |
+| Pagador | Se elige en Pagar con un **desplegable**: vos y quienes comparten la lista actual (sus nombres quedan en el teléfono al abrir Listas). Se mantiene el último usado (desde 1.12). |
 | Mi parte | Todo / Mitad / Nada / %. Si pagaste vos y tu parte < total, se elige con quién se comparte. Genera saldos por persona. |
 
-Botones: **Guardar y agregar otro** (mismo `compraId`, agrupa la compra) y **Guardar y cerrar** (cierra la compra).
+Botones: **Guardar y agregar otro** y **Guardar**. Para salir sin guardar, una **X arriba a la derecha** del título (desde 1.12, en lugar de Cancelar al pie; igual en Pagar).
 
 ## Ingreso
 
@@ -45,10 +46,10 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 
 ## Pantallas
 
-1. **Movimientos**: por día y compra, filtro de mes. Editar / borrar con deshacer.
+1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer.
 2. **Resumen del mes**: ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
-4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, respaldo.
+4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista (solo lectura), respaldo.
 
 ## Respaldo
 
@@ -70,7 +71,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - En Movimientos cada compra, terminada o en curso, tiene su propio **Total** al pie con el método, las cuotas, quién pagó y tu parte. Un gasto sin compra (datos viejos) cuenta como compra de un ítem.
 - Si no se paga, la compra se cierra sola tras 2 h sin actividad.
 - ~~Un gasto sin lugar (Netflix, nafta) se guarda directo~~: reemplazado en 1.8.3, también pasa por Pagar.
-- Formulario nuevo: Cancelar / Guardar y agregar otro / Guardar. Editando: Cancelar / Guardar cambios. Desde la lista: Cancelar / Guardar (+ "Ya comprado, sin gasto").
+- Formulario nuevo: Guardar y agregar otro / Guardar. Editando: Guardar cambios. Desde la lista: Guardar (+ "Ya comprado, sin gasto" y, en chiquito al final, quién agregó el ítem). En todos, la X de arriba cierra sin guardar.
 
 ## Listas de compras compartidas
 
@@ -81,15 +82,37 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - Tocar un ítem pendiente abre el formulario de gasto completo con nombre, marca, cantidad y último precio. Solo al **guardar** pasa a Comprados (con monto y quién lo compró) y se vuelve a la lista. "Ya comprado, sin gasto" lo marca sin monto.
 - Comprados: tocar ofrece **Volver a pendientes** (si hay gasto propio pregunta si borrarlo) y **Ver gasto**.
 - Gasto ↔ ítem sincronizados: editar el gasto actualiza el monto; borrarlo devuelve el ítem a pendientes (Deshacer lo restaura).
-- **Total gastado** por moneda (suma de montos de comprados) y **estimado de lo pendiente** con tus últimos precios.
-- **Cerrar lista** (dueño): queda archivada, de solo lectura, en "Cerradas"; ofrece abrir una nueva con los pendientes y los mismos miembros.
+- **Total gastado** por moneda (suma de montos de comprados), **fijo abajo** sobre las pestañas: la lista se desplaza por detrás (desde 1.13). ~~Estimado de lo pendiente con tus últimos precios~~: quitado en 1.11.
+- **Cerrar lista** (dueño): enlace al lado del Total. Queda archivada, de solo lectura, en "Cerradas"; ofrece abrir una nueva con los pendientes y los mismos miembros.
+
+### Agregar, corregir y quitar (desde 1.10)
+
+- Arriba, siempre visibles, dos campos: **Agregar a la lista** y **Buscar y filtrar**. Tocar uno despliega debajo su formulario (Cant, Marca, Grupo y botones) o sus filtros.
+- **Agregar** pone el ítem arriba de todo. **Agregar y comprar** además abre el gasto ya cargado, por si encontrás en el súper algo que no estaba anotado; si se cancela, queda pendiente.
+- Cada pendiente ocupa un renglón: producto, marca al lado y la cantidad a la derecha (`x2` si es un número). Quién lo agregó no se muestra en la lista: queda guardado y aparece al comprarlo (desde 1.11).
+- **Lápiz** (desde 1.13): pasa el nombre al campo de agregar para corregir solo ese texto; Enter o Guardar lo cambia, la X cancela. Si el ítem no tenía grupo, se vuelve a adivinar con el nombre corregido.
+- **✕ quita** el ítem y muestra un aviso con **Deshacer**, que lo restaura igual (posición, grupo, quién lo agregó) (desde 1.12).
+
+### Orden (desde 1.9)
+
+- **Manual**: lo último agregado primero; se mueve arrastrando la manija ≡ (campo `orden`, fraccionario entre vecinos; los ítems viejos usan `creadoEn`).
+- **Alfabético** y **Por grupos** (grupos en el orden del recorrido del súper, cada uno con su título discreto y sin conteo; adentro, alfabético). En grupos los ítems van más juntos y los grupos un poco más separados (desde 1.13).
+- Un botón en la cabecera **alterna** los tres con cada toque y muestra el actual: mano, `A..Z` o cuatro cuadraditos; un aviso confirma el cambio (desde 1.10.1). El orden se guarda **por teléfono**.
+- Lo recién agregado queda arriba, en "Recién agregados", hasta que se vuelve a elegir un orden (vive en memoria; sobrevive a abrir el formulario de gasto).
+
+### Grupos de compra (desde 1.10)
+
+- Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza y Herramientas (`src/lib/grupos.ts`). Se ven en Ajustes.
+- Se **adivinan** por palabras del nombre (gana la coincidencia más larga: "leche en polvo" → Almacén, "leche" → Frescos). Antes que el diccionario, se usa lo elegido a mano en este teléfono (`gruposLista` en ajustes) y lo que ya tiene la lista para ese nombre.
+- Sin adivinanza, el campo Grupo aparece **resaltado** pero es opcional. Cada pendiente tiene un **chip** con su grupo que se toca para corregirlo, y se recuerda.
 - Caché persistente: funciona sin señal y sincroniza al volver.
 - Desarrollo con emuladores: `VITE_EMULADORES=1` + `npx firebase-tools emulators:start --only auth,firestore` (requiere Java 21).
 
 ## Búsqueda
 
-- Lupa en Movimientos (solo el mes visible: texto en descripción, marca y lugar; chips Gastos / Ingresos / Categoría / Pagó otro; resumen "N resultados, gastaste $X (tu parte)") y en la lista (texto; Pendientes / Comprados / Agregó X).
+- Lupa en Movimientos (solo el mes visible: texto en descripción, marca y lugar; chips Gastos / Ingresos / Categoría / Pagó otro; resumen "N resultados, gastaste $X (tu parte)").
 - **Testigo**: los filtros siguen aplicados al cerrar la lupa; la lupa muestra un punto y los chips "Filtrando … ✕" quedan visibles.
+- En la lista no hay lupa (desde 1.10): el campo **Buscar y filtrar** está siempre a la vista y busca **solo en los pendientes**, porque sirve para encontrar en el súper lo que falta comprar; con la búsqueda activa los comprados no se muestran. Chips **"Agregado por …"** para cada miembro de la lista (filtra por uid). Al comprar un ítem y volver, el texto de búsqueda queda vacío (desde 1.12).
 
 ## Apariencia
 
@@ -100,6 +123,9 @@ Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guar
 Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.
 
 ## Pendientes para charlar
+
+- El **chip de grupo** en cada ítem: charlarlo después de probarlo un tiempo (¿es el mejor gesto para corregir el grupo?).
+- Editar los grupos (nombres y orden) desde Ajustes; hoy se muestran solo para consultar.
 
 - Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
 - Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.

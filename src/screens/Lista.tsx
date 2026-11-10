@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Buscador } from '../components/Buscador'
+import { BotonCerrar } from '../components/BotonCerrar'
 import { Modal } from '../components/Modal'
 import { ordenEntre, useArrastre } from '../components/useArrastre'
 import { db, normalizar, setAjuste } from '../db/db'
@@ -30,6 +31,7 @@ import {
   ordenDe,
   pedirUnirse,
   recientesDe,
+  renombrarItem,
   restaurarItem,
   rechazar,
   renombrarLista,
@@ -580,6 +582,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
   // Qué se muestra debajo de los dos campos: el formulario de agregar o los filtros de búsqueda.
   const [modo, setModo] = useState<'agregar' | 'buscar' | null>(null)
+  // Ítem cuyo nombre se está corrigiendo en el campo "Agregar a la lista" (lápiz).
+  const [editando, setEditando] = useState<ItemLista | null>(null)
   const [nuevo, setNuevo] = useState('')
   const [cantidad, setCantidad] = useState('')
   const [marca, setMarca] = useState('')
@@ -634,6 +638,38 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   }
 
   /** Agrega arriba de todo. comprar: además abre el gasto, por si lo encontraste en el súper. */
+  /** Lápiz: pasa el nombre al campo de agregar para corregirlo. */
+  function empezarAEditar(it: ItemLista) {
+    setEditando(it)
+    setNuevo(it.nombre)
+    setModo('agregar')
+    requestAnimationFrame(() => {
+      refNuevo.current?.focus()
+      refNuevo.current?.select()
+    })
+  }
+
+  function terminarDeEditar() {
+    setEditando(null)
+    setNuevo('')
+  }
+
+  /** Guarda el nombre corregido (solo el texto; el resto del ítem no cambia). */
+  function guardarNombre() {
+    const it = editando
+    if (!it) return
+    const nombre = nuevo.trim()
+    if (nombre && nombre !== it.nombre) {
+      renombrarItem(lista.id, it.id, nombre).catch(() => onAviso('No se pudo cambiar el nombre'))
+      // Si no tenía grupo (ej. por un error de tipeo), se vuelve a adivinar con el nombre corregido.
+      const g = grupoPorId(it.grupo) ? null : sugerirGrupo(nombre, it.marca ?? '', datos.gruposAprendidos, items)
+      if (g) cambiarGrupo(lista.id, it.id, g).catch(() => {})
+    }
+    terminarDeEditar()
+    setModo(null)
+    refNuevo.current?.blur()
+  }
+
   function agregar(comprar: boolean) {
     if (!nuevo.trim()) return
     if (grupoElegido !== undefined) aprender(nuevo, grupoElegido)
@@ -721,6 +757,13 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             {g ? g.corto : 'Grupo'} ▾
           </button>
         )}
+        {!cerrada && (
+          <button className="icono chico-icono lapiz" aria-label={`Corregir el nombre de ${it.nombre}`} onClick={() => empezarAEditar(it)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+            </svg>
+          </button>
+        )}
         {!cerrada && (it.agregadoPorUid === uid || dueno) && (
           <button
             className="icono chico-icono"
@@ -740,7 +783,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         <div className="lista-sub grupo-tit">
           <span>{titulo}</span>
         </div>
-        <ul className="lista">{lista.map((it) => filaPendiente(it))}</ul>
+        <ul className={'lista' + (orden === 'grupos' ? ' en-grupo' : '')}>{lista.map((it) => filaPendiente(it))}</ul>
       </Fragment>
     )
 
@@ -763,7 +806,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         className="agregar-item"
         onSubmit={(e) => {
           e.preventDefault()
-          agregar(false)
+          if (editando) guardarNombre()
+          else agregar(false)
         }}
       >
         <div className="entradas-lista">
@@ -773,7 +817,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                 ref={refNuevo}
                 value={nuevo}
                 placeholder="Agregar a la lista"
-                aria-label="Agregar a la lista"
+                aria-label={editando ? `Nombre de ${editando.nombre}` : 'Agregar a la lista'}
                 autoComplete="off"
                 enterKeyHint="done"
                 onChange={(e) => {
@@ -789,7 +833,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                   quizasCerrarAgregar()
                 }}
               />
-              {sugerencias.length > 0 && (
+              {!editando && sugerencias.length > 0 && (
                 <ul className="sugerencias">
                   {sugerencias.map((s) => (
                     <li key={s}>
@@ -818,7 +862,10 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
               autoComplete="off"
               enterKeyHint="search"
               onChange={(e) => setFiltros({ ...filtros, texto: e.target.value })}
-              onFocus={() => setModo('buscar')}
+              onFocus={() => {
+                if (editando) terminarDeEditar()
+                setModo('buscar')
+              }}
               onBlur={() => {
                 if (!hayFiltrosLista(filtros)) setModo((m) => (m === 'buscar' ? null : m))
               }}
@@ -833,7 +880,24 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           </div>
         </div>
 
-        {modo === 'agregar' && !cerrada && (
+        {modo === 'agregar' && !cerrada && editando && (
+          <div className="fila editando-nombre">
+            <span className="nota">
+              Corregí el nombre de <strong>{editando.nombre}</strong>
+            </span>
+            <button type="submit" className="primario boton-chico" disabled={!nuevo.trim()} onMouseDown={(e) => e.preventDefault()}>
+              Guardar
+            </button>
+            <BotonCerrar
+              onClick={() => {
+                terminarDeEditar()
+                setModo(null)
+              }}
+            />
+          </div>
+        )}
+
+        {modo === 'agregar' && !cerrada && !editando && (
           <div className="agregar-detalle" ref={refDetalle} onBlur={quizasCerrarAgregar}>
             <div className="fila">
               <label className="campo chico">
@@ -952,7 +1016,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         </>
       )}
 
-      <div className="totales-lista total-pie">
+      {/* Fijo abajo, sobre las pestañas: la lista se desplaza por detrás. */}
+      <div className="totales-lista total-pie total-fijo">
         <span className="total-fila">
           <span>
             Total

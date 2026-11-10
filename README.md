@@ -25,7 +25,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 
 ### Carga rápida
 - **Gasto o ingreso** con un interruptor; formulario compacto, sin títulos: cada campo se explica con un ejemplo.
-- **Producto, marca y cantidad** en una línea; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
+- **Producto, marca y cantidad** en una línea (la cantidad vacía vale 1 y al tocarla se selecciona para pisarla); el "Siguiente" del teclado salta al precio; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
 - **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se sugiere sola por producto o por lugar.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
 - **Cuotas** en pesos: cargás el total financiado o el valor de cada cuota y se reparte por mes; calcula el interés.
@@ -33,7 +33,8 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 
 ### Compras y "Pagar"
 - Cada gasto que cargás se suma a la **compra** en curso; el formulario solo pide qué compraste y cuánto salió.
-- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas, pagador y tu parte** una sola vez para toda la compra.
+- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas, pagador y tu parte** una sola vez para toda la compra. El pagador se elige de un desplegable con vos y quienes comparten tu lista.
+- Los formularios se cierran sin guardar con la **X** de arriba a la derecha.
 - En Movimientos cada compra (terminada o en curso) muestra su **Total** con cómo se pagó; tocándolo se corrige el pago de toda la compra.
 
 ### Deudas compartidas
@@ -44,19 +45,23 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - **Varias listas** (súper, ferretería, un cumpleaños), cada una con su propio link para compartir.
 - Inicio de sesión con **Google**; quien abre el link **pide unirse** y el dueño **aprueba**.
 - El dueño renombra (lápiz) y borra (✕, con confirmación) cada lista desde el menú; también la cierra; los miembros agregan, compran y quitan sus propios ítems.
+- Dos campos siempre a la vista: **Agregar a la lista** (con cantidad, marca y grupo) y **Buscar y filtrar**, que busca solo entre lo pendiente y filtra por quién lo agregó.
+- **Agregar** pone el ítem arriba; **Agregar y comprar** además abre el gasto, para lo que encontrás en el súper sin tenerlo anotado.
+- Cada ítem en un renglón con su marca y cantidad; el **lápiz** corrige el nombre y la **✕** lo quita, con **Deshacer**.
+- Tres órdenes que se alternan con un botón: **manual** (arrastrando ≡, lo último primero), **alfabético** y **por grupos** de compra (Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza, Herramientas). El grupo se adivina por el nombre, se corrige con un toque y se recuerda.
 - Tocar un ítem abre el formulario de gasto con todo precargado; al guardar pasa a **Comprados** con su monto, visible para todos. Tocar un comprado abre su gasto y el botón − lo devuelve a pendientes.
-- **Total** de la lista en vivo y **estimado de lo pendiente** según tus últimos precios.
-- **Cerrar** una lista la archiva con su total y ofrece empezar otra con lo que quedó pendiente.
+- **Total** de la lista en vivo, siempre visible abajo; al lado, **Cerrar lista** la archiva y ofrece empezar otra con lo que quedó pendiente.
 - Funciona **sin señal** y se sincroniza al volver la conexión.
 
 ### Consulta
-- **Movimientos** del mes agrupados por día y por compra: la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer.
+- **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer.
 - **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
-- **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles aunque se cierre la lupa.
+- **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles.
 
 ### Datos y apariencia
 - **Respaldo** completo en JSON (exportar e importar), exportación a **CSV** compatible con Excel y aviso si pasó más de una semana sin respaldo.
 - Tema **automático, claro u oscuro**.
+- Si algo falla, la app muestra el error y un botón para recargar en lugar de quedar en blanco.
 - Instalable como app: ícono propio y accesos directos **Gasto** e **Ingreso** al mantener apretado el ícono.
 
 ## Tecnología
@@ -82,11 +87,11 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 ```
 src/
 ├── App.tsx               Navegación, compra abierta, sincronización gasto ↔ lista
-├── components/           Formulario de movimiento, Pagar, buscador, chips
+├── components/           Formulario de movimiento, Pagar, buscador, chips, arrastre, errores
 ├── screens/              Movimientos, Resumen, Saldos, Listas, Ajustes
 ├── db/                   Esquema Dexie y tipos del modelo
 └── lib/                  Cálculos (promos, cuotas, saldos), sugerencias, sesión de compra,
-                          respaldo, tema, filtros y cliente de Firebase
+                          grupos de compra, respaldo, tema, filtros y cliente de Firebase
 docs/DISEÑO.md            Decisiones de diseño y temas pendientes
 firestore.rules           Reglas de seguridad de las listas
 ```

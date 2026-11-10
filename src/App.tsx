@@ -273,7 +273,7 @@ export default function App() {
           </main>
 
           {pestana !== 'ajustes' && (
-            <div className="flotantes">
+            <div className={'flotantes' + (pestana === 'lista' ? ' sobre-total' : '')}>
               {sesion && gastosCompra.length > 0 && (
                 <button className="pagar" onClick={() => setPagando(sesion.compraId)}>
                   Pagar {textoTotal(totalCompra(gastosCompra))}
