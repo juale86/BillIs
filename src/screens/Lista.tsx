@@ -117,9 +117,6 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const [menu, setMenu] = useState(false)
   // Orden de los pendientes, elegido por teléfono.
   const [orden, setOrden] = useState<OrdenLista>(leerOrden)
-  const [eligiendoOrden, setEligiendoOrden] = useState(false)
-  // Redibuja aunque se elija el mismo orden (para soltar los recién agregados).
-  const [, setVueltas] = useState(0)
 
   const abiertas = listas.filter((l) => !l.cerrada)
   const cerradas = listas.filter((l) => l.cerrada).sort((a, b) => (b.cerradaEn ?? 0) - (a.cerradaEn ?? 0))
@@ -191,32 +188,18 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           {pedidos > 0 && <span className="insignia">{pedidos}</span>}
         </button>
         {!actual.cerrada && <BotonCompartir listaId={actual.id} onAviso={onAviso} />}
-        <button
-          className="icono borde"
-          aria-label={`Ordenar lista (${OPCIONES_ORDEN.find((o) => o.id === orden)?.etiqueta})`}
-          onClick={() => setEligiendoOrden(true)}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 6h16M4 12h11M4 18h6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square" />
-          </svg>
-        </button>
-      </div>
-
-      {eligiendoOrden && (
-        <HojaOpciones
-          titulo="Ordenar lista"
-          opciones={OPCIONES_ORDEN}
-          actual={orden}
-          onElegir={(id) => {
-            // Elegir un orden (aunque sea el mismo) acomoda también lo recién agregado.
+        <BotonOrden
+          orden={orden}
+          onCambiar={(o) => {
+            // Cambiar de orden acomoda también lo recién agregado.
             olvidarRecientes(actual.id)
-            guardarOrden(id as OrdenLista)
-            setOrden(id as OrdenLista)
-            setVueltas((v) => v + 1)
+            guardarOrden(o)
+            setOrden(o)
+            const op = OPCIONES_ORDEN.find((x) => x.id === o)!
+            onAviso(`Orden ${op.etiqueta.toLowerCase()}: ${op.detalle}`)
           }}
-          onCerrar={() => setEligiendoOrden(false)}
         />
-      )}
+      </div>
 
       {menu && (
         <MenuListas
@@ -536,6 +519,37 @@ function HojaOpciones(props: {
         </div>
       </div>
     </div>
+  )
+}
+
+/** Un toque pasa al orden siguiente; el ícono muestra el orden actual. */
+function BotonOrden({ orden, onCambiar }: { orden: OrdenLista; onCambiar: (o: OrdenLista) => void }) {
+  const i = OPCIONES_ORDEN.findIndex((o) => o.id === orden)
+  const siguiente = OPCIONES_ORDEN[(i + 1) % OPCIONES_ORDEN.length]
+  return (
+    <button
+      className="icono borde boton-orden"
+      aria-label={`Orden ${OPCIONES_ORDEN[i].etiqueta.toLowerCase()}. Tocá para ordenar ${siguiente.etiqueta.toLowerCase()}`}
+      onClick={() => onCambiar(siguiente.id)}
+    >
+      {orden === 'alfabetico' ? (
+        <span className="orden-az" aria-hidden="true">
+          AZ
+        </span>
+      ) : orden === 'grupos' ? (
+        <span className="orden-grupos" aria-hidden="true">
+          Grupos
+        </span>
+      ) : (
+        <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+          {/* Mano abierta: ordenás vos, arrastrando. */}
+          <path
+            strokeWidth="1.8"
+            d="M8 13V5.5a1.5 1.5 0 0 1 3 0V11M11 10.5V4a1.5 1.5 0 0 1 3 0v6.5M14 11V5.5a1.5 1.5 0 0 1 3 0V12M17 10a1.5 1.5 0 0 1 3 0v5a7 7 0 0 1-7 7h-.8a6 6 0 0 1-4.9-2.6L3.7 15.6a1.5 1.5 0 0 1 2.4-1.8L8 16"
+          />
+        </svg>
+      )}
+    </button>
   )
 }
 

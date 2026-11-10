@@ -1487,3 +1487,16 @@ button.compra-cab {
 .campo.cant input::placeholder {
   font-size: var(--t-s);
 }
+
+/* Botón de orden: muestra el orden actual ("AZ", mano o grupos). */
+.orden-az {
+  font-family: var(--f-cifra);
+  font-weight: 700;
+  font-size: var(--t-m);
+  letter-spacing: -0.5px;
+}
+.orden-grupos {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0 3px;
+}
