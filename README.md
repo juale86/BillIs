@@ -47,7 +47,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - El dueño renombra (lápiz) y borra (✕, con confirmación) cada lista desde el menú; también la cierra; los miembros agregan, compran y quitan sus propios ítems.
 - Dos campos siempre a la vista: **Agregar a la lista** (con cantidad, marca y grupo) y **Buscar y filtrar**, que busca solo entre lo pendiente y filtra por quién lo agregó.
 - **Agregar** pone el ítem arriba; **Agregar y comprar** además abre el gasto, para lo que encontrás en el súper sin tenerlo anotado.
-- Cada ítem en un renglón con su marca y cantidad; el **lápiz** corrige el nombre y la **✕** lo quita, con **Deshacer**.
+- Cada ítem en un renglón con su marca y cantidad; el **lápiz** abre el formulario con sus datos para corregirlos y la **✕** lo quita, con **Deshacer**.
 - Tres órdenes que se alternan con un botón: **manual** (arrastrando ≡, lo último primero), **alfabético** y **por grupos** de compra (Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza, Herramientas). El grupo se adivina por el nombre, se corrige con un toque y se recuerda.
 - Tocar un ítem abre el formulario de gasto con todo precargado; al guardar pasa a **Comprados** con su monto, visible para todos. Tocar un comprado abre su gasto y el botón − lo devuelve a pendientes.
 - **Total** de la lista en vivo, siempre visible abajo; al lado, **Cerrar lista** la archiva y ofrece empezar otra con lo que quedó pendiente.

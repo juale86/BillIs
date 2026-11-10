@@ -90,7 +90,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - Arriba, siempre visibles, dos campos: **Agregar a la lista** y **Buscar y filtrar**. Tocar uno despliega debajo su formulario (Cant, Marca, Grupo y botones) o sus filtros.
 - **Agregar** pone el ítem arriba de todo. **Agregar y comprar** además abre el gasto ya cargado, por si encontrás en el súper algo que no estaba anotado; si se cancela, queda pendiente.
 - Cada pendiente ocupa un renglón: producto, marca al lado y la cantidad a la derecha (`x2` si es un número). Quién lo agregó no se muestra en la lista: queda guardado y aparece al comprarlo (desde 1.11).
-- **Lápiz** (desde 1.13): pasa el nombre al campo de agregar para corregir solo ese texto; Enter o Guardar lo cambia, la X cancela. Si el ítem no tenía grupo, se vuelve a adivinar con el nombre corregido.
+- **Lápiz** (al lado de la ✕): abre el **mismo formulario de agregar** con los datos del ítem (producto, cantidad, marca y grupo) para corregir cualquiera; los botones pasan a ser **Guardar** y **Cancelar**. El ítem no cambia de lugar. Si no tenía grupo, se propone con el nombre corregido (desde 1.13.1; en 1.13.0 corregía solo el nombre).
 - **✕ quita** el ítem y muestra un aviso con **Deshacer**, que lo restaura igual (posición, grupo, quién lo agregó) (desde 1.12).
 
 ### Orden (desde 1.9)

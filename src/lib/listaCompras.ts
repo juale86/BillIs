@@ -331,9 +331,19 @@ export const moverItem = (listaId: string, itemId: string, orden: number) =>
 export const cambiarGrupo = (listaId: string, itemId: string, grupo: string | null) =>
   updateDoc(doc(items(listaId), itemId), { grupo, modificadoEn: Date.now() })
 
-/** Corrige el nombre de un ítem (si se escribió mal). */
-export const renombrarItem = (listaId: string, itemId: string, nombre: string) =>
-  updateDoc(doc(items(listaId), itemId), { nombre: nombre.trim().slice(0, 100), modificadoEn: Date.now() })
+/** Corrige un ítem (lápiz): nombre, cantidad, marca y grupo. */
+export const editarItem = (
+  listaId: string,
+  itemId: string,
+  datos: { nombre: string; cantidad: string; marca: string; grupo: string | null },
+) =>
+  updateDoc(doc(items(listaId), itemId), {
+    nombre: datos.nombre.trim().slice(0, 100),
+    cantidad: datos.cantidad.trim().slice(0, 30) || null,
+    marca: datos.marca.trim().slice(0, 60) || null,
+    grupo: datos.grupo,
+    modificadoEn: Date.now(),
+  })
 
 /** Vuelve a crear un ítem quitado, igual que estaba (Deshacer). */
 export function restaurarItem(listaId: string, item: ItemLista) {

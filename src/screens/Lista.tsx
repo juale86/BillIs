@@ -1,6 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Buscador } from '../components/Buscador'
-import { BotonCerrar } from '../components/BotonCerrar'
 import { Modal } from '../components/Modal'
 import { ordenEntre, useArrastre } from '../components/useArrastre'
 import { db, normalizar, setAjuste } from '../db/db'
@@ -9,6 +8,7 @@ import type { Datos } from '../lib/datos'
 import {
   agregarItem,
   cambiarGrupo,
+  editarItem,
   aprobar,
   borrarItem,
   borrarLista,
@@ -31,7 +31,6 @@ import {
   ordenDe,
   pedirUnirse,
   recientesDe,
-  renombrarItem,
   restaurarItem,
   rechazar,
   renombrarLista,
@@ -637,11 +636,14 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     if (datos.gruposAprendidos[n] !== grupo) setAjuste('gruposLista', { ...datos.gruposAprendidos, [n]: grupo })
   }
 
-  /** Agrega arriba de todo. comprar: además abre el gasto, por si lo encontraste en el súper. */
-  /** Lápiz: pasa el nombre al campo de agregar para corregirlo. */
+  /** Lápiz: abre el mismo formulario de agregar, con los datos del ítem para corregirlos. */
   function empezarAEditar(it: ItemLista) {
     setEditando(it)
     setNuevo(it.nombre)
+    setCantidad(it.cantidad ?? '')
+    setMarca(it.marca ?? '')
+    // Con grupo se respeta el que tiene; sin grupo, la app lo propone con el nombre (como al agregar).
+    setGrupoElegido(grupoPorId(it.grupo) ? it.grupo : undefined)
     setModo('agregar')
     requestAnimationFrame(() => {
       refNuevo.current?.focus()
@@ -649,27 +651,29 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     })
   }
 
+  /** Sale de la edición y deja el formulario vacío. */
   function terminarDeEditar() {
     setEditando(null)
     setNuevo('')
+    setCantidad('')
+    setMarca('')
+    setGrupoElegido(undefined)
   }
 
-  /** Guarda el nombre corregido (solo el texto; el resto del ítem no cambia). */
-  function guardarNombre() {
+  /** Guarda lo corregido: nombre, cantidad, marca y grupo. El ítem no cambia de lugar. */
+  function guardarEdicion() {
     const it = editando
-    if (!it) return
-    const nombre = nuevo.trim()
-    if (nombre && nombre !== it.nombre) {
-      renombrarItem(lista.id, it.id, nombre).catch(() => onAviso('No se pudo cambiar el nombre'))
-      // Si no tenía grupo (ej. por un error de tipeo), se vuelve a adivinar con el nombre corregido.
-      const g = grupoPorId(it.grupo) ? null : sugerirGrupo(nombre, it.marca ?? '', datos.gruposAprendidos, items)
-      if (g) cambiarGrupo(lista.id, it.id, g).catch(() => {})
-    }
+    if (!it || !nuevo.trim()) return
+    if (grupoNuevo && grupoNuevo !== it.grupo) aprender(nuevo, grupoNuevo)
+    editarItem(lista.id, it.id, { nombre: nuevo, cantidad, marca, grupo: grupoNuevo }).catch(() =>
+      onAviso('No se pudo guardar el cambio'),
+    )
     terminarDeEditar()
     setModo(null)
     refNuevo.current?.blur()
   }
 
+  /** Agrega arriba de todo. comprar: además abre el gasto, por si lo encontraste en el súper. */
   function agregar(comprar: boolean) {
     if (!nuevo.trim()) return
     if (grupoElegido !== undefined) aprender(nuevo, grupoElegido)
@@ -758,20 +762,19 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           </button>
         )}
         {!cerrada && (
-          <button className="icono chico-icono lapiz" aria-label={`Corregir el nombre de ${it.nombre}`} onClick={() => empezarAEditar(it)}>
-            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-            </svg>
-          </button>
-        )}
-        {!cerrada && (it.agregadoPorUid === uid || dueno) && (
-          <button
-            className="icono chico-icono"
-            aria-label={`Quitar ${it.nombre}`}
-            onClick={() => quitar(it)}
-          >
-            ✕
-          </button>
+          // Lápiz y ✕ juntos, como un par de acciones sobre el ítem.
+          <span className="item-acciones-par">
+            <button className="icono chico-icono lapiz" aria-label={`Corregir ${it.nombre}`} onClick={() => empezarAEditar(it)}>
+              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </button>
+            {(it.agregadoPorUid === uid || dueno) && (
+              <button className="icono chico-icono" aria-label={`Quitar ${it.nombre}`} onClick={() => quitar(it)}>
+                ✕
+              </button>
+            )}
+          </span>
         )}
       </li>
     )
@@ -806,7 +809,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         className="agregar-item"
         onSubmit={(e) => {
           e.preventDefault()
-          if (editando) guardarNombre()
+          if (editando) guardarEdicion()
           else agregar(false)
         }}
       >
@@ -817,7 +820,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                 ref={refNuevo}
                 value={nuevo}
                 placeholder="Agregar a la lista"
-                aria-label={editando ? `Nombre de ${editando.nombre}` : 'Agregar a la lista'}
+                aria-label={editando ? `Producto (corrigiendo ${editando.nombre})` : 'Agregar a la lista'}
                 autoComplete="off"
                 enterKeyHint="done"
                 onChange={(e) => {
@@ -880,24 +883,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           </div>
         </div>
 
-        {modo === 'agregar' && !cerrada && editando && (
-          <div className="fila editando-nombre">
-            <span className="nota">
-              Corregí el nombre de <strong>{editando.nombre}</strong>
-            </span>
-            <button type="submit" className="primario boton-chico" disabled={!nuevo.trim()} onMouseDown={(e) => e.preventDefault()}>
-              Guardar
-            </button>
-            <BotonCerrar
-              onClick={() => {
-                terminarDeEditar()
-                setModo(null)
-              }}
-            />
-          </div>
-        )}
-
-        {modo === 'agregar' && !cerrada && !editando && (
+        {modo === 'agregar' && !cerrada && (
           <div className="agregar-detalle" ref={refDetalle} onBlur={quizasCerrarAgregar}>
             <div className="fila">
               <label className="campo chico">
@@ -922,13 +908,34 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                 </select>
               </label>
             </div>
+            {/* Mismo formulario para agregar y para corregir (lápiz); solo cambian los botones. */}
             <div className="fila botones-agregar">
-              <button type="submit" className="primario" disabled={!nuevo.trim()}>
-                Agregar
-              </button>
-              <button type="button" className="secundario" disabled={!nuevo.trim()} onClick={() => agregar(true)}>
-                Agregar y comprar
-              </button>
+              {editando ? (
+                <>
+                  <button type="submit" className="primario" disabled={!nuevo.trim()}>
+                    Guardar
+                  </button>
+                  <button
+                    type="button"
+                    className="secundario"
+                    onClick={() => {
+                      terminarDeEditar()
+                      setModo(null)
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="submit" className="primario" disabled={!nuevo.trim()}>
+                    Agregar
+                  </button>
+                  <button type="button" className="secundario" disabled={!nuevo.trim()} onClick={() => agregar(true)}>
+                    Agregar y comprar
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

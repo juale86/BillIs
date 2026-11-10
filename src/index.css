@@ -1579,12 +1579,13 @@ button.compra-cab {
 .lapiz {
   color: var(--lapiz);
 }
-.editando-nombre {
-  align-items: center;
+/* Lápiz pegado a la ✕. */
+.item-acciones-par {
+  flex: none;
+  display: flex;
 }
-.editando-nombre .nota {
-  flex: 1;
-  min-width: 0;
+.item-acciones-par .chico-icono {
+  min-width: 30px;
 }
 
 /* Por grupos: ítems más juntos dentro del grupo y un poco más de aire entre grupos. */
