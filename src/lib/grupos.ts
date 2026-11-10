@@ -1,7 +1,14 @@
 import { normalizar } from '../db/db'
 
-/** Grupos de compra, en el orden en que se recorre el súper. */
-export const GRUPOS = [
+export interface Grupo {
+  id: string
+  /** Nombre corto, para el chip de cada ítem. */
+  corto: string
+  nombre: string
+}
+
+/** Grupos de compra que trae la app, en el orden en que se recorre el súper. */
+export const GRUPOS_BASE = [
   { id: 'almacen', corto: 'Almacén', nombre: 'Almacén (Secos y Conservas)' },
   { id: 'bebidas', corto: 'Bebidas', nombre: 'Bebidas' },
   { id: 'frescos', corto: 'Frescos', nombre: 'Frescos (Lácteos, Fiambrería y Masas)' },
@@ -11,11 +18,20 @@ export const GRUPOS = [
   { id: 'mascotas', corto: 'Mascotas', nombre: 'Mascotas' },
   { id: 'limpieza', corto: 'Limpieza', nombre: 'Limpieza y Perfumería' },
   { id: 'herramientas', corto: 'Herramientas', nombre: 'Herramientas' },
-] as const
+] as const satisfies readonly Grupo[]
 
-export type GrupoId = (typeof GRUPOS)[number]['id']
+type GrupoId = (typeof GRUPOS_BASE)[number]['id']
 
-export const grupoPorId = (id: string | null | undefined) => GRUPOS.find((g) => g.id === id)
+/** Clave del ajuste con los grupos de este teléfono (renombrados, borrados o agregados). */
+export const CLAVE_GRUPOS = 'gruposCompra'
+
+/** Los grupos guardados, o los de la app si nunca se tocaron. */
+export const gruposDesde = (guardados: Grupo[] | null | undefined): Grupo[] => guardados ?? [...GRUPOS_BASE]
+
+export const grupoPorId = (grupos: Grupo[], id: string | null | undefined) => grupos.find((g) => g.id === id)
+
+/** Id para un grupo agregado a mano. */
+export const nuevoIdGrupo = () => `g${Date.now().toString(36)}`
 
 /**
  * Palabras que delatan el grupo. Coinciden con el comienzo de una palabra del producto
@@ -90,10 +106,10 @@ const INDICE: [string, GrupoId][] = (Object.entries(PALABRAS) as [GrupoId, strin
   .flatMap(([g, ps]) => ps.map((p) => [normalizar(p) + (p.endsWith(' ') ? ' ' : ''), g] as [string, GrupoId]))
   .sort((a, b) => b[0].length - a[0].length)
 
-/** Adivina el grupo por las palabras del nombre (y la marca). */
-export function adivinarGrupo(nombre: string, marca = ''): GrupoId | null {
+/** Adivina el grupo por las palabras del nombre (y la marca), entre los grupos que siguen existiendo. */
+export function adivinarGrupo(nombre: string, marca: string, grupos: Grupo[]): string | null {
   const texto = ` ${normalizar(`${nombre} ${marca}`)} `
-  for (const [palabra, g] of INDICE) if (texto.includes(` ${palabra}`)) return g
+  for (const [palabra, g] of INDICE) if (texto.includes(` ${palabra}`) && grupoPorId(grupos, g)) return g
   return null
 }
 
@@ -106,12 +122,13 @@ export function sugerirGrupo(
   marca: string,
   aprendidos: Record<string, string>,
   enLista: { nombre: string; grupo?: string | null }[],
-): GrupoId | null {
+  grupos: Grupo[],
+): string | null {
   const n = normalizar(nombre)
   if (!n) return null
   const guardado = aprendidos[n]
-  if (grupoPorId(guardado)) return guardado as GrupoId
+  if (grupoPorId(grupos, guardado)) return guardado
   const otro = enLista.find((it) => it.grupo && normalizar(it.nombre) === n)
-  if (grupoPorId(otro?.grupo)) return otro!.grupo as GrupoId
-  return adivinarGrupo(nombre, marca)
+  if (grupoPorId(grupos, otro?.grupo)) return otro!.grupo!
+  return adivinarGrupo(nombre, marca, grupos)
 }

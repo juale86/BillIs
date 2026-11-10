@@ -49,7 +49,7 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer.
 2. **Resumen del mes**: ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
-4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista (solo lectura), respaldo.
+4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista, respaldo. Métodos, categorías y grupos se renombran, borran y agregan; renombrar y borrar muestran un aviso con **Deshacer** (borrar ya no pide confirmación) (desde 1.14).
 
 ## Respaldo
 
@@ -102,7 +102,8 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 ### Grupos de compra (desde 1.10)
 
-- Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza y Herramientas (`src/lib/grupos.ts`). Se ven en Ajustes.
+- Vienen Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza y Herramientas (`src/lib/grupos.ts`).
+- Desde 1.14 se **editan en Ajustes** (renombrar, borrar, agregar, con Deshacer). Se guardan en este teléfono (`gruposCompra` en ajustes; mientras no se tocan, valen los de la app). Los ítems guardan el id del grupo: renombrar no los mueve; si se borra un grupo, sus ítems se ven en "Sin grupo" y el diccionario deja de proponerlo. Un grupo agregado se ve "Sin grupo" en los teléfonos que no lo tienen.
 - Se **adivinan** por palabras del nombre (gana la coincidencia más larga: "leche en polvo" → Almacén, "leche" → Frescos). Antes que el diccionario, se usa lo elegido a mano en este teléfono (`gruposLista` en ajustes) y lo que ya tiene la lista para ese nombre.
 - Sin adivinanza, el campo Grupo aparece **resaltado** pero es opcional. Cada pendiente tiene un **chip** con su grupo que se toca para corregirlo, y se recuerda.
 - Caché persistente: funciona sin señal y sincroniza al volver.
@@ -124,9 +125,7 @@ Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de t
 
 ## Pendientes para charlar
 
-- El **chip de grupo** en cada ítem: charlarlo después de probarlo un tiempo (¿es el mejor gesto para corregir el grupo?).
-- Editar los grupos (nombres y orden) desde Ajustes; hoy se muestran solo para consultar.
-
+- Cambiar el orden de los grupos desde Ajustes. ¿Compartir los grupos con la lista en vez de por teléfono?
 - Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
 - Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.
 - Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquier miembro).

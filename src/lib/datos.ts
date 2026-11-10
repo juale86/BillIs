@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getAjuste, vivo } from '../db/db'
+import { CLAVE_GRUPOS, gruposDesde, type Grupo } from './grupos'
 import type { Categoria, MetodoPago, Movimiento, Persona } from '../db/types'
 
 export interface Datos {
@@ -15,12 +16,14 @@ export interface Datos {
   gruposAprendidos: Record<string, string>
   /** Con quiénes compartís la lista actual (sus nombres), para elegir pagador. */
   miembrosLista: string[]
+  /** Grupos de la lista de compras de este teléfono, en orden. */
+  grupos: Grupo[]
 }
 
 /** Todos los datos vivos (no borrados), reactivos. Para uso personal el volumen es chico. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista] = await Promise.all([
+    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos] = await Promise.all([
       db.movimientos.toArray(),
       db.personas.toArray(),
       db.metodosPago.toArray(),
@@ -29,6 +32,7 @@ export function useDatos(): Datos | undefined {
       getAjuste<string | null>('listaId', null),
       getAjuste<Record<string, string>>('gruposLista', {}),
       getAjuste<string[]>('miembrosLista', []),
+      getAjuste<Grupo[] | null>(CLAVE_GRUPOS, null),
     ])
     const ps = personas.filter(vivo)
     return {
@@ -41,6 +45,7 @@ export function useDatos(): Datos | undefined {
       listaId,
       gruposAprendidos,
       miembrosLista,
+      grupos: gruposDesde(grupos),
     }
   })
 }

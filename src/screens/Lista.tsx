@@ -48,7 +48,7 @@ import {
   type OrdenLista,
   type Lista as TLista,
 } from '../lib/listaCompras'
-import { GRUPOS, grupoPorId, sugerirGrupo } from '../lib/grupos'
+import { grupoPorId, sugerirGrupo } from '../lib/grupos'
 import { fmt } from '../lib/money'
 import { sugerirDescripciones } from '../lib/sugerencias'
 
@@ -599,7 +599,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     () => (verSug ? sugerirDescripciones(datos.movimientos, 'gasto', nuevo).slice(0, 4) : []),
     [verSug, datos.movimientos, nuevo],
   )
-  const grupoPropuesto = sugerirGrupo(nuevo, marca, datos.gruposAprendidos, items)
+  const grupoPropuesto = sugerirGrupo(nuevo, marca, datos.gruposAprendidos, items, datos.grupos)
   const grupoNuevo = grupoElegido === undefined ? grupoPropuesto : grupoElegido
 
   // Al buscar solo importan los pendientes: lo comprado no se muestra.
@@ -643,7 +643,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     setCantidad(it.cantidad ?? '')
     setMarca(it.marca ?? '')
     // Con grupo se respeta el que tiene; sin grupo, la app lo propone con el nombre (como al agregar).
-    setGrupoElegido(grupoPorId(it.grupo) ? it.grupo : undefined)
+    setGrupoElegido(grupoPorId(datos.grupos, it.grupo) ? it.grupo : undefined)
     setModo('agregar')
     requestAnimationFrame(() => {
       refNuevo.current?.focus()
@@ -732,7 +732,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
   /** Fila de un pendiente. i: posición en la lista manual, si se puede arrastrar. */
   function filaPendiente(it: ItemLista, i?: number) {
-    const g = grupoPorId(it.grupo)
+    const g = grupoPorId(datos.grupos, it.grupo)
     const arrastrable = i !== undefined && !cerrada && enManual.length > 1
     return (
       <li
@@ -900,7 +900,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                   onChange={(e) => setGrupoElegido(e.target.value || null)}
                 >
                   <option value="">Grupo</option>
-                  {GRUPOS.map((g) => (
+                  {datos.grupos.map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.corto}
                     </option>
@@ -974,8 +974,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
       )}
       {orden === 'grupos' && (
         <>
-          {GRUPOS.map((g) => seccion(g.nombre, resto.filter((it) => it.grupo === g.id)))}
-          {seccion('Sin grupo', resto.filter((it) => !grupoPorId(it.grupo)))}
+          {datos.grupos.map((g) => seccion(g.nombre, resto.filter((it) => it.grupo === g.id)))}
+          {seccion('Sin grupo', resto.filter((it) => !grupoPorId(datos.grupos, it.grupo)))}
         </>
       )}
 
@@ -1041,7 +1041,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
       {eligiendoGrupo && (
         <HojaOpciones
           titulo={`Grupo de ${eligiendoGrupo.nombre}`}
-          opciones={[...GRUPOS.map((g) => ({ id: g.id, etiqueta: g.nombre })), { id: '', etiqueta: 'Sin grupo' }]}
+          opciones={[...datos.grupos.map((g) => ({ id: g.id, etiqueta: g.nombre })), { id: '', etiqueta: 'Sin grupo' }]}
           actual={eligiendoGrupo.grupo ?? ''}
           onElegir={(id) => {
             const it = eligiendoGrupo

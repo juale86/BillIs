@@ -1552,13 +1552,6 @@ button.compra-cab {
 }
 
 /* Ajustes: grupos de la lista en orden. */
-.grupos-ajustes {
-  margin: 0;
-  padding-left: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
 /* X para cerrar un formulario sin guardar, arriba a la derecha del título. */
 .cerrar-x {

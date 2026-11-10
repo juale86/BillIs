@@ -264,8 +264,8 @@ export default function App() {
             {pestana === 'ajustes' && (
               <Ajustes
                 datos={datos}
-                onAviso={(texto) => {
-                  mostrarAviso({ texto })
+                onAviso={(texto, deshacer) => {
+                  mostrarAviso({ texto, deshacer })
                   necesitaRespaldo().then(setAvisoRespaldo)
                 }}
               />

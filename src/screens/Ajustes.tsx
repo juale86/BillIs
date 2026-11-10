@@ -1,15 +1,15 @@
 import { useRef, useState } from 'react'
-import { db, nuevoBase, setAjuste } from '../db/db'
+import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
 import type { Datos } from '../lib/datos'
-import { GRUPOS } from '../lib/grupos'
+import { CLAVE_GRUPOS, nuevoIdGrupo, type Grupo } from '../lib/grupos'
 import { exportarCSV, exportarJSON, importarJSON } from '../lib/respaldo'
 import { guardarTema, leerTema, type Tema } from '../lib/tema'
 
 type Tabla = 'metodosPago' | 'categorias'
 
-export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string) => void }) {
-  const { yo, metodos, categorias, multimoneda } = datos
+export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string, deshacer?: () => void) => void }) {
+  const { yo, metodos, categorias, multimoneda, grupos } = datos
   const refArchivo = useRef<HTMLInputElement>(null)
   const [tema, setTema] = useState<Tema>(leerTema)
 
@@ -17,12 +17,47 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string)
     const nombre = prompt('Nuevo nombre', item.nombre)?.trim()
     if (!nombre || nombre === item.nombre) return
     await db.table(tabla).update(item.id, { nombre, modificadoEn: Date.now() })
+    onAviso(`Renombraste "${item.nombre}" a "${nombre}"`, () =>
+      db.table(tabla).update(item.id, { nombre: item.nombre, modificadoEn: Date.now() }),
+    )
   }
 
+  /** Sin confirmar: el aviso ofrece Deshacer. Los movimientos que lo usan lo conservan. */
   async function borrar(tabla: Tabla, item: MetodoPago | Categoria) {
-    if (!confirm(`¿Borrar "${item.nombre}"? Los movimientos que lo usan lo conservan.`)) return
     const ahora = Date.now()
     await db.table(tabla).update(item.id, { borradoEn: ahora, modificadoEn: ahora })
+    onAviso(`Borraste "${item.nombre}"`, () =>
+      db.table(tabla).update(item.id, { borradoEn: null, modificadoEn: Date.now() }),
+    )
+  }
+
+  // Grupos de la lista: se guardan enteros en un ajuste de este teléfono.
+  const guardarGrupos = (gs: Grupo[]) => setAjuste(CLAVE_GRUPOS, gs)
+
+  async function renombrarGrupo(g: Grupo) {
+    const nombre = prompt('Nuevo nombre', g.nombre)?.trim()
+    if (!nombre || nombre === g.nombre) return
+    await guardarGrupos(grupos.map((x) => (x.id === g.id ? { ...x, nombre, corto: nombre } : x)))
+    onAviso(`Renombraste "${g.nombre}" a "${nombre}"`, () =>
+      guardarGrupos(grupos.map((x) => (x.id === g.id ? g : x))),
+    )
+  }
+
+  async function borrarGrupo(g: Grupo) {
+    const i = grupos.findIndex((x) => x.id === g.id)
+    await guardarGrupos(grupos.filter((x) => x.id !== g.id))
+    // Se repone en su lugar, sobre los grupos que haya en ese momento.
+    onAviso(`Borraste "${g.nombre}". Sus ítems quedan sin grupo`, async () => {
+      const ahora = await getAjuste<Grupo[] | null>(CLAVE_GRUPOS, null)
+      const resto = (ahora ?? []).filter((x) => x.id !== g.id)
+      await guardarGrupos([...resto.slice(0, i), g, ...resto.slice(i)])
+    })
+  }
+
+  async function agregarGrupo() {
+    const nombre = prompt('Nombre del grupo')?.trim()
+    if (!nombre) return
+    await guardarGrupos([...grupos, { id: nuevoIdGrupo(), nombre, corto: nombre }])
   }
 
   async function agregar(tabla: Tabla, tipo?: 'gasto' | 'ingreso') {
@@ -113,11 +148,22 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string)
       <div className="tarjeta">
         <h3>Grupos de la lista de compras</h3>
         <p className="nota">El orden "Por grupos" de la lista sigue este recorrido del súper.</p>
-        <ol className="grupos-ajustes">
-          {GRUPOS.map((g) => (
-            <li key={g.id}>{g.nombre}</li>
+        <ul className="lista">
+          {grupos.map((g) => (
+            <li key={g.id} className="item-ajuste">
+              <span>{g.nombre}</span>
+              <button className="enlace" onClick={() => renombrarGrupo(g)}>
+                Renombrar
+              </button>
+              <button className="enlace peligro" onClick={() => borrarGrupo(g)}>
+                Borrar
+              </button>
+            </li>
           ))}
-        </ol>
+        </ul>
+        <button className="enlace" onClick={agregarGrupo}>
+          + Agregar
+        </button>
       </div>
 
       <div className="tarjeta">
