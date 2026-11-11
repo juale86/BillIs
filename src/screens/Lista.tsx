@@ -1072,7 +1072,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                     </span>
                     <span className="mov-det">compró {it.compradoPor ?? '—'}</span>
                   </button>
-                  {cerrada && dueno && lapiz(it)}
+                  {/* El dueño corrige lo comprado: siempre lo de los demás, y lo suyo cuando la lista está cerrada. */}
+                  {dueno && (cerrada || it.compradoPorUid !== uid) && lapiz(it)}
                   {!cerrada && puede.comprar && (
                     <button
                       className="icono chico-icono"

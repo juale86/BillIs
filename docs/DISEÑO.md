@@ -123,7 +123,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 ## Apariencia
 
-Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo. Las barras del sistema (arriba y los botones de Android abajo) toman el color del fondo de la app (`theme-color`: #f5f6f4 en claro, #14161b en oscuro) y lo siguen si cambia el tema (desde 1.19).
+Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo. La barra de arriba toma el color del fondo de la app (`theme-color` en la página: #f5f6f4 en claro, #14161b en oscuro) y lo sigue si cambia el tema. La barra de botones de Android abajo, en cambio, usa el color fijo del manifest (no admite claro/oscuro): va #14161b, el fondo oscuro (desde 1.19.1).
 
 Ícono (desde 1.19): un ticket de papel sobre birome, con un renglón de gasto (rojo), uno de ingreso (verde) y el total; se dibuja en `public/logo.svg` y los PNG salen de `npx pwa-assets-generator`.
 
@@ -136,6 +136,7 @@ Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de t
 - Cambiar el orden de los grupos desde Ajustes. ¿Compartir los grupos con la lista en vez de por teléfono?
 - Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
 - Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.
+- El dueño de la lista corrige producto, marca y cantidad de lo que compraron los demás: en la lista con el lápiz de cada comprado, y en Movimientos tocando el renglón gris (hoja "Corregir lo que compró Ana"). El monto no, porque es el gasto de esa persona y vive en su teléfono; tampoco cambia el gasto guardado en el teléfono de quien lo compró (desde 1.19.1).
 - Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquiera con permiso de comprar).
 - ~~"Pagar" un ticket completo en cuotas~~: resuelto en 1.8.1 (cuotas dentro del método, se reparten por producto sin interés). Pendiente: interés al pagar un ticket en cuotas.
 - Qué pasa con tus gastos vinculados a una lista si te sacan de ella o se borra (hoy el gasto queda y el vínculo se ignora).

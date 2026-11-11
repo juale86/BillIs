@@ -4,6 +4,7 @@ import { useCompradosDeOtros, type ItemLista } from '../lib/listaCompras'
 export interface Otros {
   uid: string | null
   items: Record<string, ItemLista[]>
+  duenos: Record<string, string>
 }
 
 /**

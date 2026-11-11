@@ -38,6 +38,7 @@ interface Props {
 }
 
 const CompradosDeOtros = lazy(() => import('../components/CompradosDeOtros'))
+const CorregirAjeno = lazy(() => import('../components/CorregirAjeno'))
 
 /** Un renglón de una compra: un gasto tuyo o algo que compró otro miembro de la lista (solo para ver). */
 interface Renglon {
@@ -132,7 +133,14 @@ export function Movimientos(props: Props) {
       [...new Set(movimientos.filter((m) => claveMes(m.fecha) === mes && m.listaItem).map((m) => m.listaItem!.listaId))].sort(),
     [movimientos, mes],
   )
-  const [otros, setOtros] = useState<Otros>({ uid: null, items: {} })
+  const [otros, setOtros] = useState<Otros>({ uid: null, items: {}, duenos: {} })
+  // Ítem de otro que el dueño de la lista está corrigiendo.
+  const [corrigiendo, setCorrigiendo] = useState<{ listaId: string; item: ItemLista } | null>(null)
+  const listaDeItem = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const [listaId, its] of Object.entries(otros.items)) for (const it of its) m.set(it.id, listaId)
+    return m
+  }, [otros])
 
   /**
    * Lo que otros compraron, repartido entre tus compras por la lista: va a tu compra con esa lista.
@@ -338,17 +346,23 @@ export function Movimientos(props: Props) {
   }
 
   /** Lo que compró otro miembro: se ve y se busca, pero solo quien lo compró lo puede cambiar. */
-  const filaAjena = (it: ItemLista) => (
+  const filaAjena = (it: ItemLista) => {
+    const listaId = listaDeItem.get(it.id)
+    // El dueño de la lista puede corregir el nombre, la marca y la cantidad de lo que compraron los demás.
+    const corrige = !!listaId && !!otros.uid && otros.duenos[listaId] === otros.uid
+    const Fila = corrige ? 'button' : 'div'
+    return (
     <li key={`otro-${it.id}`}>
-      <div className="mov ajeno">
+      <Fila className="mov ajeno" {...(corrige ? { onClick: () => setCorrigiendo({ listaId: listaId!, item: it }), 'aria-label': `Corregir ${it.nombre}` } : {})}>
         <span className="mov-texto">
           <NombreItem nombre={it.nombre} marca={it.marca} cantidad={textoCantidad(it.cantidad)} />
           <span className="mov-det">compró {it.compradoPor ?? 'otro'}</span>
         </span>
         <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin monto'}</span>
-      </div>
+      </Fila>
     </li>
-  )
+    )
+  }
 
   const fila = (m: Movimiento) => (
     <li key={m.id}>
@@ -383,6 +397,11 @@ export function Movimientos(props: Props) {
       {firebaseConfig && listaIds.length > 0 && (
         <Suspense fallback={null}>
           <CompradosDeOtros listaIds={listaIds} onCambio={setOtros} />
+        </Suspense>
+      )}
+      {corrigiendo && (
+        <Suspense fallback={null}>
+          <CorregirAjeno listaId={corrigiendo.listaId} item={corrigiendo.item} onCerrar={() => setCorrigiendo(null)} />
         </Suspense>
       )}
       {panel}

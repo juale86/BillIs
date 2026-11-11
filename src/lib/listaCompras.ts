@@ -441,14 +441,26 @@ export function useItems(listaId: string | null): EstadoItems {
  * Lo que compraron otros miembros en estas listas, para mostrarlo junto a tus compras en Movimientos.
  * Vacío si no iniciaste sesión o no sos miembro. uid: tu usuario, para no repetir lo tuyo.
  */
-export function useCompradosDeOtros(listaIds: string[]): { uid: string | null; items: Record<string, ItemLista[]> } {
+export function useCompradosDeOtros(listaIds: string[]): {
+  uid: string | null
+  items: Record<string, ItemLista[]>
+  /** Dueño de cada lista: el dueño puede corregir lo que compraron los demás. */
+  duenos: Record<string, string>
+} {
   const { usuario } = useUsuario()
   const uid = usuario?.uid ?? null
   const [porLista, setPorLista] = useState<Record<string, ItemLista[]>>({})
+  const [duenos, setDuenos] = useState<Record<string, string>>({})
   const clave = listaIds.join(',')
   useEffect(() => {
     if (!uid || !clave) return
-    const offs = clave.split(',').map((id) =>
+    const ids = clave.split(',')
+    // El dueño no cambia: alcanza con leerlo una vez por lista.
+    for (const id of ids)
+      getDoc(refLista(id))
+        .then((d) => d.exists() && setDuenos((prev) => (prev[id] === d.data().duenoUid ? prev : { ...prev, [id]: d.data().duenoUid })))
+        .catch(() => {})
+    const offs = ids.map((id) =>
       onSnapshot(
         query(items(id), where('comprado', '==', true)),
         (s) =>
@@ -463,7 +475,7 @@ export function useCompradosDeOtros(listaIds: string[]): { uid: string | null; i
   }, [uid, clave])
   // El mismo objeto mientras no cambie nada: si fuera uno nuevo en cada render, quien lo pasa hacia arriba
   // en un efecto (CompradosDeOtros → Movimientos) dispararía otro render, y así sin fin.
-  return useMemo(() => ({ uid, items: porLista }), [uid, porLista])
+  return useMemo(() => ({ uid, items: porLista, duenos }), [uid, porLista, duenos])
 }
 
 /** Total pagado por moneda de los ítems comprados. */

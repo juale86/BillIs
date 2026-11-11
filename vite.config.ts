@@ -29,8 +29,10 @@ export default defineConfig({
         scope: './',
         display: 'standalone',
         orientation: 'portrait',
-        theme_color: '#f5f6f4',
-        background_color: '#f5f6f4',
+        // Android pinta la barra de botones de abajo con el color del manifest (no sigue al tema de la página):
+        // va el fondo oscuro de la app, que es el tema que se usa.
+        theme_color: '#14161b',
+        background_color: '#14161b',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
