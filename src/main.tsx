@@ -11,6 +11,8 @@ import { ErrorBoundary, vigilarConexionDB } from './components/ErrorBoundary'
 import { aplicarTema, leerTema } from './lib/tema'
 
 aplicarTema(leerTema())
+// En "Automático", si el teléfono pasa a claro u oscuro con la app abierta, las barras del sistema siguen al fondo.
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => aplicarTema(leerTema()))
 vigilarConexionDB()
 
 createRoot(document.getElementById('root')!).render(

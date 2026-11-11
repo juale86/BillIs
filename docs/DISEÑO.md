@@ -123,7 +123,9 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 ## Apariencia
 
-Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo.
+Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo. Las barras del sistema (arriba y los botones de Android abajo) toman el color del fondo de la app (`theme-color`: #f5f6f4 en claro, #14161b en oscuro) y lo siguen si cambia el tema (desde 1.19).
+
+Ícono (desde 1.19): un ticket de papel sobre birome, con un renglón de gasto (rojo), uno de ingreso (verde) y el total; se dibuja en `public/logo.svg` y los PNG salen de `npx pwa-assets-generator`.
 
 ## Fuera de v1 (el modelo lo admite)
 

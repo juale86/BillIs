@@ -1,44 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Fondo: cielo birome -->
+  <!-- BillIs: un ticket de papel sobre birome, con un gasto (rojo), un ingreso (verde) y el total. -->
   <rect width="512" height="512" fill="#2a46b8"/>
-  <!-- Estelas de vuelo -->
-  <g stroke="#8ea3ff" stroke-width="10" stroke-linecap="round" fill="none" opacity="0.8">
-    <path d="M70 380h70"/>
-    <path d="M50 412h110"/>
-    <path d="M96 444h60"/>
-  </g>
-  <g transform="rotate(-12 256 256)">
-    <!-- Ala izquierda: plumas redondeadas -->
-    <g id="ala" fill="#ffffff" stroke="#1d2433" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
-      <path d="M184 216 C150 150 96 116 34 124 Q34 158 66 166 Q60 194 98 198 Q98 226 136 226 Q146 244 184 242 Z"/>
-      <path d="M70 166 Q110 172 150 196 M100 198 Q130 202 160 220" fill="none" stroke-width="5"/>
-    </g>
-    <!-- Ala derecha (espejo) -->
-    <use href="#ala" transform="translate(512 0) scale(-1 1)"/>
-    <!-- Billete -->
-    <rect x="128" y="190" width="256" height="136" rx="6" fill="#c9b3e6" stroke="#1d2433" stroke-width="8"/>
-    <rect x="144" y="204" width="224" height="108" fill="none" stroke="#6a3d9a" stroke-width="4"/>
-    <!-- Medallón con carita -->
-    <ellipse cx="206" cy="258" rx="40" ry="44" fill="#ede4f7" stroke="#6a3d9a" stroke-width="5"/>
-    <circle cx="192" cy="250" r="6" fill="#1d2433"/>
-    <circle cx="220" cy="250" r="6" fill="#1d2433"/>
-    <path d="M190 270 Q206 284 222 270" fill="none" stroke="#1d2433" stroke-width="5" stroke-linecap="round"/>
-    <!-- 100 -->
-    <g fill="none" stroke="#4b2a74" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M266 238 L280 226 V292"/>
-      <ellipse cx="314" cy="259" rx="15" ry="31"/>
-      <ellipse cx="350" cy="259" rx="15" ry="31"/>
-    </g>
-    <!-- Brazo saludando -->
-    <path d="M380 296 C410 300 428 296 438 280" fill="none" stroke="#1d2433" stroke-width="10" stroke-linecap="round"/>
-    <g fill="#ffffff" stroke="#1d2433" stroke-width="7" stroke-linejoin="round">
-      <rect x="420" y="232" width="38" height="50" rx="17"/>
-      <path d="M422 262 C408 256 406 242 414 238 C420 236 424 242 426 250"/>
-    </g>
-    <!-- Movimiento de la mano -->
-    <g fill="none" stroke="#ffffff" stroke-width="7" stroke-linecap="round">
-      <path d="M472 236 Q482 256 472 276"/>
-      <path d="M488 224 Q504 256 488 288"/>
-    </g>
+  <g transform="translate(256 256) scale(1.08) translate(-256 -253)">
+  <!-- Sombra del ticket -->
+  <path d="M164 118h204v262l-25.5 18-25.5-18-25.5 18-25.5-18-25.5 18-25.5-18-25.5 18-25.5-18z" fill="#1d2433" opacity="0.35" transform="translate(12 12)"/>
+  <!-- Ticket con borde de corte en zigzag -->
+  <path d="M152 106h208v266l-26 18-26-18-26 18-26-18-26 18-26-18-26 18-26-18z" fill="#f5f6f4"/>
+  <!-- Encabezado -->
+  <rect x="184" y="144" width="96" height="18" rx="9" fill="#1d2433"/>
+  <!-- Gasto -->
+  <rect x="184" y="196" width="72" height="14" rx="7" fill="#d5d9de"/>
+  <rect x="276" y="192" width="52" height="22" rx="11" fill="#c0262d"/>
+  <!-- Ingreso -->
+  <rect x="184" y="238" width="56" height="14" rx="7" fill="#d5d9de"/>
+  <rect x="276" y="234" width="52" height="22" rx="11" fill="#1d7a46"/>
+  <!-- Total -->
+  <rect x="184" y="290" width="144" height="6" rx="3" fill="#2a46b8"/>
+  <rect x="244" y="314" width="84" height="26" rx="13" fill="#1d2433"/>
   </g>
 </svg>
