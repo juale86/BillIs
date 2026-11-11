@@ -69,6 +69,8 @@ export function FormMovimiento({
   onSinGasto,
 }: Props) {
   const { movimientos, metodos, categorias, yo, multimoneda } = datos
+  // Para adivinar la categoría por el nombre, como el grupo en la lista.
+  const dicc = { categorias, grupos: datos.grupos, aprendidos: datos.gruposAprendidos }
   const nombreYo = yo?.nombre ?? 'Yo'
   // Compra en curso: se mantiene entre guardados hasta "Pagar" (o 2 h sin actividad).
   const [sesion, setSesion] = useState(sesionActual)
@@ -108,7 +110,7 @@ export function FormMovimiento({
   const [categoriaId, setCategoriaId] = useState<Id | ''>(
     () =>
       editando?.categoriaId ??
-      (prefill ? sugerirCategoria(movimientos, 'gasto', prefill.descripcion, sesion.lugar) : undefined) ??
+      (prefill ? sugerirCategoria(movimientos, 'gasto', prefill.descripcion, sesion.lugar, dicc) : undefined) ??
       '',
   )
   const [categoriaManual, setCategoriaManual] = useState(!!editando?.categoriaId)
@@ -172,10 +174,15 @@ export function FormMovimiento({
   const sugLugares = useMemo(() => sugerirLugares(movimientos, tipo), [movimientos, tipo])
   const sugMarcas = useMemo(() => (esGasto ? sugerirMarcas(movimientos, descripcion) : []), [esGasto, movimientos, descripcion])
   const cats = categorias.filter((c) => c.tipo === tipo)
+  // Dentro del campo Marca: las que coinciden con lo escrito (hasta 3); al elegir una, las otras se van.
+  const chipsMarca = useMemo(() => {
+    const q = normalizar(marca)
+    return sugMarcas.filter((m) => normalizar(m) !== q && normalizar(m).includes(q)).slice(0, 3)
+  }, [sugMarcas, marca])
 
   function autocompletar(desc: string, mar: string, lug: string, enfocarPrecio: boolean) {
     if (!categoriaManual) {
-      const c = sugerirCategoria(movimientos, tipo, desc, lug)
+      const c = sugerirCategoria(movimientos, tipo, desc, lug, dicc)
       if (c) setCategoriaId(c)
     }
     if (!esGasto || precioTocado) return
@@ -388,8 +395,14 @@ export function FormMovimiento({
               autoComplete="off"
               enterKeyHint="next"
               onChange={(e) => {
-                setDescripcion(e.target.value)
+                const d = e.target.value
+                setDescripcion(d)
                 setVerSugDesc(true)
+                // La categoría se va completando mientras se escribe, hasta que la elijas a mano.
+                if (!categoriaManual) {
+                  const c = d.trim() ? sugerirCategoria(movimientos, tipo, d, lugar, dicc) : undefined
+                  if (c || !d.trim()) setCategoriaId(c ?? '')
+                }
               }}
               onKeyDown={(e) => {
                 // "Siguiente" del teclado: salta al precio en vez de intentar guardar.
@@ -420,22 +433,29 @@ export function FormMovimiento({
           </label>
           {esGasto && (
             <>
-              <label className="campo crece">
+              {/* Las marcas ya compradas aparecen dentro del campo: un toque elige; si no está, se escribe al lado. */}
+              <label className={'campo crece campo-marca' + (chipsMarca.length ? ' con-chips' : '')}>
+                {chipsMarca.map((m) => (
+                  <button
+                    type="button"
+                    key={m}
+                    className="chip"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setMarca(m)
+                      autocompletar(descripcion, m, lugar, true)
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
                 <input
                   value={marca}
-                  placeholder="Marca"
+                  placeholder={chipsMarca.length ? 'Otra' : 'Marca'}
                   aria-label="Marca"
                   autoComplete="off"
                   onChange={(e) => setMarca(e.target.value)}
                   onBlur={() => autocompletar(descripcion, marca, lugar, false)}
-                />
-                <Chips
-                  opciones={sugMarcas}
-                  activo={marca}
-                  onElegir={(m) => {
-                    setMarca(m)
-                    autocompletar(descripcion, m, lugar, true)
-                  }}
                 />
               </label>
               <label className="campo cant">

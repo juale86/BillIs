@@ -240,10 +240,11 @@ export function Movimientos(props: Props) {
                 {!abierto && `, ${pago}`}
               </small>
             </span>
-            <span className="compra-cab-der">
-              {!abierto && <strong>{conOtros ? real : total}</strong>}
-              <span aria-hidden="true">{abierto ? '▾' : '▸'}</span>
-            </span>
+            {!abierto && (
+              <span className="compra-cab-der">
+                <strong>{conOtros ? real : total}</strong>
+              </span>
+            )}
           </button>
           {conAcciones && (
             <span className="compra-acciones">
@@ -260,6 +261,17 @@ export function Movimientos(props: Props) {
               />
             </span>
           )}
+          {/* Siempre a la derecha: lupa y orden aparecen a su izquierda al desplegar. */}
+          <button
+            className="icono borde chico compra-plegar"
+            aria-expanded={abierto}
+            aria-label={abierto ? `Plegar ${titulo}` : `Desplegar ${titulo}`}
+            onClick={() => alternar(clave)}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
         {conAcciones && lupa !== undefined && (
           <input
@@ -317,8 +329,6 @@ export function Movimientos(props: Props) {
     const partes: string[] = []
     if (m.promo) partes.push(describirPromo(m.promo))
     if (m.cuotas) partes.push(`${m.cuotas.cantidad} cuotas`)
-    const cat = categorias.find((c) => c.id === m.categoriaId)
-    if (cat) partes.push(cat.nombre)
     if (m.tipo === 'gasto' && m.pagadorId && m.pagadorId !== yo?.id) partes.push(`pagó ${nombre(m.pagadorId)}`)
     if (m.tipo === 'pagoDeuda')
       partes.push(m.pagadorId === yo?.id ? `a ${nombre(m.contraparteId)}` : `de ${nombre(m.pagadorId)}`)

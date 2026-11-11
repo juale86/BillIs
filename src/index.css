@@ -1809,3 +1809,73 @@ button.compra-cab {
 .cerradas li:last-child .menu-item {
   border-bottom: 0;
 }
+
+/* Botón de plegar/desplegar cada compra: siempre a la derecha, la flecha gira. */
+.compra-plegar {
+  flex: none;
+  margin: 3px 0;
+}
+.compra-plegar svg {
+  transition: transform 0.15s ease-out;
+}
+.compra-plegar[aria-expanded='false'] svg {
+  transform: rotate(-90deg);
+}
+.compra.plegada .compra-plegar {
+  margin: 4px 0;
+}
+.icono.borde.chico.compra-plegar {
+  width: 38px;
+  min-width: 38px;
+  height: 34px;
+  min-height: 34px;
+}
+.icono.borde.chico.compra-plegar svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Campo Marca con las marcas ya compradas adentro, como chips tocables. */
+.campo-marca.con-chips {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  height: var(--alto);
+  padding: 0 4px;
+  background: var(--hoja);
+  border: 1px solid var(--renglon);
+}
+.campo-marca.con-chips:focus-within {
+  border-color: var(--birome);
+  box-shadow: inset 0 -2px 0 var(--birome);
+}
+.campo-marca.con-chips .chip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 34%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 6px;
+  color: var(--birome);
+  border-color: var(--birome);
+  background: var(--birome-suave);
+}
+.campo-marca.con-chips input {
+  flex: 1;
+  min-width: 36px;
+  height: 100%;
+  border: 0;
+  padding: 0 4px;
+  background: none;
+}
+.campo-marca.con-chips input:focus {
+  box-shadow: none;
+}
+/* Con marcas sugeridas el producto ocupa su renglón y Marca (con sus chips) y Cant bajan al siguiente. */
+.fila:has(> .con-chips) {
+  flex-wrap: wrap;
+}
+.fila:has(> .con-chips) > .campo:first-child {
+  flex-basis: 100%;
+}

@@ -1,5 +1,6 @@
 import { normalizar } from '../db/db'
-import type { Id, Movimiento } from '../db/types'
+import type { Categoria, Id, Movimiento } from '../db/types'
+import { sugerirGrupo, type Grupo } from './grupos'
 
 /** Valores más frecuentes (y recientes, como desempate) de un campo de texto. */
 function ranking(movs: Movimiento[], campo: (m: Movimiento) => string | undefined, limite: number): string[] {
@@ -81,12 +82,40 @@ export function sugerirCategoria(
   tipo: 'gasto' | 'ingreso',
   descripcion: string,
   lugar: string,
+  diccionario?: { categorias: Categoria[]; grupos: Grupo[]; aprendidos: Record<string, string> },
 ): Id | undefined {
   const delTipo = movs.filter((m) => m.tipo === tipo && m.categoriaId).sort((a, b) => b.fecha - a.fecha)
   const d = normalizar(descripcion)
+  // 1. El mismo producto ya cargado antes.
   const porDesc = d && delTipo.find((m) => m.descripcionNorm === d)
   if (porDesc) return porDesc.categoriaId
+  // 2. Mientras se escribe: un producto que empieza igual ("lech" → Leche entera).
+  const parecido = d.length >= 3 && delTipo.find((m) => m.descripcionNorm.startsWith(d))
+  if (parecido) return parecido.categoriaId
+  // 3. Lo que se suele comprar en ese lugar.
   const lu = normalizar(lugar)
   const porLugar = lu && delTipo.find((m) => normalizar(m.lugar ?? '') === lu)
-  return porLugar ? porLugar.categoriaId : undefined
+  if (porLugar) return porLugar.categoriaId
+  // 4. Como en la lista: el grupo que se adivina por el nombre, llevado a una categoría que exista.
+  if (tipo !== 'gasto' || !diccionario || d.length < 3) return undefined
+  const g = sugerirGrupo(descripcion, '', diccionario.aprendidos, [], diccionario.grupos)
+  const nombres = (g && CATEGORIA_DE_GRUPO[g]) || []
+  for (const n of nombres) {
+    const c = diccionario.categorias.find((c) => c.tipo === 'gasto' && !c.borradoEn && normalizar(c.nombre) === normalizar(n))
+    if (c) return c.id
+  }
+  return undefined
+}
+
+/** Categorías (por nombre, en orden de preferencia) que corresponden a cada grupo de la lista. */
+const CATEGORIA_DE_GRUPO: Record<string, string[]> = {
+  almacen: ['Súper', 'Supermercado', 'Almacén'],
+  bebidas: ['Súper', 'Supermercado', 'Bebidas'],
+  frescos: ['Súper', 'Supermercado'],
+  carniceria: ['Carnicería', 'Súper', 'Supermercado'],
+  verduleria: ['Verdulería', 'Súper', 'Supermercado'],
+  congelados: ['Súper', 'Supermercado'],
+  limpieza: ['Limpieza', 'Súper', 'Supermercado'],
+  mascotas: ['Mascotas', 'Súper', 'Supermercado'],
+  herramientas: ['Ferretería', 'Hogar'],
 }
