@@ -1711,7 +1711,13 @@ button.compra-cab {
   font-weight: 600;
 }
 
-/* ---------- Calculadora (hoja desde abajo, sin historial) ---------- */
+/* ---------- Calculadora (hoja apoyada sobre las pestañas, sin historial) ---------- */
+.calc-fondo {
+  bottom: calc(var(--alto-tabs) + env(safe-area-inset-bottom));
+}
+.calc-fondo .hoja {
+  padding-bottom: 8px;
+}
 .calculadora {
   max-width: 420px;
   gap: 8px;
@@ -1730,7 +1736,7 @@ button.compra-cab {
 }
 .calc-previa {
   font-family: var(--f-cifra);
-  font-size: var(--t-l);
+  font-size: var(--t-xl);
   color: var(--lapiz);
   min-height: 1.4em;
 }

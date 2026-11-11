@@ -1,19 +1,24 @@
 import { useEffect, useRef, useState } from 'react'
 import { evaluar, mostrar, teclear } from '../lib/calculadora'
-import { BotonCerrar } from './BotonCerrar'
 
-const TECLAS = ['C', '⌫', '(', ')', '7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '%', '0', '.', '+', '=']
+const TECLAS = ['(', ')', 'C', '⌫', '7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '%', '0', '.', '+', '=']
 
 // Teclado físico → tecla de la calculadora.
 const DEL_TECLADO: Record<string, string> = {
   '*': '×', x: '×', '/': '÷', '-': '−', ',': '.', Enter: '=', Backspace: '⌫', Delete: 'C', c: 'C', C: 'C',
 }
 
-/** Calculadora simple, sin historial: lo escrito se pierde al cerrarla. */
+// Lo último escrito sobrevive a cerrar y abrir mientras la app está abierta (no se guarda).
+let recordado = { expr: '', hecho: false }
+
+/** Calculadora simple, sin historial: recuerda solo la última cuenta. */
 export function Calculadora({ onCerrar }: { onCerrar: () => void }) {
-  const [expr, setExpr] = useState('')
+  const [expr, setExpr] = useState(recordado.expr)
   // Después de "=" el resultado queda escrito; un número empieza de cero, un operador sigue la cuenta.
-  const [hecho, setHecho] = useState(false)
+  const [hecho, setHecho] = useState(recordado.hecho)
+  useEffect(() => {
+    recordado = { expr, hecho }
+  }, [expr, hecho])
   const [error, setError] = useState(false)
 
   const pulsar = (t: string) => {
@@ -52,12 +57,8 @@ export function Calculadora({ onCerrar }: { onCerrar: () => void }) {
   const mostrarPrevia = previa !== null && /[+−×÷%(]/.test(expr.replace(/^−/, ''))
 
   return (
-    <div className="hoja-fondo" onClick={onCerrar}>
+    <div className="hoja-fondo calc-fondo" onClick={onCerrar}>
       <div className="hoja calculadora" role="dialog" aria-label="Calculadora" onClick={(e) => e.stopPropagation()}>
-        <div className="hoja-cab">
-          <h3>Calculadora</h3>
-          <BotonCerrar onClick={onCerrar} />
-        </div>
         <div className="calc-pantalla" aria-live="polite">
           <div className="calc-expr">{expr || '0'}</div>
           <div className="calc-previa">{error ? 'No se puede calcular' : mostrarPrevia ? '= ' + mostrar(previa) : ' '}</div>

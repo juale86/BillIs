@@ -304,13 +304,22 @@ export default function App() {
             </div>
           )}
 
-          <nav className="tabs">
+          <nav
+            className="tabs"
+            // Tocar otra pestaña cierra la calculadora (su propio botón la alterna).
+            onClickCapture={(e) => !(e.target as Element).closest('.boton-calc') && setCalculadora(false)}
+          >
             {(['movimientos', 'resumen', 'lista'] as Pestana[]).map((p) => (
               <button key={p} aria-current={pestana === p} onClick={() => setPestana(p)}>
                 {TITULOS[p]}
               </button>
             ))}
-            <button className="ajustes" aria-label="Calculadora" onClick={() => setCalculadora(true)}>
+            <button
+              className="ajustes boton-calc"
+              aria-label="Calculadora"
+              aria-current={calculadora}
+              onClick={() => setCalculadora((c) => !c)}
+            >
               <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true">
                 <rect x="2" y="1.5" width="16" height="19" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
                 <rect x="5" y="4.5" width="10" height="4" fill="currentColor" />

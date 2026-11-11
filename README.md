@@ -57,7 +57,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos), y muestra también lo que otros compraron de la misma lista compartida, con el total real y "Solo lo tuyo".
 - **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles.
-- **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, punto, C y borrar uno. Muestra el resultado mientras escribís; sin historial.
+- **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, punto, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial.
 
 ### Datos y apariencia
 - **Respaldo** completo en JSON (exportar e importar), exportación a **CSV** compatible con Excel y aviso si pasó más de una semana sin respaldo.

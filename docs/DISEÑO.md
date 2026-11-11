@@ -50,7 +50,7 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 2. **Resumen del mes**: ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
 4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista, respaldo. Métodos, categorías y grupos se renombran, borran y agregan; renombrar y borrar muestran un aviso con **Deshacer** (borrar ya no pide confirmación) (desde 1.14).
-5. **Calculadora**: botón al lado del engranaje, abre una hoja desde abajo con + − × ÷ %, ( ), punto, C, ⌫ e =. Se evalúa con un parser propio (sin `eval`); los paréntesis sin cerrar se cierran solos y `200 + 10%` da 220. Debajo de la cuenta se ve el resultado parcial. Sin historial: al cerrarla se pierde lo escrito. Funciona también con el teclado físico (desde 1.17).
+5. **Calculadora**: botón al lado del engranaje (lo vuelve a tocar o tocar afuera la cierra), abre una hoja apoyada sobre las pestañas, sin título ni ✕, con + − × ÷ %, ( ), punto, C, ⌫ e =. Se evalúa con un parser propio (sin `eval`); los paréntesis sin cerrar se cierran solos y `200 + 10%` da 220. Debajo de la cuenta se ve el resultado parcial. Sin historial: recuerda solo la última cuenta mientras la app está abierta (desde 1.17.1). Funciona también con el teclado físico (desde 1.17).
 
 ## Respaldo
 
