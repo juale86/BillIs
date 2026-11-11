@@ -201,8 +201,8 @@ export function Movimientos(props: Props) {
     const real = new Map(total)
     for (const it of ajenos)
       if (it.montoCent !== null) real.set(it.moneda ?? 'ARS', (real.get(it.moneda ?? 'ARS') ?? 0) + it.montoCent)
-    const quienes = [...new Set(ajenos.map((it) => it.compradoPor ?? 'otro'))]
-    const conOtros = quienes.length ? `Con lo de ${quienes.join(' y ')}` : null
+    // Con lo de otros miembros, el pie dice "Total" (el real) y aparte "Solo lo tuyo", sin nombres.
+    const conOtros = ajenos.length > 0 ? 'Total' : null
     const p = g[0]
     const pago = enCurso
       ? 'En curso: tocá para pagar'

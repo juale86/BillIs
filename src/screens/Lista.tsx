@@ -874,10 +874,17 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                 placeholder="Agregar a la lista"
                 aria-label={editando ? `Producto (corrigiendo ${editando.nombre})` : 'Agregar a la lista'}
                 autoComplete="off"
-                enterKeyHint="done"
+                enterKeyHint="next"
                 onChange={(e) => {
                   setNuevo(e.target.value)
                   setVerSug(true)
+                }}
+                onKeyDown={(e) => {
+                  // "Siguiente" del teclado: pasa a la cantidad (y de ahí a la marca) en vez de agregar.
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  setVerSug(false)
+                  if (nuevo.trim()) refDetalle.current?.querySelector<HTMLInputElement>('input[aria-label="Cantidad"]')?.focus()
                 }}
                 onFocus={() => {
                   setModo('agregar')
@@ -939,10 +946,21 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           <div className="agregar-detalle" ref={refDetalle} onBlur={quizasCerrarAgregar}>
             <div className="fila">
               <label className="campo chico">
-                <input value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="Cant" aria-label="Cantidad" />
+                <input
+                  value={cantidad}
+                  onChange={(e) => setCantidad(e.target.value)}
+                  placeholder="Cant"
+                  aria-label="Cantidad"
+                  enterKeyHint="next"
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter') return
+                    e.preventDefault()
+                    refDetalle.current?.querySelector<HTMLInputElement>('input[aria-label="Marca"]')?.focus()
+                  }}
+                />
               </label>
               <label className="campo crece">
-                <input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Marca" aria-label="Marca" />
+                <input value={marca} onChange={(e) => setMarca(e.target.value)} placeholder="Marca" aria-label="Marca" enterKeyHint="done" />
               </label>
               <label className="campo grupo-campo">
                 <select
@@ -1007,7 +1025,6 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             : personas.map(([u, n]) => ({ etiqueta: `Agregado por ${n}`, onElegir: () => setFiltros({ ...filtros, persona: u }) }))
         }
         activos={filtrosActivos}
-        resumen={`${pendientes.length} de ${todosPendientes.length} pendientes`}
         onLimpiar={() => setFiltros({ texto: '', persona: null })}
       />
 
@@ -1015,7 +1032,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
       {cargando && !error && <p className="vacio">Cargando…</p>}
       {!cargando && items.length === 0 && !cerrada && <p className="vacio">La lista está vacía. Anotá lo que falta.</p>}
       {!cargando && buscando && hayFiltrosLista(filtros) && todosPendientes.length > 0 && pendientes.length === 0 && (
-        <p className="vacio">Nada pendiente coincide con la búsqueda.</p>
+        <p className="vacio">No hay coincidencias en la lista</p>
       )}
 
       {orden === 'manual' && enManual.length > 0 && <ul className="lista">{enManual.map((it, i) => filaPendiente(it, i))}</ul>}
