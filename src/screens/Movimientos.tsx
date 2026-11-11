@@ -51,7 +51,9 @@ interface Renglon {
 
 const fmtDia = (t: number) =>
   new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
-const fmtHora = (t: number) => new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })
+// "03:18 a. m." → "03:18 am" (algunos teléfonos escriben a. m. / p. m.).
+const fmtHora = (t: number) =>
+  new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }).replace(/\s*([ap])\.\s*m\./i, ' $1m')
 
 export function Movimientos(props: Props) {
   const { datos, mes, setMes, onEditar, onBorrar, onPagar, compraEnCurso, buscando, acciones, panel, filtros, setFiltros } = props

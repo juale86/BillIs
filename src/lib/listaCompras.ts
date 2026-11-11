@@ -32,7 +32,7 @@ import {
   writeBatch,
   type Firestore,
 } from 'firebase/firestore'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { normalizar } from '../db/db'
 import type { Moneda } from '../db/types'
 import { firebaseConfig } from './firebase-config'
@@ -461,7 +461,9 @@ export function useCompradosDeOtros(listaIds: string[]): { uid: string | null; i
     )
     return () => offs.forEach((off) => off())
   }, [uid, clave])
-  return { uid, items: porLista }
+  // El mismo objeto mientras no cambie nada: si fuera uno nuevo en cada render, quien lo pasa hacia arriba
+  // en un efecto (CompradosDeOtros → Movimientos) dispararía otro render, y así sin fin.
+  return useMemo(() => ({ uid, items: porLista }), [uid, porLista])
 }
 
 /** Total pagado por moneda de los ítems comprados. */
