@@ -125,7 +125,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo. La barra de arriba toma el color del fondo de la app (`theme-color` en la página: #f5f6f4 en claro, #14161b en oscuro) y lo sigue si cambia el tema. La barra de botones de Android abajo, en cambio, usa el color fijo del manifest (no admite claro/oscuro): va #14161b, el fondo oscuro (desde 1.19.1).
 
-Ícono (desde 1.19): un ticket de papel sobre birome, con un renglón de gasto (rojo), uno de ingreso (verde) y el total; se dibuja en `public/logo.svg` y los PNG salen de `npx pwa-assets-generator`.
+Ícono (desde 1.19.2): un billete verde con alas que se va volando, mira hacia atrás guiñando un ojo y saluda con la manito; las estelas azules quedan del lado al que saluda. Fondo oscuro del tema (#14161b), solo el dibujo, sin texto; se dibuja en `public/logo.svg` y los PNG salen de `npx pwa-assets-generator`.
 
 ## Fuera de v1 (el modelo lo admite)
 

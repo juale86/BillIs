@@ -1,21 +1,67 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- BillIs: un ticket de papel sobre birome, con un gasto (rojo), un ingreso (verde) y el total. -->
-  <rect width="512" height="512" fill="#2a46b8"/>
-  <g transform="translate(256 256) scale(1.08) translate(-256 -253)">
-  <!-- Sombra del ticket -->
-  <path d="M164 118h204v262l-25.5 18-25.5-18-25.5 18-25.5-18-25.5 18-25.5-18-25.5 18-25.5-18z" fill="#1d2433" opacity="0.35" transform="translate(12 12)"/>
-  <!-- Ticket con borde de corte en zigzag -->
-  <path d="M152 106h208v266l-26 18-26-18-26 18-26-18-26 18-26-18-26 18-26-18z" fill="#f5f6f4"/>
-  <!-- Encabezado -->
-  <rect x="184" y="144" width="96" height="18" rx="9" fill="#1d2433"/>
-  <!-- Gasto -->
-  <rect x="184" y="196" width="72" height="14" rx="7" fill="#d5d9de"/>
-  <rect x="276" y="192" width="52" height="22" rx="11" fill="#c0262d"/>
-  <!-- Ingreso -->
-  <rect x="184" y="238" width="56" height="14" rx="7" fill="#d5d9de"/>
-  <rect x="276" y="234" width="52" height="22" rx="11" fill="#1d7a46"/>
-  <!-- Total -->
-  <rect x="184" y="290" width="144" height="6" rx="3" fill="#2a46b8"/>
-  <rect x="244" y="314" width="84" height="26" rx="13" fill="#1d2433"/>
+  <!-- BillIs: un billete con alas que se va volando; mira hacia atrás, de donde se va, y saluda con la manito guiñando. -->
+  <rect width="512" height="512" fill="#14161b"/>
+  <!-- Todo un poco más chico y centrado: entra en el recorte circular de Android -->
+  <g transform="translate(262 268) scale(0.8) translate(-268 -262)">
+  <!-- Estelas: del lado al que saluda, porque se va de ahí (fuera del espejado, quedan a la izquierda) -->
+  <g stroke="#8ea3ff" stroke-width="14" stroke-linecap="round" fill="none">
+    <path d="M92 352h56" opacity="0.9"/>
+    <path d="M70 384h92" opacity="0.6"/>
+    <path d="M108 416h44" opacity="0.35"/>
+  </g>
+
+  <!-- Espejado: inclinado para el otro lado, la mano queda a la izquierda -->
+  <g transform="translate(536 0) scale(-1 1)">
+
+
+  <g transform="rotate(-10 268 262)">
+    <!-- Alas: plumas redondeadas, planas -->
+    <g fill="#f5f6f4">
+      <path id="ala" d="M196 222 C176 168 132 132 76 128 C68 140 72 154 86 160 C74 170 78 186 94 190 C84 202 92 218 110 220 C108 236 124 246 142 242 C156 254 182 252 196 240 Z"/>
+      <use href="#ala" transform="translate(536 0) scale(-1 1)"/>
+    </g>
+    <g fill="none" stroke="#c9cfdb" stroke-width="6" stroke-linecap="round">
+      <path d="M96 162 Q140 172 178 200"/>
+      <path d="M106 192 Q144 200 182 220"/>
+      <path d="M440 162 Q396 172 358 200"/>
+      <path d="M430 192 Q392 200 354 220"/>
+    </g>
+
+    <!-- Brazo y manito abierta saludando, a la derecha -->
+    <path d="M368 292 C394 300 414 298 428 284" fill="none" stroke="#5fd39a" stroke-width="13" stroke-linecap="round"/>
+    <g stroke="#5fd39a" stroke-linecap="round" fill="#5fd39a">
+      <circle cx="438" cy="270" r="20" stroke="none"/>
+      <path d="M424 262 L414 234" stroke-width="12"/>
+      <path d="M434 256 L431 226" stroke-width="12"/>
+      <path d="M444 256 L449 227" stroke-width="12"/>
+      <path d="M453 264 L465 240" stroke-width="12"/>
+      <path d="M422 280 L402 268" stroke-width="12"/>
+    </g>
+    <!-- Movimiento del saludo -->
+    <g fill="none" stroke="#f5f6f4" stroke-width="7" stroke-linecap="round">
+      <path d="M482 240 Q494 262 482 284"/>
+      <path d="M500 226 Q518 262 500 298"/>
+    </g>
+
+    <!-- Billete -->
+    <rect x="160" y="196" width="216" height="128" rx="18" fill="#5fd39a"/>
+    <rect x="174" y="210" width="188" height="100" rx="10" fill="none" stroke="#1d7a46" stroke-width="5"/>
+    <g fill="#1d7a46">
+      <circle cx="194" cy="230" r="7"/>
+      <circle cx="342" cy="290" r="7"/>
+    </g>
+
+    <!-- Carita: mira hacia donde saluda y te guiña un ojo -->
+    <ellipse cx="244" cy="252" rx="15" ry="18" fill="#f5f6f4"/>
+    <circle cx="251" cy="256" r="9" fill="#14161b"/>
+    <circle cx="254" cy="252" r="3" fill="#ffffff"/>
+    <path d="M280 254 Q292 242 304 254" fill="none" stroke="#14161b" stroke-width="7" stroke-linecap="round"/>
+    <ellipse cx="222" cy="282" rx="11" ry="7" fill="#ff7a74" opacity="0.75"/>
+    <ellipse cx="312" cy="280" rx="11" ry="7" fill="#ff7a74" opacity="0.75"/>
+    <!-- Sonrisa abierta -->
+    <path d="M250 274 Q268 300 288 274 Z" fill="#14161b" stroke="#14161b" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M258 284 Q268 292 280 284" fill="none" stroke="#ff7a74" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  </g>
   </g>
 </svg>
