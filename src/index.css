@@ -1365,6 +1365,22 @@ main {
   color: var(--gasto);
   font-weight: 600;
 }
+.compra-pie-fila.solo-tuyo > span {
+  font-weight: 400;
+  font-size: var(--t-s);
+  color: var(--lapiz);
+}
+/* Lo que compró otro miembro de la lista: se ve, pero no se toca. */
+.mov.ajeno {
+  cursor: default;
+}
+.mov.ajeno:active {
+  background: none;
+}
+.mov.ajeno .mov-desc,
+.mov.ajeno .mov-monto {
+  color: var(--lapiz);
+}
 .compra .lista li:last-child .mov {
   border-bottom: 0;
 }
@@ -1671,4 +1687,26 @@ button.compra-cab {
   height: var(--alto-tabs);
   padding-top: 0;
   padding-bottom: 0;
+}
+
+/* Miembros de la lista: nombre y, para el dueño, los permisos que se dan con un toque. */
+.lista .miembro + .miembro {
+  border-top: 1px solid var(--renglon);
+}
+.lista .miembro .item-ajuste {
+  border-top: 0;
+}
+.permisos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 0 8px;
+}
+.permisos-texto {
+  color: var(--lapiz);
+}
+.permisos .chip[aria-pressed='true'] {
+  border-color: var(--birome);
+  color: var(--birome);
+  font-weight: 600;
 }

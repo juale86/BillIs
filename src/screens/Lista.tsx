@@ -9,6 +9,10 @@ import type { Datos } from '../lib/datos'
 import {
   agregarItem,
   cambiarGrupo,
+  cambiarPermiso,
+  ETIQUETAS_PERMISO,
+  permisosDe,
+  type Permisos,
   editarItem,
   aprobar,
   borrarItem,
@@ -68,6 +72,7 @@ export interface Props {
   onAviso: (t: string, deshacer?: () => void) => void
 }
 
+const inicioDeHoy = () => new Date(new Date().toDateString()).getTime()
 const fmtFecha = (t: number) => new Date(t).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })
 const fmtTotales = (t: [Moneda, number][]) => (t.length ? t.map(([m, c]) => fmt(c, m)).join(' + ') : fmt(0))
 
@@ -407,7 +412,10 @@ function MenuListas(
                 {pedidos.map(([u, nombre]) => (
                   <li key={u} className="item-ajuste">
                     <span>{nombre}</span>
-                    <button className="enlace" onClick={() => accion(aprobar(actual, u), `${nombre} se unió`)}>
+                    <button
+                      className="enlace"
+                      onClick={() => accion(aprobar(actual, u), `${nombre} se unió. Puede agregar; dale más permisos abajo`)}
+                    >
                       Aceptar
                     </button>
                     <button className="enlace peligro" onClick={() => accion(rechazar(actual, u))}>
@@ -420,23 +428,54 @@ function MenuListas(
           )}
           <h3>Miembros</h3>
           <ul className="lista">
-            {miembros.map(([u, nombre]) => (
-              <li key={u} className="item-ajuste">
-                <span>
-                  {nombre}
-                  {u === actual.duenoUid && <small> (dueño)</small>}
-                  {u === uid && <small> (vos)</small>}
-                </span>
-                {dueno && u !== uid && !actual.cerrada && (
-                  <button
-                    className="enlace peligro"
-                    onClick={() => confirm(`¿Sacar a ${nombre} de la lista?`) && accion(sacarMiembro(actual, u))}
-                  >
-                    Sacar
-                  </button>
-                )}
-              </li>
-            ))}
+            {miembros.map(([u, nombre]) => {
+              const p = permisosDe(actual, u)
+              const esElDueno = u === actual.duenoUid
+              return (
+                <li key={u} className="miembro">
+                  <div className="item-ajuste">
+                    <span>
+                      {nombre}
+                      {esElDueno && <small> (dueño)</small>}
+                      {u === uid && <small> (vos)</small>}
+                      {!esElDueno && !dueno && (
+                        <small className="permisos-texto">
+                          {' '}
+                          puede {(Object.keys(ETIQUETAS_PERMISO) as (keyof Permisos)[])
+                            .filter((k) => p[k])
+                            .map((k) => ETIQUETAS_PERMISO[k].toLowerCase())
+                            .join(', ') || 'solo ver'}
+                        </small>
+                      )}
+                    </span>
+                    {dueno && u !== uid && !actual.cerrada && (
+                      <button
+                        className="enlace peligro"
+                        onClick={() => confirm(`¿Sacar a ${nombre} de la lista?`) && accion(sacarMiembro(actual, u))}
+                      >
+                        Sacar
+                      </button>
+                    )}
+                  </div>
+                  {/* El dueño da o quita cada permiso con un toque. */}
+                  {dueno && !esElDueno && !actual.cerrada && (
+                    <div className="permisos" role="group" aria-label={`Permisos de ${nombre}`}>
+                      {(Object.keys(ETIQUETAS_PERMISO) as (keyof Permisos)[]).map((k) => (
+                        <button
+                          key={k}
+                          className="chip"
+                          aria-pressed={p[k]}
+                          onClick={() => accion(cambiarPermiso(actual, u, k, !p[k]))}
+                        >
+                          {p[k] ? '✓ ' : ''}
+                          {ETIQUETAS_PERMISO[k]}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </div>
 
@@ -539,6 +578,10 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   const { items, cargando, error, pendiente } = useItems(lista.id)
   const dueno = esDueno(lista, uid)
   const cerrada = lista.cerrada
+  const puede = permisosDe(lista, uid)
+  /** Abierta: con permiso de editar, o con el de agregar si el ítem es tuyo. Cerrada: solo el dueño. */
+  const corrige = (it: ItemLista) => (cerrada ? dueno : puede.editar || (puede.agregar && it.agregadoPorUid === uid))
+  const agrega = !cerrada && puede.agregar
 
   // Qué se muestra debajo de los dos campos: el formulario de agregar o los filtros de búsqueda.
   const [modo, setModo] = useState<'agregar' | 'buscar' | null>(null)
@@ -589,6 +632,35 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   })
 
   const miGasto = (it: ItemLista) => datos.movimientos.find((m) => m.listaItem?.itemId === it.id)
+
+  // Otro día, otra lista: si ya hubo compras en un día anterior, al dueño se le ofrece (una vez por día) empezar una nueva.
+  const deOtroDia = !cargando && !cerrada && dueno && items.some((it) => it.comprado && it.modificadoEn < inicioDeHoy())
+  useEffect(() => {
+    if (!deOtroDia) return
+    const clave = `billis.nuevaListaPreguntada.${lista.id}`
+    const hoy = new Date().toDateString()
+    try {
+      if (localStorage.getItem(clave) === hoy) return
+    } catch {
+      /* sin almacenamiento: se pregunta igual */
+    }
+    const t = setTimeout(async () => {
+      // Se anota recién al preguntar: si la pantalla se cerró antes, se vuelve a ofrecer.
+      try {
+        localStorage.setItem(clave, hoy)
+      } catch {
+        /* idem */
+      }
+      const n = items.filter((it) => !it.comprado).length
+      if (!confirm(`"${lista.nombre}" tiene compras de otro día. ¿Empezar una lista nueva${n ? ` con los ${n} pendientes` : ''}?`)) return
+      await cerrarLista(lista)
+      await setAjuste('listaId', await nuevaConPendientes(lista, items.filter((it) => !it.comprado), yo))
+      onAviso('Lista nueva para hoy')
+    }, 300)
+    return () => clearTimeout(t)
+    // Solo cuando se cumple la condición; items y lista se leen en ese momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deOtroDia, lista.id])
 
   /** Recuerda en este teléfono el grupo elegido a mano para un producto. */
   function aprender(nombre: string, grupo: string | null) {
@@ -691,10 +763,18 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     })
   }
 
+  const lapiz = (it: ItemLista) => (
+    <button className="icono chico-icono lapiz" aria-label={`Corregir ${it.nombre}`} onClick={() => empezarAEditar(it)}>
+      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+    </button>
+  )
+
   /** Fila de un pendiente. i: posición en la lista manual, si se puede arrastrar. */
   function filaPendiente(it: ItemLista, i?: number) {
     const g = grupoPorId(datos.grupos, it.grupo)
-    const arrastrable = i !== undefined && !cerrada && enManual.length > 1
+    const arrastrable = i !== undefined && !cerrada && puede.editar && enManual.length > 1
     return (
       <li
         key={it.id}
@@ -708,12 +788,17 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             </svg>
           </span>
         )}
-        <button className="item-boton item-renglon" disabled={cerrada} onClick={() => onComprar(lista.id, it)}>
+        <button
+          className="item-boton item-renglon"
+          disabled={cerrada || !puede.comprar}
+          aria-label={!cerrada && !puede.comprar ? `${it.nombre} (no tenés permiso para comprar)` : undefined}
+          onClick={() => onComprar(lista.id, it)}
+        >
           <span className="mov-desc">{it.nombre}</span>
           {it.marca && <span className="item-marca">{it.marca}</span>}
           {it.cantidad && <span className="item-cant">{/^\d+([.,]\d+)?$/.test(it.cantidad) ? `x${it.cantidad}` : it.cantidad}</span>}
         </button>
-        {!cerrada && (
+        {corrige(it) && (
           <button
             className={'chip-grupo' + (g ? '' : ' vacio')}
             aria-label={g ? `Grupo ${g.corto}, cambiar` : `Elegir grupo de ${it.nombre}`}
@@ -722,15 +807,11 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             {g ? g.corto : 'Grupo'} ▾
           </button>
         )}
-        {!cerrada && (
+        {corrige(it) && (
           // Lápiz y ✕ juntos, como un par de acciones sobre el ítem.
           <span className="item-acciones-par">
-            <button className="icono chico-icono lapiz" aria-label={`Corregir ${it.nombre}`} onClick={() => empezarAEditar(it)}>
-              <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-              </svg>
-            </button>
-            {(it.agregadoPorUid === uid || dueno) && (
+            {lapiz(it)}
+            {!cerrada && (
               <button className="icono chico-icono" aria-label={`Quitar ${it.nombre}`} onClick={() => quitar(it)}>
                 ✕
               </button>
@@ -757,7 +838,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
       {cerrada && (
         <div className="banner">
-          Lista cerrada el {fmtFecha(lista.cerradaEn ?? Date.now())}. Ya no se puede editar.
+          Lista cerrada el {fmtFecha(lista.cerradaEn ?? Date.now())}.{' '}
+          {dueno ? 'Solo vos podés corregir sus ítems.' : 'Ya no se puede editar.'}
           {dueno && todosPendientes.length > 0 && (
             <button className="enlace" onClick={ofrecerNueva}>
               Nueva lista con {todosPendientes.length} pendientes
@@ -775,7 +857,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         }}
       >
         <div className="entradas-lista">
-          {!cerrada && (
+          {(agrega || editando) && (
             <div className="campo">
               <input
                 ref={refNuevo}
@@ -844,7 +926,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           </div>
         </div>
 
-        {modo === 'agregar' && !cerrada && (
+        {modo === 'agregar' && (agrega || editando) && (
           <div className="agregar-detalle" ref={refDetalle} onBlur={quizasCerrarAgregar}>
             <div className="fila">
               <label className="campo chico">
@@ -892,9 +974,11 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                   <button type="submit" className="primario" disabled={!nuevo.trim()}>
                     Agregar
                   </button>
-                  <button type="button" className="secundario" disabled={!nuevo.trim()} onClick={() => agregar(true)}>
-                    Agregar y comprar
-                  </button>
+                  {puede.comprar && (
+                    <button type="button" className="secundario" disabled={!nuevo.trim()} onClick={() => agregar(true)}>
+                      Agregar y comprar
+                    </button>
+                  )}
                 </>
               )}
             </div>
@@ -965,7 +1049,8 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                       {(it.cantidad || it.marca) && ' — '}compró {it.compradoPor ?? '—'}
                     </span>
                   </button>
-                  {!cerrada && (
+                  {cerrada && dueno && lapiz(it)}
+                  {!cerrada && puede.comprar && (
                     <button
                       className="icono chico-icono"
                       aria-label={`Volver ${it.nombre} a pendientes`}

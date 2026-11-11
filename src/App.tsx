@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BotonLupa } from './components/Buscador'
 import { FormMovimiento } from './components/FormMovimiento'
 import { Pagar, textoTotal, totalCompra } from './components/Pagar'
-import { db, inicializar } from './db/db'
+import { db, inicializar, setAjuste } from './db/db'
 import type { Movimiento } from './db/types'
 import { claveCompra, claveMes } from './lib/calculos'
 import { useDatos } from './lib/datos'
@@ -91,6 +91,21 @@ export default function App() {
     listaCompras()
       .then((lc) => lc.comprarItem(listaId, itemId, yo, m.totalCent, m.moneda))
       .catch(fallaLista)
+  }
+
+  /** Al pagar una compra con ítems de tu lista, la lista se cierra; si quedó algo pendiente, se ofrece una nueva. */
+  async function cerrarListaPagada(listaId: string) {
+    try {
+      const lc = await listaCompras()
+      const r = await lc.cerrarAlPagar(listaId)
+      if (!r) return
+      mostrarAviso({ texto: `Lista "${r.lista.nombre}" cerrada` })
+      const n = r.pendientes.length
+      if (n && confirm(`¿Abrir una lista nueva con los ${n} pendientes y los mismos miembros?`))
+        await setAjuste('listaId', await lc.nuevaConPendientes(r.lista, r.pendientes, yo))
+    } catch {
+      fallaLista()
+    }
   }
 
   async function borrar(m: Movimiento) {
@@ -318,9 +333,11 @@ export default function App() {
           gastos={gastosPagando}
           onCerrar={() => setPagando(null)}
           onPagado={(texto) => {
+            const listas = pagando === compraEnCurso ? [...new Set(gastosPagando.flatMap((g) => g.listaItem?.listaId ?? []))] : []
             setPagando(null)
             setVersionSesion((v) => v + 1)
             mostrarAviso({ texto })
+            listas.forEach(cerrarListaPagada)
           }}
         />
       )}

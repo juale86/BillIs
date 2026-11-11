@@ -1,5 +1,6 @@
-import { Fragment, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
 import { BotonOrden } from '../components/BotonOrden'
+import type { Otros } from '../components/CompradosDeOtros'
 import { BotonLupa, Buscador } from '../components/Buscador'
 import { normalizar } from '../db/db'
 import type { Movimiento } from '../db/types'
@@ -9,6 +10,8 @@ import { fmt } from '../lib/money'
 import { filtrarMovs, hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from '../lib/filtrosMov'
 import { sugerirGrupo } from '../lib/grupos'
 import type { OrdenLista } from '../lib/orden'
+import { firebaseConfig } from '../lib/firebase-config'
+import type { ItemLista } from '../lib/listaCompras'
 import { describirPromo } from '../lib/promo'
 import { SelectorMes } from './SelectorMes'
 
@@ -29,6 +32,19 @@ interface Props {
   panel?: ReactNode
   filtros: FiltrosMov
   setFiltros: (f: FiltrosMov) => void
+}
+
+const CompradosDeOtros = lazy(() => import('../components/CompradosDeOtros'))
+
+/** Un renglón de una compra: un gasto tuyo o algo que compró otro miembro de la lista (solo para ver). */
+interface Renglon {
+  id: string
+  nombre: string
+  marca: string
+  /** Cuándo se cargó o se compró, para el orden manual. */
+  t: number
+  mov?: Movimiento
+  ajeno?: ItemLista
 }
 
 const fmtDia = (t: number) =>
@@ -107,18 +123,61 @@ export function Movimientos(props: Props) {
       return n
     })
 
-  /** Los ítems de una compra filtrados por su lupa y en su orden, en secciones (una sola salvo "por grupos"). */
-  function itemsDe(clave: string, g: Movimiento[]): { titulo: string | null; items: Movimiento[] }[] {
+  // Lo que compraron los demás en las listas de este mes (se carga aparte, con Firebase).
+  const listaIds = useMemo(
+    () =>
+      [...new Set(movimientos.filter((m) => claveMes(m.fecha) === mes && m.listaItem).map((m) => m.listaItem!.listaId))].sort(),
+    [movimientos, mes],
+  )
+  const [otros, setOtros] = useState<Otros>({ uid: null, items: {} })
+
+  /**
+   * Lo que otros compraron, repartido entre tus compras por la lista: va a tu compra con esa lista.
+   * Si usaste la lista en más de una compra, a la más cercana en el tiempo.
+   */
+  const ajenosPorCompra = useMemo(() => {
+    const compras = new Map<string, { clave: string; desde: number; hasta: number }[]>()
+    const mios = new Set<string>()
+    for (const m of movimientos) {
+      if (!m.listaItem) continue
+      mios.add(m.listaItem.itemId)
+      const delaLista = compras.get(m.listaItem.listaId) ?? []
+      compras.set(m.listaItem.listaId, delaLista)
+      const clave = claveCompra(m)
+      const c = delaLista.find((x) => x.clave === clave)
+      if (c) {
+        c.desde = Math.min(c.desde, m.fecha)
+        c.hasta = Math.max(c.hasta, m.fecha)
+      } else delaLista.push({ clave, desde: m.fecha, hasta: m.fecha })
+    }
+    const res = new Map<string, ItemLista[]>()
+    for (const [listaId, items] of Object.entries(otros.items)) {
+      const candidatas = compras.get(listaId) ?? []
+      for (const it of items) {
+        if (mios.has(it.id) || candidatas.length === 0) continue
+        const t = it.modificadoEn
+        const lejos = (c: { desde: number; hasta: number }) => (t < c.desde ? c.desde - t : t > c.hasta ? t - c.hasta : 0)
+        const c = candidatas.reduce((a, b) => (lejos(b) < lejos(a) ? b : a))
+        res.set(c.clave, [...(res.get(c.clave) ?? []), it])
+      }
+    }
+    return res
+  }, [movimientos, otros])
+
+  /** Los renglones de una compra filtrados por su lupa y en su orden, en secciones (una sola salvo "por grupos"). */
+  function itemsDe(clave: string, renglones: Renglon[]): { titulo: string | null; items: Renglon[] }[] {
     const q = normalizar(lupas[clave] ?? '')
-    const vistos = q ? g.filter((m) => normalizar(`${m.descripcion} ${m.marca ?? ''}`).includes(q)) : g
+    const vistos = q ? renglones.filter((r) => normalizar(`${r.nombre} ${r.marca}`).includes(q)) : renglones
     const orden = ordenes[clave] ?? 'manual'
-    // Manual: como se fueron cargando (lo que ya se ve).
+    // Manual: como se fueron cargando, lo último arriba (lo que ya se veía).
     if (orden === 'manual') return [{ titulo: null, items: vistos }]
-    const az = [...vistos].sort((a, b) => a.descripcion.localeCompare(b.descripcion, 'es'))
+    const az = [...vistos].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
     if (orden === 'alfabetico') return [{ titulo: null, items: az }]
-    const grupoDe = (m: Movimiento) => sugerirGrupo(m.descripcion, m.marca ?? '', datos.gruposAprendidos, [], datos.grupos)
-    const secciones = datos.grupos.map((gr) => ({ titulo: gr.nombre, items: az.filter((m) => grupoDe(m) === gr.id) }))
-    secciones.push({ titulo: 'Sin grupo', items: az.filter((m) => !grupoDe(m)) })
+    const grupoDe = (r: Renglon) =>
+      (r.ajeno?.grupo && datos.grupos.some((x) => x.id === r.ajeno!.grupo) ? r.ajeno.grupo : null) ??
+      sugerirGrupo(r.nombre, r.marca, datos.gruposAprendidos, [], datos.grupos)
+    const secciones = datos.grupos.map((gr) => ({ titulo: gr.nombre, items: az.filter((r) => grupoDe(r) === gr.id) }))
+    secciones.push({ titulo: 'Sin grupo', items: az.filter((r) => !grupoDe(r)) })
     return secciones.filter((x) => x.items.length > 0)
   }
 
@@ -126,6 +185,7 @@ export function Movimientos(props: Props) {
   function infoCompra(g: Movimiento[]) {
     const clave = claveCompra(g[0])
     const enCurso = clave === compraEnCurso
+    const ajenos = ajenosPorCompra.get(clave) ?? []
     const total = new Map<Movimiento['moneda'], number>()
     const mia = new Map<Movimiento['moneda'], number>()
     for (const m of g) {
@@ -134,6 +194,12 @@ export function Movimientos(props: Props) {
     }
     const txt = (t: Map<Movimiento['moneda'], number>) => [...t].map(([mon, c]) => fmt(c, mon)).join(' + ')
     const distinta = [...total].some(([mon, c]) => mia.get(mon) !== c)
+    // Total real: lo tuyo más lo que pagaron los demás por sus ítems.
+    const real = new Map(total)
+    for (const it of ajenos)
+      if (it.montoCent !== null) real.set(it.moneda ?? 'ARS', (real.get(it.moneda ?? 'ARS') ?? 0) + it.montoCent)
+    const quienes = [...new Set(ajenos.map((it) => it.compradoPor ?? 'otro'))]
+    const conOtros = quienes.length ? `Con lo de ${quienes.join(' y ')}` : null
     const p = g[0]
     const pago = enCurso
       ? 'En curso: tocá para pagar'
@@ -145,17 +211,22 @@ export function Movimientos(props: Props) {
         ]
           .filter(Boolean)
           .join(', ')
-    return { clave, enCurso, total: txt(total), mia: distinta ? txt(mia) : null, pago }
+    return { clave, enCurso, ajenos, total: txt(total), real: txt(real), conOtros, mia: distinta ? txt(mia) : null, pago }
   }
 
   function compra(g: Movimiento[]) {
-    const { clave, enCurso, total, mia, pago } = infoCompra(g)
+    const { clave, enCurso, ajenos, total, real, conOtros, mia, pago } = infoCompra(g)
     const abierto = abierta(clave)
-    const titulo = g[0].lugar || (g.length === 1 ? g[0].descripcion : 'Compra')
+    const renglones: Renglon[] = [
+      ...g.map((m) => ({ id: m.id, nombre: m.descripcion, marca: m.marca ?? '', t: m.fecha, mov: m })),
+      ...ajenos.map((it) => ({ id: `otro-${it.id}`, nombre: it.nombre, marca: it.marca ?? '', t: it.modificadoEn, ajeno: it })),
+    ].sort((a, b) => b.t - a.t)
+    const n = renglones.length
+    const titulo = g[0].lugar || (n === 1 ? g[0].descripcion : 'Compra')
     // Lupa y orden solo tienen sentido abierta y con más de un ítem.
-    const conAcciones = abierto && g.length > 1
+    const conAcciones = abierto && n > 1
     const lupa = lupas[clave]
-    const secciones = conAcciones ? itemsDe(clave, g) : [{ titulo: null, items: g }]
+    const secciones = conAcciones ? itemsDe(clave, renglones) : [{ titulo: null, items: renglones }]
     return (
       <div key={clave} className={'compra' + (abierto ? '' : ' plegada')}>
         <div className="compra-cab-fila">
@@ -163,12 +234,12 @@ export function Movimientos(props: Props) {
             <span>
               {titulo}{' '}
               <small>
-                {fmtHora(g.at(-1)!.fecha)}, {g.length} {g.length === 1 ? 'ítem' : 'ítems'}
+                {fmtHora(g.at(-1)!.fecha)}, {n} {n === 1 ? 'ítem' : 'ítems'}
                 {!abierto && `, ${pago}`}
               </small>
             </span>
             <span className="compra-cab-der">
-              {!abierto && <strong>{total}</strong>}
+              {!abierto && <strong>{conOtros ? real : total}</strong>}
               <span aria-hidden="true">{abierto ? '▾' : '▸'}</span>
             </span>
           </button>
@@ -208,14 +279,27 @@ export function Movimientos(props: Props) {
                     <span>{sec.titulo}</span>
                   </div>
                 )}
-                <ul className="lista">{sec.items.map(fila)}</ul>
+                <ul className="lista">{sec.items.map((r) => (r.mov ? fila(r.mov) : filaAjena(r.ajeno!)))}</ul>
               </Fragment>
             ))}
             <button className={'compra-pie' + (enCurso ? ' en-curso' : '')} onClick={() => onPagar(clave)}>
-              <span className="compra-pie-fila">
-                <span>Total</span>
-                <strong>{total}</strong>
-              </span>
+              {conOtros ? (
+                <>
+                  <span className="compra-pie-fila">
+                    <span>{conOtros}</span>
+                    <strong>{real}</strong>
+                  </span>
+                  <span className="compra-pie-fila solo-tuyo">
+                    <span>Solo lo tuyo</span>
+                    <span>{total}</span>
+                  </span>
+                </>
+              ) : (
+                <span className="compra-pie-fila">
+                  <span>Total</span>
+                  <strong>{total}</strong>
+                </span>
+              )}
               <span className="compra-pie-fila">
                 <small>{pago}</small>
                 {mia && <small>tu parte {mia}</small>}
@@ -241,6 +325,23 @@ export function Movimientos(props: Props) {
     if (m.comentario) partes.push(`“${m.comentario}”`)
     return partes.join(', ')
   }
+
+  /** Lo que compró otro miembro: se ve y se busca, pero solo quien lo compró lo puede cambiar. */
+  const filaAjena = (it: ItemLista) => (
+    <li key={`otro-${it.id}`}>
+      <div className="mov ajeno">
+        <span className="mov-texto">
+          <span className="mov-desc">{it.nombre}</span>
+          <span className="mov-det">
+            {[it.marca, it.cantidad && (/^\d+$/.test(it.cantidad) ? `${it.cantidad} u.` : it.cantidad), `compró ${it.compradoPor ?? 'otro'}`]
+              .filter(Boolean)
+              .join(', ')}
+          </span>
+        </span>
+        <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin monto'}</span>
+      </div>
+    </li>
+  )
 
   const fila = (m: Movimiento) => (
     <li key={m.id}>
@@ -268,6 +369,11 @@ export function Movimientos(props: Props) {
   return (
     <section className="pantalla">
       <SelectorMes mes={mes} setMes={setMes} extra={acciones} meses={mesesConMovs} />
+      {firebaseConfig && listaIds.length > 0 && (
+        <Suspense fallback={null}>
+          <CompradosDeOtros listaIds={listaIds} onCambio={setOtros} />
+        </Suspense>
+      )}
       {panel}
       <Buscador
         abierto={buscando}

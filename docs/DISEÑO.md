@@ -46,7 +46,7 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 
 ## Pantallas
 
-1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer. Cada compra abierta con más de un ítem tiene, a la derecha del título, **su propia lupa** (busca en descripción y marca de esa compra) y **su botón de orden**: manual (como se cargó), A..Z o por grupos (el grupo se adivina como en la lista). Duran mientras la app está abierta (desde 1.15).
+1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer. Cada compra abierta con más de un ítem tiene, a la derecha del título, **su propia lupa** (busca en descripción y marca de esa compra) y **su botón de orden**: manual (como se cargó), A..Z o por grupos (el grupo se adivina como en la lista). Duran mientras la app está abierta (desde 1.15). Si la compra tiene ítems de una lista compartida, también muestra **lo que otros miembros compraron de esa lista**, en gris y con "compró Ana": se ven, se buscan y se ordenan, pero solo quien lo compró lo cambia. Se une por el **id de la lista** (que ya guardan los gastos comprados desde ella, en `listaItem`); si usaste la lista en más de una compra, cada ítem va a la más cercana en el tiempo. El pie muestra **"Con lo de Ana"** (el total real) y **"Solo lo tuyo"**; Resumen y Saldos siguen contando solo lo tuyo, porque lo de Ana ya está en su teléfono (desde 1.16).
 2. **Resumen del mes**: ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
 4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista, respaldo. Métodos, categorías y grupos se renombran, borran y agregan; renombrar y borrar muestran un aviso con **Deshacer** (borrar ya no pide confirmación) (desde 1.14).
@@ -78,12 +78,15 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - Pestaña **Listas**. Firestore (proyecto `billis-juale86`, `southamerica-east1`) + inicio de sesión con **Google** (solo para las listas; los gastos siguen locales).
 - **Varias listas**: la pestaña abre la última usada; el nombre con ▾ abre el menú (cambiar de lista, nueva, unirse con link, miembros, cerradas, cerrar sesión).
 - **Compartir** por link; quien lo abre **pide unirse** y el dueño lo **aprueba** (insignia con la cantidad de pedidos).
-- Permisos: el **dueño** renombra, cierra, borra, aprueba y saca miembros; los **miembros** ven, agregan, compran, quitan sus propios ítems y pueden salir. Reglas en `firestore.rules` (probadas con emulador: 30 casos).
+- Permisos: el **dueño** puede todo: renombra, cierra, borra, aprueba, saca miembros y **da permisos** a cada miembro con un toque en el menú (chips Agregar / Comprar / Editar, desde 1.16). Un miembro recién aceptado solo puede **agregar** (y corregir o quitar lo que agregó); **Comprar** permite marcar comprado y volver a pendiente; **Editar**, corregir, mover y quitar cualquier ítem. Todos ven, buscan y filtran, y pueden salir. Las listas viejas sin permisos guardados valen como estándar. Reglas en `firestore.rules` (probadas con emulador).
 - Tocar un ítem pendiente abre el formulario de gasto completo con nombre, marca, cantidad y último precio. Solo al **guardar** pasa a Comprados (con monto y quién lo compró) y se vuelve a la lista. "Ya comprado, sin gasto" lo marca sin monto.
 - Comprados: tocar ofrece **Volver a pendientes** (si hay gasto propio pregunta si borrarlo) y **Ver gasto**.
 - Gasto ↔ ítem sincronizados: editar el gasto actualiza el monto; borrarlo devuelve el ítem a pendientes (Deshacer lo restaura).
 - **Total gastado** por moneda (suma de montos de comprados), **fijo abajo** sobre las pestañas: la lista se desplaza por detrás (desde 1.13). ~~Estimado de lo pendiente con tus últimos precios~~: quitado en 1.11.
-- **Cerrar lista** (dueño): enlace al lado del Total. Queda archivada, de solo lectura, en "Cerradas"; ofrece abrir una nueva con los pendientes y los mismos miembros.
+- **Cerrar lista** (dueño): enlace al lado del Total. Queda archivada en "Cerradas"; ofrece abrir una nueva con los pendientes, los mismos miembros y sus permisos.
+- La lista también **se cierra al pagar**: cuando el dueño confirma el pago de una compra con ítems de esa lista (desde 1.16). No se cierra sola por cambiar el día.
+- **Otro día, otra lista**: si la lista tiene compras de un día anterior, al dueño se le pregunta una vez por día si quiere empezar una lista nueva con los pendientes (desde 1.16). Se puede seguir con la misma, por ejemplo si la compra dura varios días.
+- **Cerrada**, solo el dueño puede **corregir** nombre, cantidad, marca y grupo de los ítems (lápiz en pendientes y comprados); no se agrega, compra ni quita. Los demás solo la ven (desde 1.16).
 
 ### Agregar, corregir y quitar (desde 1.10)
 
@@ -128,7 +131,7 @@ Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de t
 - Cambiar el orden de los grupos desde Ajustes. ¿Compartir los grupos con la lista en vez de por teléfono?
 - Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
 - Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.
-- Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquier miembro).
+- Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquiera con permiso de comprar).
 - ~~"Pagar" un ticket completo en cuotas~~: resuelto en 1.8.1 (cuotas dentro del método, se reparten por producto sin interés). Pendiente: interés al pagar un ticket en cuotas.
 - Qué pasa con tus gastos vinculados a una lista si te sacan de ella o se borra (hoy el gasto queda y el vínculo se ignora).
 - Tickets con productos en pesos y dólares mezclados en "Pagar".

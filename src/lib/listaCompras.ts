@@ -19,6 +19,7 @@ import {
   deleteDoc,
   deleteField,
   doc,
+  getDoc,
   getDocs,
   initializeFirestore,
   onSnapshot,
@@ -42,13 +43,14 @@ import { firebaseConfig } from './firebase-config'
  * listas/{listaId}
  *   nombre, duenoUid, duenoNombre, creadoEn, cerrada, cerradaEn
  *   miembros: { uid: nombre }, miembroUids: [uid]   ← quién ve y edita
+ *   permisos: { uid: { agregar, comprar, editar } } ← lo que puede cada miembro (lo da el dueño)
  *   pendientes: { uid: nombre }                     ← pidieron unirse, falta aprobar
  * listas/{listaId}/items/{itemId}
  *   nombre, cantidad, marca, comprado, agregadoPorUid, agregadoPor,
  *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn, orden, grupo
  *
- * Permisos (firestore.rules): el dueño renombra, cierra, borra y aprueba;
- * los miembros agregan, compran y quitan sus propios ítems.
+ * Permisos (firestore.rules): el dueño puede todo y da permisos; cada miembro, según los suyos
+ * (por defecto solo agregar). Cerrada, solo el dueño corrige los ítems.
  */
 export interface Lista {
   id: string
@@ -58,9 +60,31 @@ export interface Lista {
   miembros: Record<string, string>
   miembroUids: string[]
   pendientes: Record<string, string>
+  /** Permisos de cada miembro; lo que falta vale PERMISOS_ESTANDAR. */
+  permisos?: Record<string, Partial<Permisos>>
   cerrada: boolean
   cerradaEn: number | null
   creadoEn: number
+}
+
+export interface Permisos {
+  /** Agregar ítems y corregir o quitar los propios. */
+  agregar: boolean
+  /** Marcar comprado (con o sin gasto) y volver a pendiente. */
+  comprar: boolean
+  /** Corregir, mover y quitar cualquier ítem. */
+  editar: boolean
+}
+
+/** Lo que puede un miembro recién aceptado: agregar, pero no comprar. */
+export const PERMISOS_ESTANDAR: Permisos = { agregar: true, comprar: false, editar: false }
+
+export const ETIQUETAS_PERMISO: Record<keyof Permisos, string> = { agregar: 'Agregar', comprar: 'Comprar', editar: 'Editar' }
+
+/** Permisos de alguien en la lista (el dueño los tiene todos). */
+export function permisosDe(l: Lista, uid: string): Permisos {
+  if (l.duenoUid === uid) return { agregar: true, comprar: true, editar: true }
+  return { ...PERMISOS_ESTANDAR, ...(l.permisos?.[uid] ?? {}) }
 }
 
 export interface ItemLista {
@@ -195,6 +219,7 @@ export async function crearLista(
   nombre: string,
   quien: string,
   miembros?: Record<string, string>,
+  permisos?: Lista['permisos'],
 ): Promise<string> {
   const uid = uidActual()
   const todos = { ...(miembros ?? {}), [uid]: quien }
@@ -206,6 +231,7 @@ export async function crearLista(
     miembros: todos,
     miembroUids: Object.keys(todos),
     pendientes: {},
+    permisos: permisos ?? {},
     cerrada: false,
     cerradaEn: null,
     creadoEn: Date.now(),
@@ -224,6 +250,10 @@ export const aprobar = (l: Lista, uid: string) =>
     miembroUids: arrayUnion(uid),
     [`pendientes.${uid}`]: deleteField(),
   })
+
+/** El dueño da o quita un permiso a un miembro. */
+export const cambiarPermiso = (l: Lista, uid: string, permiso: keyof Permisos, valor: boolean) =>
+  updateDoc(refLista(l.id), { [`permisos.${uid}.${permiso}`]: valor })
 
 export const rechazar = (l: Lista, uid: string) => updateDoc(refLista(l.id), { [`pendientes.${uid}`]: deleteField() })
 
@@ -246,7 +276,7 @@ export async function borrarLista(l: Lista) {
 
 /** Abre una lista nueva con los mismos miembros y los ítems que quedaron pendientes. */
 export async function nuevaConPendientes(l: Lista, pendientes: ItemLista[], quien: string): Promise<string> {
-  const id = await crearLista(l.nombre, quien, l.miembros)
+  const id = await crearLista(l.nombre, quien, l.miembros, l.permisos)
   const b = writeBatch(fs())
   const ahora = Date.now()
   for (const it of pendientes) {
@@ -259,6 +289,20 @@ export async function nuevaConPendientes(l: Lista, pendientes: ItemLista[], quie
 }
 
 export const esDueno = (l: Lista, uid: string) => l.duenoUid === uid
+
+/**
+ * Al pagar una compra con ítems de la lista: si sos el dueño, la lista se cierra.
+ * Devuelve la lista y lo que quedó pendiente (para ofrecer una nueva), o null si no se cerró.
+ */
+export async function cerrarAlPagar(listaId: string): Promise<{ lista: Lista; pendientes: ItemLista[] } | null> {
+  const s = await getDoc(refLista(listaId))
+  if (!s.exists()) return null
+  const l = desdeDoc<Lista>(s.id, s.data())
+  if (l.cerrada || l.duenoUid !== auth().currentUser?.uid) return null
+  await cerrarLista(l)
+  const pend = await getDocs(query(items(listaId), where('comprado', '==', false)))
+  return { lista: l, pendientes: pend.docs.map((d) => desdeDoc<ItemLista>(d.id, d.data())) }
+}
 
 export const linkLista = (listaId: string) => `${location.origin}${import.meta.env.BASE_URL}?lista=${listaId}`
 
@@ -391,6 +435,33 @@ export function useItems(listaId: string | null): EstadoItems {
     }
   }, [listaId, intento])
   return estado
+}
+
+/**
+ * Lo que compraron otros miembros en estas listas, para mostrarlo junto a tus compras en Movimientos.
+ * Vacío si no iniciaste sesión o no sos miembro. uid: tu usuario, para no repetir lo tuyo.
+ */
+export function useCompradosDeOtros(listaIds: string[]): { uid: string | null; items: Record<string, ItemLista[]> } {
+  const { usuario } = useUsuario()
+  const uid = usuario?.uid ?? null
+  const [porLista, setPorLista] = useState<Record<string, ItemLista[]>>({})
+  const clave = listaIds.join(',')
+  useEffect(() => {
+    if (!uid || !clave) return
+    const offs = clave.split(',').map((id) =>
+      onSnapshot(
+        query(items(id), where('comprado', '==', true)),
+        (s) =>
+          setPorLista((prev) => ({
+            ...prev,
+            [id]: s.docs.map((d) => desdeDoc<ItemLista>(d.id, d.data())).filter((it) => it.compradoPorUid !== uid),
+          })),
+        () => setPorLista((prev) => ({ ...prev, [id]: [] })),
+      ),
+    )
+    return () => offs.forEach((off) => off())
+  }, [uid, clave])
+  return { uid, items: porLista }
 }
 
 /** Total pagado por moneda de los ítems comprados. */

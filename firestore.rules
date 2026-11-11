@@ -1,10 +1,13 @@
 rules_version = '2';
 
 // Listas de compras compartidas. Todos inician sesión con Google.
-// - Dueño: renombra, cierra, borra, aprueba/rechaza pedidos y saca miembros.
-// - Miembros: ven, agregan, compran y quitan sus propios ítems; pueden salir.
+// - Dueño: todo; además renombra, cierra, borra, aprueba/rechaza pedidos, saca miembros y da permisos.
+// - Miembros: ven todo y pueden salir. Lo demás según sus permisos (permisos.{uid}), que da el dueño:
+//     agregar (sí por defecto): agregar ítems y corregir o quitar los propios.
+//     comprar (no por defecto): marcar comprado, cambiar el monto y volver a pendiente.
+//     editar  (no por defecto): corregir, mover y quitar cualquier ítem.
 // - Cualquiera con el link (logueado): ve el nombre de la lista y pide unirse.
-// - Una lista cerrada queda de solo lectura (el dueño puede borrarla).
+// - Una lista cerrada: solo el dueño corrige nombre, cantidad, marca y grupo de los ítems (y puede borrarla).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -24,7 +27,8 @@ service cloud.firestore {
       allow list: if logueado() && uid() in resource.data.miembroUids;
 
       allow create: if logueado()
-        && request.resource.data.keys().hasOnly(['nombre', 'duenoUid', 'duenoNombre', 'miembros', 'miembroUids', 'pendientes', 'cerrada', 'cerradaEn', 'creadoEn'])
+        && request.resource.data.keys().hasOnly(['nombre', 'duenoUid', 'duenoNombre', 'miembros', 'miembroUids', 'pendientes', 'cerrada', 'cerradaEn', 'creadoEn', 'permisos'])
+        && request.resource.data.get('permisos', {}) is map
         && nombreOk(request.resource.data.nombre)
         && nombreOk(request.resource.data.duenoNombre)
         && request.resource.data.duenoUid == uid()
@@ -65,6 +69,14 @@ service cloud.firestore {
         function miembro() { return logueado() && uid() in datosLista().miembroUids; }
         function abierta() { return datosLista().cerrada == false; }
         function duenoLista() { return logueado() && datosLista().duenoUid == uid(); }
+        // Permiso del miembro (el dueño los tiene todos). Sin dato: agregar sí, comprar y editar no.
+        function puede(p) {
+          return duenoLista() || datosLista().get('permisos', {}).get(uid(), {}).get(p, p == 'agregar') == true;
+        }
+        function esSuyo() { return resource.data.agregadoPorUid == uid(); }
+        function cambiaSolo(campos) {
+          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+        }
 
         function itemValido(d) {
           return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPorUid', 'agregadoPor', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'creadoEn', 'modificadoEn', 'orden', 'grupo'])
@@ -85,13 +97,23 @@ service cloud.firestore {
 
         allow read: if miembro();
         allow create: if miembro() && abierta() && itemValido(request.resource.data)
-          && (request.resource.data.agregadoPorUid == uid() || duenoLista());
-        allow update: if miembro() && abierta() && itemValido(request.resource.data)
+          && ((request.resource.data.agregadoPorUid == uid() && puede('agregar')) || puede('editar'));
+        allow update: if miembro() && itemValido(request.resource.data)
           && request.resource.data.agregadoPorUid == resource.data.agregadoPorUid
-          && request.resource.data.creadoEn == resource.data.creadoEn;
+          && request.resource.data.creadoEn == resource.data.creadoEn
+          && (
+            // Abierta: comprar (o deshacerlo, o corregir el monto) pide "comprar";
+            // corregir pide "editar", o "agregar" si el ítem es tuyo.
+            (abierta() && (
+              (cambiaSolo(['comprado', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'modificadoEn']) && puede('comprar'))
+              || (cambiaSolo(['nombre', 'cantidad', 'marca', 'grupo', 'orden', 'modificadoEn'])
+                  && (puede('editar') || (esSuyo() && puede('agregar'))))
+            ))
+            // Cerrada: solo el dueño corrige los datos del ítem.
+            || (!abierta() && duenoLista() && cambiaSolo(['nombre', 'cantidad', 'marca', 'grupo', 'modificadoEn']))
+          );
         allow delete: if miembro()
-          && (abierta() || duenoLista())
-          && (resource.data.agregadoPorUid == uid() || duenoLista());
+          && ((abierta() && ((esSuyo() && puede('agregar')) || puede('editar'))) || duenoLista());
       }
     }
   }
