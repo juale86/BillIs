@@ -24,7 +24,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 ## Funcionalidades
 
 ### Carga rápida
-- **Gasto o ingreso** con un interruptor; formulario compacto, sin títulos: cada campo se explica con un ejemplo.
+- **Gasto o ingreso** con un interruptor (solo al cargar uno nuevo; al editar o comprar de la lista el tipo queda fijo); formulario compacto, sin títulos: cada campo se explica con un ejemplo.
 - **Producto, marca y cantidad** en una línea (la cantidad vacía vale 1 y al tocarla se selecciona para pisarla); el "Siguiente" del teclado salta al precio; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
 - **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se sugiere sola por producto o por lugar.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
@@ -47,7 +47,7 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - El dueño renombra (lápiz) y borra (✕, con confirmación) cada lista desde el menú, la cierra y **da permisos** a cada miembro: por defecto solo agregar; con un toque, también comprar o editar todo. Cerrada, solo el dueño corrige sus ítems.
 - Dos campos siempre a la vista: **Agregar a la lista** (con cantidad, marca y grupo) y **Buscar y filtrar**, que busca solo entre lo pendiente y filtra por quién lo agregó.
 - **Agregar** pone el ítem arriba; **Agregar y comprar** además abre el gasto, para lo que encontrás en el súper sin tenerlo anotado.
-- Cada ítem en un renglón con su marca y cantidad; el **lápiz** abre el formulario con sus datos para corregirlos y la **✕** lo quita, con **Deshacer**.
+- Cada ítem en un renglón: producto, marca y cantidad (`2 u.`) pegados, igual que en Movimientos; los chips de grupo tienen todos el mismo ancho; el **lápiz** abre el formulario con sus datos para corregirlos y la **✕** lo quita, con **Deshacer**.
 - Tres órdenes que se alternan con un botón: **manual** (arrastrando ≡, lo último primero), **alfabético** y **por grupos** de compra (Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza, Herramientas). El grupo se adivina por el nombre, se corrige con un toque y se recuerda. Los grupos se renombran, borran y agregan desde Ajustes.
 - Tocar un ítem abre el formulario de gasto con todo precargado; al guardar pasa a **Comprados** con su monto, visible para todos. Tocar un comprado abre su gasto y el botón − lo devuelve a pendientes.
 - **Total** de la lista en vivo, siempre visible abajo; al lado, **Cerrar lista** la archiva y ofrece empezar otra con lo que quedó pendiente. También se cierra cuando el dueño paga la compra, y si quedó de otro día pregunta si empezar una nueva.

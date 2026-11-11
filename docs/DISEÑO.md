@@ -13,7 +13,7 @@ Registro rápido de gastos e ingresos personales. PWA instalable en Android.
 
 ## Formulario de gasto
 
-Un interruptor arriba alterna Gasto / Ingreso (cambian los campos).
+Un interruptor arriba alterna Gasto / Ingreso (cambian los campos). Al editar, o al comprar un ítem de la lista, no hay interruptor: solo el título "Editar gasto" / "Nuevo gasto" (desde 1.17.2).
 
 | Campo | Comportamiento |
 |---|---|
@@ -93,7 +93,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 - Arriba, siempre visibles, dos campos: **Agregar a la lista** y **Buscar y filtrar**. Tocar uno despliega debajo su formulario (Cant, Marca, Grupo y botones) o sus filtros.
 - **Agregar** pone el ítem arriba de todo. **Agregar y comprar** además abre el gasto ya cargado, por si encontrás en el súper algo que no estaba anotado; si se cancela, queda pendiente.
-- Cada pendiente ocupa un renglón: producto, marca al lado y la cantidad a la derecha (`x2` si es un número). Quién lo agregó no se muestra en la lista: queda guardado y aparece al comprarlo (desde 1.11).
+- Cada ítem ocupa un renglón: producto, marca y cantidad pegados a la izquierda (`2 u.` si es un número), igual en pendientes, comprados y Movimientos; debajo queda el resto del detalle ("compró Ana", categoría, cuotas). El chip de grupo toma el ancho del nombre más largo, así todos miden igual; lápiz y ✕ son un poco más grandes sin agrandar el renglón (desde 1.17.2). Quién lo agregó no se muestra en la lista: queda guardado y aparece al comprarlo (desde 1.11).
 - **Lápiz** (al lado de la ✕): abre el **mismo formulario de agregar** con los datos del ítem (producto, cantidad, marca y grupo) para corregir cualquiera; los botones pasan a ser **Guardar** y **Cancelar**. El ítem no cambia de lugar. Si no tenía grupo, se propone con el nombre corregido (desde 1.13.1; en 1.13.0 corregía solo el nombre).
 - **✕ quita** el ítem y muestra un aviso con **Deshacer**, que lo restaura igual (posición, grupo, quién lo agregó) (desde 1.12).
 

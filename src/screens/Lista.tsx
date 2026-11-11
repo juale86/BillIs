@@ -1,4 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { NombreItem } from '../components/NombreItem'
+import { textoCantidad } from '../lib/cantidad'
 import { Buscador } from '../components/Buscador'
 import { BotonOrden } from '../components/BotonOrden'
 import { Modal } from '../components/Modal'
@@ -765,7 +767,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
   const lapiz = (it: ItemLista) => (
     <button className="icono chico-icono lapiz" aria-label={`Corregir ${it.nombre}`} onClick={() => empezarAEditar(it)}>
-      <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
       </svg>
     </button>
@@ -794,9 +796,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           aria-label={!cerrada && !puede.comprar ? `${it.nombre} (no tenés permiso para comprar)` : undefined}
           onClick={() => onComprar(lista.id, it)}
         >
-          <span className="mov-desc">{it.nombre}</span>
-          {it.marca && <span className="item-marca">{it.marca}</span>}
-          {it.cantidad && <span className="item-cant">{/^\d+([.,]\d+)?$/.test(it.cantidad) ? `x${it.cantidad}` : it.cantidad}</span>}
+          <NombreItem nombre={it.nombre} marca={it.marca} cantidad={textoCantidad(it.cantidad)} />
         </button>
         {corrige(it) && (
           <button
@@ -804,7 +804,15 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             aria-label={g ? `Grupo ${g.corto}, cambiar` : `Elegir grupo de ${it.nombre}`}
             onClick={() => setEligiendoGrupo(it)}
           >
-            {g ? g.corto : 'Grupo'} ▾
+            {/* Todos los nombres apilados e invisibles: el chip toma el ancho del más largo. */}
+            <span className="chip-grupo-ancho">
+              {[...datos.grupos.map((x) => x.corto), 'Grupo'].map((n) => (
+                <span key={n} aria-hidden="true">
+                  {n} ▾
+                </span>
+              ))}
+              <span className="chip-grupo-texto">{g ? g.corto : 'Grupo'} ▾</span>
+            </span>
           </button>
         )}
         {corrige(it) && (
@@ -812,7 +820,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           <span className="item-acciones-par">
             {lapiz(it)}
             {!cerrada && (
-              <button className="icono chico-icono" aria-label={`Quitar ${it.nombre}`} onClick={() => quitar(it)}>
+              <button className="icono chico-icono quitar" aria-label={`Quitar ${it.nombre}`} onClick={() => quitar(it)}>
                 ✕
               </button>
             )}
@@ -1041,13 +1049,10 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
                     onClick={() => g && onVerGasto(g)}
                   >
                     <span className="item-fila">
-                      <span className="mov-desc">{it.nombre}</span>
+                      <NombreItem nombre={it.nombre} marca={it.marca} cantidad={textoCantidad(it.cantidad)} />
                       <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin gasto'}</span>
                     </span>
-                    <span className="mov-det">
-                      {[it.cantidad, it.marca].filter(Boolean).join(', ')}
-                      {(it.cantidad || it.marca) && ' — '}compró {it.compradoPor ?? '—'}
-                    </span>
+                    <span className="mov-det">compró {it.compradoPor ?? '—'}</span>
                   </button>
                   {cerrada && dueno && lapiz(it)}
                   {!cerrada && puede.comprar && (

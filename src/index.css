@@ -1537,9 +1537,6 @@ button.compra-cab {
 }
 .chip-grupo {
   flex: none;
-  max-width: 96px;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
   border: 1px solid var(--renglon);
   background: none;
@@ -1580,15 +1577,23 @@ button.compra-cab {
   gap: 6px;
   padding: 11px 0;
 }
-.item-renglon .mov-desc {
-  flex: none;
-  max-width: 60%;
+/* Producto, marca y cantidad en un renglón, todo pegado a la izquierda (lista y Movimientos). */
+.item-linea {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.item-linea .mov-desc {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .item-marca {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1597,11 +1602,8 @@ button.compra-cab {
 }
 .item-cant {
   flex: none;
-  margin-left: auto;
-  padding-left: 4px;
+  white-space: nowrap;
   color: var(--lapiz);
-  font-family: var(--f-cifra);
-  font-weight: 600;
 }
 /* Títulos de grupo: discretos, sin la raya fuerte. */
 .lista-sub.grupo-tit {
@@ -1646,7 +1648,10 @@ button.compra-cab {
   display: flex;
 }
 .item-acciones-par .chico-icono {
-  min-width: 30px;
+  min-width: 36px;
+}
+.item-acciones-par .quitar {
+  font-size: var(--t-l);
 }
 
 /* Por grupos: ítems más juntos dentro del grupo y un poco más de aire entre grupos. */
@@ -1769,4 +1774,21 @@ button.compra-cab {
   background: var(--birome);
   border-color: var(--birome);
   color: var(--sobre-birome);
+}
+
+/* Chips de grupo, todos del ancho del nombre más largo. */
+.chip-grupo-ancho {
+  display: grid;
+  text-align: left;
+}
+.chip-grupo-ancho > span {
+  grid-area: 1 / 1;
+  visibility: hidden;
+}
+.chip-grupo-ancho > .chip-grupo-texto {
+  visibility: visible;
+}
+
+.tipo-fijo {
+  margin: 0;
 }

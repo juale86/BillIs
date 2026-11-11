@@ -349,19 +349,26 @@ export function FormMovimiento({
       }}
     >
       <header className="form-cab">
-        <button
-          type="button"
-          role="switch"
-          aria-checked={!esGasto}
-          aria-label="Es un ingreso"
-          className={'tipo tipo-' + tipo}
-          onClick={() => cambiarTipo(esGasto ? 'ingreso' : 'gasto')}
-        >
-          <span className="tipo-pista" aria-hidden="true">
-            <span className="tipo-bola" />
-          </span>
-          <span className="tipo-texto">{editando ? 'Editar' : 'Nuevo'} {esGasto ? 'gasto' : 'ingreso'}</span>
-        </button>
+        {editando || contexto === 'lista' ? (
+          // Editando o comprando de la lista el tipo ya está decidido: solo el título, sin switch.
+          <h2 className={'tipo tipo-fijo tipo-' + tipo}>
+            <span className="tipo-texto">{editando ? 'Editar' : 'Nuevo'} {esGasto ? 'gasto' : 'ingreso'}</span>
+          </h2>
+        ) : (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={!esGasto}
+            aria-label="Es un ingreso"
+            className={'tipo tipo-' + tipo}
+            onClick={() => cambiarTipo(esGasto ? 'ingreso' : 'gasto')}
+          >
+            <span className="tipo-pista" aria-hidden="true">
+              <span className="tipo-bola" />
+            </span>
+            <span className="tipo-texto">Nuevo {esGasto ? 'gasto' : 'ingreso'}</span>
+          </button>
+        )}
         <BotonCerrar onClick={onCerrar} />
       </header>
 

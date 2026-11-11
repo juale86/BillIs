@@ -1,4 +1,6 @@
 import { Fragment, lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
+import { NombreItem } from '../components/NombreItem'
+import { textoCantidad } from '../lib/cantidad'
 import { BotonOrden } from '../components/BotonOrden'
 import type { Otros } from '../components/CompradosDeOtros'
 import { BotonLupa, Buscador } from '../components/Buscador'
@@ -313,8 +315,6 @@ export function Movimientos(props: Props) {
 
   function detalle(m: Movimiento): string {
     const partes: string[] = []
-    if (m.marca) partes.push(m.marca)
-    if (m.cantidad > 1) partes.push(`${m.cantidad} u.`)
     if (m.promo) partes.push(describirPromo(m.promo))
     if (m.cuotas) partes.push(`${m.cuotas.cantidad} cuotas`)
     const cat = categorias.find((c) => c.id === m.categoriaId)
@@ -331,12 +331,8 @@ export function Movimientos(props: Props) {
     <li key={`otro-${it.id}`}>
       <div className="mov ajeno">
         <span className="mov-texto">
-          <span className="mov-desc">{it.nombre}</span>
-          <span className="mov-det">
-            {[it.marca, it.cantidad && (/^\d+$/.test(it.cantidad) ? `${it.cantidad} u.` : it.cantidad), `compró ${it.compradoPor ?? 'otro'}`]
-              .filter(Boolean)
-              .join(', ')}
-          </span>
+          <NombreItem nombre={it.nombre} marca={it.marca} cantidad={textoCantidad(it.cantidad)} />
+          <span className="mov-det">compró {it.compradoPor ?? 'otro'}</span>
         </span>
         <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin monto'}</span>
       </div>
@@ -352,8 +348,12 @@ export function Movimientos(props: Props) {
         }
       >
         <span className="mov-texto">
-          <span className="mov-desc">{m.tipo === 'pagoDeuda' ? 'Pago de deuda' : m.descripcion}</span>
-          <span className="mov-det">{detalle(m)}</span>
+          {m.tipo === 'pagoDeuda' ? (
+            <span className="mov-desc">Pago de deuda</span>
+          ) : (
+            <NombreItem nombre={m.descripcion} marca={m.marca} cantidad={m.cantidad > 1 ? textoCantidad(m.cantidad) : ''} />
+          )}
+          {detalle(m) && <span className="mov-det">{detalle(m)}</span>}
         </span>
         <span className={'mov-monto ' + m.tipo}>
           {m.tipo === 'ingreso' ? '+' : m.tipo === 'gasto' ? '−' : ''}
