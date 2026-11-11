@@ -318,7 +318,7 @@ function Invitacion({ codigo, uid, yo, onListo }: { codigo: string; uid: string;
 
 function ListasCerradas({ cerradas, onElegir }: { cerradas: TLista[]; onElegir: (l: TLista) => void }) {
   return (
-    <div className="menu-seccion">
+    <div className="menu-seccion cerradas">
       <h3>Cerradas</h3>
       <ul className="lista">
         {cerradas.map((l) => (
@@ -450,6 +450,22 @@ function MenuListas(
                         </small>
                       )}
                     </span>
+                    {/* El dueño da o quita cada permiso con un toque, a la derecha del nombre. */}
+                    {dueno && !esElDueno && !actual.cerrada && (
+                      <div className="permisos" role="group" aria-label={`Permisos de ${nombre}`}>
+                        {(Object.keys(ETIQUETAS_PERMISO) as (keyof Permisos)[]).map((k) => (
+                          <button
+                            key={k}
+                            className="chip"
+                            aria-pressed={p[k]}
+                            onClick={() => accion(cambiarPermiso(actual, u, k, !p[k]))}
+                          >
+                            {p[k] ? '✓ ' : ''}
+                            {ETIQUETAS_PERMISO[k]}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                     {dueno && u !== uid && !actual.cerrada && (
                       <button
                         className="enlace peligro"
@@ -459,22 +475,6 @@ function MenuListas(
                       </button>
                     )}
                   </div>
-                  {/* El dueño da o quita cada permiso con un toque. */}
-                  {dueno && !esElDueno && !actual.cerrada && (
-                    <div className="permisos" role="group" aria-label={`Permisos de ${nombre}`}>
-                      {(Object.keys(ETIQUETAS_PERMISO) as (keyof Permisos)[]).map((k) => (
-                        <button
-                          key={k}
-                          className="chip"
-                          aria-pressed={p[k]}
-                          onClick={() => accion(cambiarPermiso(actual, u, k, !p[k]))}
-                        >
-                          {p[k] ? '✓ ' : ''}
-                          {ETIQUETAS_PERMISO[k]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </li>
               )
             })}
@@ -808,11 +808,12 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
             <span className="chip-grupo-ancho">
               {[...datos.grupos.map((x) => x.corto), 'Grupo'].map((n) => (
                 <span key={n} aria-hidden="true">
-                  {n} ▾
+                  {n}
                 </span>
               ))}
-              <span className="chip-grupo-texto">{g ? g.corto : 'Grupo'} ▾</span>
+              <span className="chip-grupo-texto">{g ? g.corto : 'Grupo'}</span>
             </span>
+            <span aria-hidden="true">▾</span>
           </button>
         )}
         {corrige(it) && (

@@ -1537,6 +1537,9 @@ button.compra-cab {
 }
 .chip-grupo {
   flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   white-space: nowrap;
   border: 1px solid var(--renglon);
   background: none;
@@ -1703,9 +1706,14 @@ button.compra-cab {
 }
 .permisos {
   display: flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+.permisos .chip {
+  padding: 3px 6px;
+}
+.lista .miembro .item-ajuste {
   flex-wrap: wrap;
-  gap: 6px;
-  padding: 0 0 8px;
 }
 .permisos-texto {
   color: var(--lapiz);
@@ -1791,4 +1799,13 @@ button.compra-cab {
 
 .tipo-fijo {
   margin: 0;
+}
+
+/* Menú de listas: el contenido de cada sección, más adentro que su título. */
+.menu-seccion:not(.menu-pie) > :not(h3) {
+  margin-left: 12px;
+}
+/* Cerradas: el último renglón no suma su raya a la de la sección. */
+.cerradas li:last-child .menu-item {
+  border-bottom: 0;
 }

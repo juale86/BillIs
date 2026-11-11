@@ -93,7 +93,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 - Arriba, siempre visibles, dos campos: **Agregar a la lista** y **Buscar y filtrar**. Tocar uno despliega debajo su formulario (Cant, Marca, Grupo y botones) o sus filtros.
 - **Agregar** pone el ítem arriba de todo. **Agregar y comprar** además abre el gasto ya cargado, por si encontrás en el súper algo que no estaba anotado; si se cancela, queda pendiente.
-- Cada ítem ocupa un renglón: producto, marca y cantidad pegados a la izquierda (`2 u.` si es un número), igual en pendientes, comprados y Movimientos; debajo queda el resto del detalle ("compró Ana", categoría, cuotas). El chip de grupo toma el ancho del nombre más largo, así todos miden igual; lápiz y ✕ son un poco más grandes sin agrandar el renglón (desde 1.17.2). Quién lo agregó no se muestra en la lista: queda guardado y aparece al comprarlo (desde 1.11).
+- Cada ítem ocupa un renglón: producto, marca y cantidad pegados a la izquierda (`x2` si es un número; desde 1.17.3), igual en pendientes, comprados y Movimientos; debajo queda el resto del detalle ("compró Ana", categoría, cuotas). El chip de grupo toma el ancho del nombre más largo, así todos miden igual, con el nombre a la izquierda y la ▾ pegada a la derecha; lápiz y ✕ son un poco más grandes sin agrandar el renglón (desde 1.17.2). Quién lo agregó no se muestra en la lista: queda guardado y aparece al comprarlo (desde 1.11).
 - **Lápiz** (al lado de la ✕): abre el **mismo formulario de agregar** con los datos del ítem (producto, cantidad, marca y grupo) para corregir cualquiera; los botones pasan a ser **Guardar** y **Cancelar**. El ítem no cambia de lugar. Si no tenía grupo, se propone con el nombre corregido (desde 1.13.1; en 1.13.0 corregía solo el nombre).
 - **✕ quita** el ítem y muestra un aviso con **Deshacer**, que lo restaura igual (posición, grupo, quién lo agregó) (desde 1.12).
 
@@ -107,6 +107,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 ### Grupos de compra (desde 1.10)
 
 - Vienen Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza y Herramientas (`src/lib/grupos.ts`).
+- Menú de listas (desde 1.17.3): el contenido de cada sección (Tus listas, Miembros, Cerradas) va más adentro que su título, y los permisos de cada miembro quedan a la derecha de su nombre.
 - Desde 1.14 se **editan en Ajustes** (renombrar, borrar, agregar, con Deshacer). Se guardan en este teléfono (`gruposCompra` en ajustes; mientras no se tocan, valen los de la app). Los ítems guardan el id del grupo: renombrar no los mueve; si se borra un grupo, sus ítems se ven en "Sin grupo" y el diccionario deja de proponerlo. Un grupo agregado se ve "Sin grupo" en los teléfonos que no lo tienen.
 - Se **adivinan** por palabras del nombre (gana la coincidencia más larga: "leche en polvo" → Almacén, "leche" → Frescos). Antes que el diccionario, se usa lo elegido a mano en este teléfono (`gruposLista` en ajustes) y lo que ya tiene la lista para ese nombre.
 - Sin adivinanza, el campo Grupo aparece **resaltado** pero es opcional. Cada pendiente tiene un **chip** con su grupo que se toca para corregirlo, y se recuerda.
