@@ -1710,3 +1710,57 @@ button.compra-cab {
   color: var(--birome);
   font-weight: 600;
 }
+
+/* ---------- Calculadora (hoja desde abajo, sin historial) ---------- */
+.calculadora {
+  max-width: 420px;
+  gap: 8px;
+}
+.calc-pantalla {
+  border-bottom: 1px solid var(--tinta);
+  padding: 4px 2px 6px;
+  text-align: right;
+  min-width: 0;
+}
+.calc-expr {
+  font-family: var(--f-cifra);
+  font-size: var(--t-cifra);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+.calc-previa {
+  font-family: var(--f-cifra);
+  font-size: var(--t-l);
+  color: var(--lapiz);
+  min-height: 1.4em;
+}
+.calc-teclas {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.calc-tecla {
+  height: 52px;
+  border: 1px solid var(--renglon);
+  background: var(--hoja);
+  color: var(--tinta);
+  font-family: var(--f-cifra);
+  font-size: var(--t-xl);
+  font-weight: 600;
+}
+.calc-tecla:active {
+  background: var(--birome-suave);
+}
+.calc-tecla.op {
+  color: var(--birome);
+  font-family: var(--f-texto);
+}
+.calc-tecla.borrar {
+  color: var(--gasto);
+}
+.calc-tecla.igual {
+  grid-column: 1 / -1;
+  background: var(--birome);
+  border-color: var(--birome);
+  color: var(--sobre-birome);
+}

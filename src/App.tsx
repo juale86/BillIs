@@ -1,5 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BotonLupa } from './components/Buscador'
+import { Calculadora } from './components/Calculadora'
 import { FormMovimiento } from './components/FormMovimiento'
 import { Pagar, textoTotal, totalCompra } from './components/Pagar'
 import { db, inicializar, setAjuste } from './db/db'
@@ -58,6 +59,7 @@ export default function App() {
   // Compra cuyo pago se está viendo (clave de compra), o null.
   const [pagando, setPagando] = useState<string | null>(null)
   const [verAlertas, setVerAlertas] = useState(false)
+  const [calculadora, setCalculadora] = useState(false)
   const [, setVersionSesion] = useState(0)
   // Búsquedas: los filtros siguen aplicados aunque se cierre la lupa (testigo).
   const [buscandoMov, setBuscandoMov] = useState(false)
@@ -308,6 +310,16 @@ export default function App() {
                 {TITULOS[p]}
               </button>
             ))}
+            <button className="ajustes" aria-label="Calculadora" onClick={() => setCalculadora(true)}>
+              <svg width="20" height="22" viewBox="0 0 20 22" aria-hidden="true">
+                <rect x="2" y="1.5" width="16" height="19" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
+                <rect x="5" y="4.5" width="10" height="4" fill="currentColor" />
+                <g fill="currentColor">
+                  <circle cx="6" cy="12.5" r="1.3" /><circle cx="10" cy="12.5" r="1.3" /><circle cx="14" cy="12.5" r="1.3" />
+                  <circle cx="6" cy="16.5" r="1.3" /><circle cx="10" cy="16.5" r="1.3" /><circle cx="14" cy="16.5" r="1.3" />
+                </g>
+              </svg>
+            </button>
             <button
               className="ajustes"
               aria-label="Ajustes"
@@ -323,6 +335,8 @@ export default function App() {
           </nav>
         </>
       )}
+
+      {calculadora && <Calculadora onCerrar={() => setCalculadora(false)} />}
 
       {pagando && gastosPagando.length > 0 && (
         <Pagar
