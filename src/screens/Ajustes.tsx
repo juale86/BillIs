@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { amPm } from '../lib/hora'
 import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
 import type { Datos } from '../lib/datos'
@@ -197,7 +198,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
 
       <p className="nota version">
         BillIs {__APP_VERSION__}, publicada el{' '}
-        {new Date(__APP_FECHA__).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+        {amPm(new Date(__APP_FECHA__).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }))}
       </p>
     </section>
   )
