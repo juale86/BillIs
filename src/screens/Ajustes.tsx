@@ -172,15 +172,32 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
         <p className="nota">
           Los datos viven solo en este teléfono. Exportá un respaldo y guardalo en Drive o donde quieras.
         </p>
-        <div className="botones">
-          <button className="primario" onClick={() => exportarJSON().then(() => onAviso('Respaldo exportado'))}>
-            Exportar respaldo
+        {/* Íconos: la flecha sale hacia arriba a la derecha al exportar y entra desde arriba a la izquierda al importar. */}
+        <div className="botones botones-respaldo">
+          <button
+            className="icono borde respaldo"
+            aria-label="Exportar respaldo"
+            title="Exportar respaldo"
+            onClick={() => exportarJSON().then(() => onAviso('Respaldo exportado'))}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" />
+              <path d="M11 13l9-9M14 4h6v6" />
+            </svg>
           </button>
-          <button className="secundario" onClick={() => exportarCSV()}>
-            Exportar CSV
+          <button className="icono borde respaldo" aria-label="Exportar CSV" title="Exportar CSV" onClick={() => exportarCSV()}>
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+              <text x="1" y="21.5" fontSize="8.5" fontWeight="700" fill="currentColor" fontFamily="var(--f-texto)">
+                CSV
+              </text>
+              <path d="M12 12l8.5-8.5M14.5 3.5h6v6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </button>
-          <button className="secundario" onClick={() => refArchivo.current?.click()}>
-            Importar respaldo
+          <button className="icono borde respaldo" aria-label="Importar respaldo" title="Importar respaldo" onClick={() => refArchivo.current?.click()}>
+            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6" />
+              <path d="M4 4l9 9M13 7v6H7" />
+            </svg>
           </button>
         </div>
         <input

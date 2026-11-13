@@ -2162,3 +2162,12 @@ button.hechas-tit {
 .hoja-tarea .peligro {
   padding: 0;
 }
+
+/* Respaldo en Ajustes: tres botones ícono (exportar, CSV, importar). */
+.botones-respaldo {
+  gap: 10px;
+}
+.icono.borde.respaldo {
+  width: 48px;
+  height: 44px;
+}
