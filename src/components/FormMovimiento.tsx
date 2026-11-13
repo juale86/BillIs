@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
-import type { Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
+import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
 import type { Datos } from '../lib/datos'
+import { cambios, cargaDe, ETIQUETA_CAMPO, fmtFechaHora, historialAlEditar, textoCampo, type CampoCarga } from '../lib/historial'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 import { cantidadSugerida, miParte, totalConPromo } from '../lib/promo'
 import { guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
@@ -21,6 +22,21 @@ import { MetodoCuotas } from './MetodoCuotas'
 type TipoForm = 'gasto' | 'ingreso'
 type TipoPromo = '' | Promo['tipo']
 
+/** El dueño de una lista corrige lo que compró otro miembro: el mismo formulario, pero se guarda en la lista. */
+export interface Correccion {
+  /** Quién lo compró. */
+  quien: string
+  /** Lo que tiene cargado ahora (con las correcciones anteriores). */
+  actual: GastoCargado
+  /** Lo que cargó quien lo compró: los cambios se muestran siempre contra esto. */
+  original: GastoCargado
+  corregidoPor: string | null
+  corregidoEn: number | null
+  /** Se marcó comprado sin gasto: se puede dejar sin precio. */
+  sinMonto: boolean
+  onGuardar: (g: GastoCargado) => void
+}
+
 interface Props {
   datos: Datos
   tipoInicial: TipoForm
@@ -36,6 +52,7 @@ interface Props {
   onGuardadoMov?: (m: Movimiento) => void
   /** "Ya comprado, sin gasto" (solo desde la lista). */
   onSinGasto?: () => void
+  correccion?: Correccion
 }
 
 const aInputFecha = (t: number) => {
@@ -67,6 +84,7 @@ export function FormMovimiento({
   onGuardado,
   onGuardadoMov,
   onSinGasto,
+  correccion,
 }: Props) {
   const { movimientos, metodos, categorias, yo, multimoneda } = datos
   // Para adivinar la categoría por el nombre, como el grupo en la lista.
@@ -74,27 +92,48 @@ export function FormMovimiento({
   const nombreYo = yo?.nombre ?? 'Yo'
   // Compra en curso: se mantiene entre guardados hasta "Pagar" (o 2 h sin actividad).
   const [sesion, setSesion] = useState(sesionActual)
+  // La categoría de una corrección viene por nombre; si no la tenés, se ofrece igual ("~Nombre").
+  const catDeNombre = (n: string | null) =>
+    !n ? undefined : (categorias.find((c) => c.tipo === 'gasto' && normalizar(c.nombre) === normalizar(n))?.id ?? `~${n}`)
+  // Valores con que arranca: el movimiento que se edita o lo que tiene cargado el ítem que se corrige.
+  const [ini] = useState<Partial<Movimiento> | undefined>(() => {
+    if (editando || !correccion) return editando
+    const a = correccion.actual
+    return {
+      tipo: 'gasto',
+      descripcion: a.descripcion,
+      marca: a.marca ?? undefined,
+      comentario: a.comentario ?? undefined,
+      precioUnitCent: a.precioUnitCent,
+      cantidad: a.cantidad,
+      promo: a.promo ?? undefined,
+      categoriaId: catDeNombre(a.categoria),
+      lugar: a.lugar ?? undefined,
+      fecha: a.fecha,
+      moneda: a.moneda,
+    }
+  })
 
-  const [tipo, setTipo] = useState<TipoForm>(editando ? (editando.tipo === 'ingreso' ? 'ingreso' : 'gasto') : tipoInicial)
-  const [descripcion, setDescripcion] = useState(editando?.descripcion ?? prefill?.descripcion ?? '')
+  const [tipo, setTipo] = useState<TipoForm>(ini ? (ini.tipo === 'ingreso' ? 'ingreso' : 'gasto') : tipoInicial)
+  const [descripcion, setDescripcion] = useState(ini?.descripcion ?? prefill?.descripcion ?? '')
   const [verSugDesc, setVerSugDesc] = useState(false)
-  const [marca, setMarca] = useState(editando?.marca ?? prefill?.marca ?? '')
-  const [comentario, setComentario] = useState(editando?.comentario ?? '')
+  const [marca, setMarca] = useState(ini?.marca ?? prefill?.marca ?? '')
+  const [comentario, setComentario] = useState(ini?.comentario ?? '')
   const [precio, setPrecio] = useState(() => {
-    if (editando) return montoAInput(editando.precioUnitCent)
+    if (ini) return ini.precioUnitCent ? montoAInput(ini.precioUnitCent) : ''
     const ult = prefill && ultimoPrecio(movimientos, prefill.descripcion, prefill.marca ?? '', sesion.lugar)
     return ult ? montoAInput(ult.cent) : ''
   })
-  const [precioTocado, setPrecioTocado] = useState(!!editando)
+  const [precioTocado, setPrecioTocado] = useState(!!ini)
   // Vacío = 1: así se ve el placeholder "Cant". Solo se escribe cuando es más de uno.
   const [cantidad, setCantidad] = useState(() => {
-    const c = editando?.cantidad ?? prefill?.cantidad ?? 1
+    const c = ini?.cantidad ?? prefill?.cantidad ?? 1
     return c > 1 ? String(c) : ''
   })
-  const [verPromo, setVerPromo] = useState(!!editando?.promo)
-  const [promoTipo, setPromoTipo] = useState<TipoPromo>(editando?.promo?.tipo ?? '')
+  const [verPromo, setVerPromo] = useState(!!ini?.promo)
+  const [promoTipo, setPromoTipo] = useState<TipoPromo>(ini?.promo?.tipo ?? '')
   const [promoA, setPromoA] = useState(() => {
-    const p = editando?.promo
+    const p = ini?.promo
     if (p?.tipo === 'nxm') return String(p.lleva)
     if (p?.tipo === 'nesima') return String(p.n)
     if (p?.tipo === 'pct') return String(p.pct)
@@ -102,27 +141,27 @@ export function FormMovimiento({
     return ''
   })
   const [promoB, setPromoB] = useState(() => {
-    const p = editando?.promo
+    const p = ini?.promo
     if (p?.tipo === 'nxm') return String(p.paga)
     if (p?.tipo === 'nesima') return String(p.pct)
     return ''
   })
   const [categoriaId, setCategoriaId] = useState<Id | ''>(
     () =>
-      editando?.categoriaId ??
+      ini?.categoriaId ??
       (prefill ? sugerirCategoria(movimientos, 'gasto', prefill.descripcion, sesion.lugar, dicc) : undefined) ??
       '',
   )
-  const [categoriaManual, setCategoriaManual] = useState(!!editando?.categoriaId)
-  const [lugar, setLugar] = useState(editando ? (editando.lugar ?? '') : tipoInicial === 'gasto' ? sesion.lugar : '')
+  const [categoriaManual, setCategoriaManual] = useState(!!ini?.categoriaId)
+  const [lugar, setLugar] = useState(ini ? (ini.lugar ?? '') : tipoInicial === 'gasto' ? sesion.lugar : '')
   const [ubicacion, setUbicacion] = useState<Ubicacion | undefined>(() =>
-    editando ? editando.ubicacion : tipoInicial === 'gasto' ? sesion.ubicacion : undefined,
+    ini ? ini.ubicacion : tipoInicial === 'gasto' ? sesion.ubicacion : undefined,
   )
   const [ubicando, setUbicando] = useState(false)
-  const [fecha, setFecha] = useState(() => editando?.fecha ?? sesion.fecha ?? Date.now())
-  const [fechaManual, setFechaManual] = useState(!!editando || sesion.fecha !== undefined)
-  const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(editando?.metodoPagoId ?? '')
-  const [moneda, setMoneda] = useState<Moneda>(editando?.moneda ?? 'ARS')
+  const [fecha, setFecha] = useState(() => ini?.fecha ?? sesion.fecha ?? Date.now())
+  const [fechaManual, setFechaManual] = useState(!!ini || sesion.fecha !== undefined)
+  const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(ini?.metodoPagoId ?? '')
+  const [moneda, setMoneda] = useState<Moneda>(ini?.moneda ?? 'ARS')
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -130,12 +169,12 @@ export function FormMovimiento({
   const refPrecio = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (editando) return
+    if (ini) return
     // Desde la lista la descripción ya viene: se arranca por el precio.
     const r = prefill ? refPrecio.current : refDesc.current
     r?.focus()
     if (prefill) r?.select()
-  }, [editando, prefill])
+  }, [ini, prefill])
 
   const esGasto = tipo === 'gasto'
 
@@ -173,7 +212,44 @@ export function FormMovimiento({
   )
   const sugLugares = useMemo(() => sugerirLugares(movimientos, tipo), [movimientos, tipo])
   const sugMarcas = useMemo(() => (esGasto ? sugerirMarcas(movimientos, descripcion) : []), [esGasto, movimientos, descripcion])
-  const cats = categorias.filter((c) => c.tipo === tipo)
+  const cats = [
+    ...categorias.filter((c) => c.tipo === tipo),
+    // Corrigiendo: la categoría de quien lo compró, aunque no esté entre las tuyas.
+    ...(categoriaId.startsWith('~') ? [{ id: categoriaId, nombre: categoriaId.slice(1) }] : []),
+  ]
+  const nombreCategoria = categoriaId.startsWith('~')
+    ? categoriaId.slice(1)
+    : (categorias.find((c) => c.id === categoriaId)?.nombre ?? null)
+
+  // ---- Lo que se cargó antes ----
+  // Corrigiendo: contra lo que cargó quien lo compró. Editando lo tuyo: contra lo primero que cargaste.
+  const referencia = correccion?.original ?? editando?.historial?.original
+  const carga: GastoCargado = {
+    descripcion: descripcion.trim(),
+    marca: (esGasto && marca.trim()) || null,
+    cantidad: esGasto ? cant : 1,
+    precioUnitCent: precioCent ?? 0,
+    promo: (esGasto && promo) || null,
+    totalCent: total,
+    moneda,
+    fecha,
+    lugar: lugar.trim() || null,
+    comentario: comentario.trim() || null,
+    categoria: nombreCategoria,
+    cargadoEn: referencia?.cargadoEn ?? editando?.creadoEn ?? 0,
+  }
+  const distintos = new Set(referencia ? cambios(referencia, carga) : [])
+  const quienCargo = correccion ? `que cargó ${correccion.quien}` : 'que cargaste'
+  /** Debajo de los campos cambiados, lo que se había cargado. */
+  const antes = (...campos: CampoCarga[]) =>
+    referencia &&
+    campos
+      .filter((c) => distintos.has(c))
+      .map((c) => (
+        <p key={c} className="antes">
+          {ETIQUETA_CAMPO[c]} {quienCargo}: <span>{textoCampo(c, referencia)}</span>
+        </p>
+      ))
   // Dentro del campo Marca: las que coinciden con lo escrito (hasta 3); al elegir una, las otras se van.
   const chipsMarca = useMemo(() => {
     const q = normalizar(marca)
@@ -281,8 +357,18 @@ export function FormMovimiento({
   async function guardar(otro: boolean) {
     setError('')
     if (!descripcion.trim()) return setError(esGasto ? 'Falta el producto' : 'Falta el concepto')
-    if (precioCent === null || precioCent <= 0) return setError(esGasto ? 'Falta el precio' : 'Falta el monto')
+    const sinPrecioOk = correccion?.sinMonto && !precio.trim()
+    if (!sinPrecioOk && (precioCent === null || precioCent <= 0)) return setError(esGasto ? 'Falta el precio' : 'Falta el monto')
     if (promoTipo === 'manual' && !(parseMonto(promoA) ?? 0)) return setError('Escribí el total que pagaste con la promo')
+
+    // Corrigiendo lo que compró otro: se guarda en la lista (sin esperar a la señal) y su teléfono lo aplica.
+    if (correccion) {
+      if (cambios(correccion.actual, carga).length) {
+        correccion.onGuardar(carga)
+        onGuardado?.('Corrección guardada')
+      }
+      return onCerrar()
+    }
 
     setGuardando(true)
     try {
@@ -313,7 +399,7 @@ export function FormMovimiento({
         comentario: comentario.trim() || undefined,
         categoriaId: categoriaId || undefined,
         cantidad: esGasto ? cant : 1,
-        precioUnitCent: precioCent,
+        precioUnitCent: precioCent ?? 0,
         promo: esGasto ? promo : undefined,
         totalCent: total,
         moneda,
@@ -329,6 +415,8 @@ export function FormMovimiento({
         compraId,
         listaItem: editando?.listaItem ?? prefill?.listaItem,
       }
+      // Editando: se guarda lo primero que se cargó y quién hizo el último cambio.
+      if (editando) mov.historial = historialAlEditar(editando, mov, nombreYo, categorias)
       await db.movimientos.put(mov)
       onGuardadoMov?.(mov)
 
@@ -352,11 +440,15 @@ export function FormMovimiento({
       className="form"
       onSubmit={(e) => {
         e.preventDefault()
-        guardar(!editando && contexto !== 'lista')
+        guardar(!editando && !correccion && contexto !== 'lista')
       }}
     >
       <header className="form-cab">
-        {editando || contexto === 'lista' ? (
+        {correccion ? (
+          <h2 className="tipo tipo-fijo tipo-gasto">
+            <span className="tipo-texto">Corregir lo que compró {correccion.quien}</span>
+          </h2>
+        ) : editando || contexto === 'lista' ? (
           // Editando o comprando de la lista el tipo ya está decidido: solo el título, sin switch.
           <h2 className={'tipo tipo-fijo tipo-' + tipo}>
             <span className="tipo-texto">{editando ? 'Editar' : 'Nuevo'} {esGasto ? 'gasto' : 'ingreso'}</span>
@@ -471,6 +563,7 @@ export function FormMovimiento({
             </>
           )}
         </div>
+        {antes('descripcion', 'marca', 'cantidad')}
 
         <div className="fila fila-base">
           <label className="campo crece">
@@ -510,7 +603,7 @@ export function FormMovimiento({
             </label>
           )}
           <div className="campo fecha">
-            {fechaManual && !editando && (
+            {fechaManual && !editando && !correccion && (
               <button
                 type="button"
                 className="enlace mini ahora"
@@ -536,6 +629,7 @@ export function FormMovimiento({
             />
           </div>
         </div>
+        {antes('precioUnitCent', 'moneda', 'fecha')}
 
         {esGasto && !verPromo && (
           <button type="button" className="enlace" onClick={() => setVerPromo(true)}>
@@ -603,6 +697,7 @@ export function FormMovimiento({
             {ahorro > 0 && <>, ahorrás {fmt(ahorro, moneda)}</>}
           </p>
         )}
+        {antes('promo', 'totalCent')}
 
         <div className="fila">
           <label className="campo crece">
@@ -636,6 +731,7 @@ export function FormMovimiento({
             />
           )}
         </div>
+        {antes('categoria')}
 
         <div className="campo">
           <div className="fila">
@@ -664,7 +760,7 @@ export function FormMovimiento({
                 )}
               </div>
             </label>
-            {esGasto && (
+            {esGasto && !correccion && (
               <div className="campo ubicacion">
                 {ubicacion ? (
                   <div className="con-boton">
@@ -707,7 +803,8 @@ export function FormMovimiento({
             }}
           />
         </div>
-        {esGasto && (
+        {antes('lugar')}
+        {esGasto && !correccion && (
           <p className="nota">
             {editando
               ? 'Método de pago, cuotas, pagador y tu parte se cambian tocando el Total de la compra.'
@@ -726,8 +823,11 @@ export function FormMovimiento({
             onChange={(e) => setComentario(e.target.value)}
           />
         </label>
+        {antes('comentario')}
 
         {error && <p className="error">{error}</p>}
+
+        {(editando || correccion) && <HistorialMov editando={editando} correccion={correccion} yo={nombreYo} categorias={categorias} />}
 
         {editando && onBorrar && (
           <button type="button" className="peligro" onClick={() => onBorrar(editando)}>
@@ -738,7 +838,11 @@ export function FormMovimiento({
       </div>
 
       <footer className="acciones">
-        {editando ? (
+        {correccion ? (
+          <button type="submit" className="primario" disabled={guardando}>
+            Guardar corrección
+          </button>
+        ) : editando ? (
           <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
             Guardar cambios
           </button>
@@ -758,5 +862,70 @@ export function FormMovimiento({
         )}
       </footer>
     </form>
+  )
+}
+
+/**
+ * Quién lo cargó y cuándo, quién hizo el último cambio y cuándo, y qué cambió desde lo que se cargó primero.
+ * Muestra lo guardado, no lo que se está escribiendo (eso aparece debajo de cada campo).
+ */
+function HistorialMov({
+  editando,
+  correccion,
+  yo,
+  categorias,
+}: {
+  editando?: Movimiento
+  correccion?: Correccion
+  yo: string
+  categorias: Datos['categorias']
+}) {
+  const quien = (n: string) => (normalizar(n) === normalizar(yo) ? 'vos' : n)
+  let cargo: string
+  let cargadoEn: number
+  let edicion: { por: string; en: number } | null = null
+  let lista: CampoCarga[] = []
+  let original: GastoCargado | undefined
+  let actual: GastoCargado | undefined
+  if (correccion) {
+    cargo = correccion.quien
+    cargadoEn = correccion.original.cargadoEn
+    if (correccion.corregidoPor && correccion.corregidoEn) edicion = { por: correccion.corregidoPor, en: correccion.corregidoEn }
+    original = correccion.original
+    actual = correccion.actual
+  } else {
+    const m = editando!
+    cargo = yo
+    cargadoEn = m.creadoEn
+    if (m.historial) {
+      edicion = { por: m.historial.editadoPor, en: m.historial.editadoEn }
+      original = m.historial.original
+      actual = cargaDe(m, categorias)
+    }
+  }
+  if (original && actual) lista = cambios(original, actual)
+  const cargoQuien = quien(cargo)
+  return (
+    <div className="historial">
+      <p>
+        {cargoQuien === 'vos' ? 'Lo cargaste vos' : `Lo cargó ${cargoQuien}`} el {fmtFechaHora(cargadoEn)}.
+      </p>
+      {edicion && (
+        <p>
+          {quien(edicion.por) === 'vos' ? (correccion ? 'Lo corregiste vos' : 'Lo modificaste vos') : `Lo corrigió ${edicion.por}`} el{' '}
+          {fmtFechaHora(edicion.en)}
+          {lista.length ? ':' : ', sin cambios respecto de lo que se cargó.'}
+        </p>
+      )}
+      {edicion && lista.length > 0 && original && actual && (
+        <ul>
+          {lista.map((c) => (
+            <li key={c}>
+              {ETIQUETA_CAMPO[c]}: <s>{textoCampo(c, original)}</s> {textoCampo(c, actual)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

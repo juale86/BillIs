@@ -34,7 +34,7 @@ import {
 } from 'firebase/firestore'
 import { useEffect, useMemo, useState } from 'react'
 import { normalizar } from '../db/db'
-import type { Moneda } from '../db/types'
+import type { GastoCargado, Moneda } from '../db/types'
 import { firebaseConfig } from './firebase-config'
 
 /**
@@ -42,12 +42,15 @@ import { firebaseConfig } from './firebase-config'
  *
  * listas/{listaId}
  *   nombre, duenoUid, duenoNombre, creadoEn, cerrada, cerradaEn
+ *   tipo: 'compras' (o ausente, las viejas) | 'tareas'; subsecciones (solo tareas, lib/tareas.ts)
  *   miembros: { uid: nombre }, miembroUids: [uid]   ← quién ve y edita
  *   permisos: { uid: { agregar, comprar, editar } } ← lo que puede cada miembro (lo da el dueño)
  *   pendientes: { uid: nombre }                     ← pidieron unirse, falta aprobar
  * listas/{listaId}/items/{itemId}
  *   nombre, cantidad, marca, comprado, agregadoPorUid, agregadoPor,
- *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn, orden, grupo
+ *   compradoPorUid, compradoPor, montoCent, moneda, creadoEn, modificadoEn, orden, grupo,
+ *   gasto (lo cargado al comprar), original, corregidoPor, corregidoEn (corrección del dueño)
+ * listas/{listaId}/tareas/{tareaId}  ← lib/tareas.ts
  *
  * Permisos (firestore.rules): el dueño puede todo y da permisos; cada miembro, según los suyos
  * (por defecto solo agregar). Cerrada, solo el dueño corrige los ítems.
@@ -65,7 +68,18 @@ export interface Lista {
   cerrada: boolean
   cerradaEn: number | null
   creadoEn: number
+  /** Ausente en las listas viejas: son de compras. */
+  tipo?: TipoLista
+  /** Solo en las de tareas: subsecciones en orden. */
+  subsecciones?: Subseccion[]
 }
+
+export type TipoLista = 'compras' | 'tareas'
+export interface Subseccion {
+  id: string
+  nombre: string
+}
+export const esDeTareas = (l: Lista) => l.tipo === 'tareas'
 
 export interface Permisos {
   /** Agregar ítems y corregir o quitar los propios. */
@@ -76,15 +90,19 @@ export interface Permisos {
   editar: boolean
 }
 
-/** Lo que puede un miembro recién aceptado: agregar, pero no comprar. */
+/** Lo que puede un miembro recién aceptado: agregar, pero no comprar. En las de tareas, también tildar. */
 export const PERMISOS_ESTANDAR: Permisos = { agregar: true, comprar: false, editar: false }
+const PERMISOS_ESTANDAR_TAREAS: Permisos = { agregar: true, comprar: true, editar: false }
 
-export const ETIQUETAS_PERMISO: Record<keyof Permisos, string> = { agregar: 'Agregar', comprar: 'Comprar', editar: 'Editar' }
+const ETIQUETAS_COMPRAS: Record<keyof Permisos, string> = { agregar: 'Agregar', comprar: 'Comprar', editar: 'Editar' }
+const ETIQUETAS_TAREAS: Record<keyof Permisos, string> = { agregar: 'Agregar', comprar: 'Tildar', editar: 'Editar' }
+/** Cómo se llama cada permiso en esta lista ("Comprar" en las de compras, "Tildar" en las de tareas). */
+export const etiquetasPermiso = (l: Lista) => (esDeTareas(l) ? ETIQUETAS_TAREAS : ETIQUETAS_COMPRAS)
 
 /** Permisos de alguien en la lista (el dueño los tiene todos). */
 export function permisosDe(l: Lista, uid: string): Permisos {
   if (l.duenoUid === uid) return { agregar: true, comprar: true, editar: true }
-  return { ...PERMISOS_ESTANDAR, ...(l.permisos?.[uid] ?? {}) }
+  return { ...(esDeTareas(l) ? PERMISOS_ESTANDAR_TAREAS : PERMISOS_ESTANDAR), ...(l.permisos?.[uid] ?? {}) }
 }
 
 export interface ItemLista {
@@ -106,6 +124,12 @@ export interface ItemLista {
   orden?: number
   /** Grupo de compra (lib/grupos.ts). null o ausente = sin grupo. */
   grupo?: string | null
+  /** Lo que tiene cargado el gasto con que se compró (desde 1.20). El dueño lo puede corregir. */
+  gasto?: GastoCargado | null
+  /** Lo que cargó quien lo compró, guardado en la primera corrección del dueño. */
+  original?: GastoCargado | null
+  corregidoPor?: string | null
+  corregidoEn?: number | null
 }
 
 /** Posición de un ítem en la lista de pendientes. */
@@ -142,7 +166,7 @@ function auth(): Auth {
   return _auth
 }
 
-function uidActual(): string {
+export function uidActual(): string {
   const u = auth().currentUser
   if (!u) throw new Error('Iniciá sesión para usar las listas')
   return u.uid
@@ -174,9 +198,11 @@ export const cerrarSesionGoogle = () => signOut(auth())
 // ---------- Listas ----------
 
 const listas = () => collection(fs(), 'listas')
-const refLista = (id: string) => doc(fs(), 'listas', id)
+export const refLista = (id: string) => doc(fs(), 'listas', id)
 const items = (listaId: string) => collection(fs(), 'listas', listaId, 'items')
-const desdeDoc = <T>(id: string, d: unknown) => ({ id, ...(d as object) }) as T
+/** Colección de las tareas de una lista de tareas (lib/tareas.ts). */
+export const coleccionTareas = (listaId: string) => collection(fs(), 'listas', listaId, 'tareas')
+export const desdeDoc = <T>(id: string, d: unknown) => ({ id, ...(d as object) }) as T
 
 /** Listas en las que sos miembro (abiertas y cerradas), en vivo. */
 export function useMisListas(uid: string | null): { listas: Lista[]; cargando: boolean; error: string | null } {
@@ -220,6 +246,7 @@ export async function crearLista(
   quien: string,
   miembros?: Record<string, string>,
   permisos?: Lista['permisos'],
+  tipo: TipoLista = 'compras',
 ): Promise<string> {
   const uid = uidActual()
   const todos = { ...(miembros ?? {}), [uid]: quien }
@@ -235,6 +262,8 @@ export async function crearLista(
     cerrada: false,
     cerradaEn: null,
     creadoEn: Date.now(),
+    tipo,
+    ...(tipo === 'tareas' ? { subsecciones: [] } : {}),
   })
   return ref.id
 }
@@ -269,7 +298,7 @@ export const cerrarLista = (l: Lista) => updateDoc(refLista(l.id), { cerrada: tr
 
 export async function borrarLista(l: Lista) {
   const b = writeBatch(fs())
-  for (const d of (await getDocs(items(l.id))).docs) b.delete(d.ref)
+  for (const d of (await getDocs(esDeTareas(l) ? coleccionTareas(l.id) : items(l.id))).docs) b.delete(d.ref)
   b.delete(refLista(l.id))
   await b.commit()
 }
@@ -282,7 +311,19 @@ export async function nuevaConPendientes(l: Lista, pendientes: ItemLista[], quie
   for (const it of pendientes) {
     const { id: _viejo, ...datos } = it
     void _viejo
-    b.set(doc(items(id)), { ...datos, comprado: false, compradoPorUid: null, compradoPor: null, montoCent: null, moneda: null, modificadoEn: ahora })
+    b.set(doc(items(id)), {
+      ...datos,
+      comprado: false,
+      compradoPorUid: null,
+      compradoPor: null,
+      montoCent: null,
+      moneda: null,
+      gasto: null,
+      original: null,
+      corregidoPor: null,
+      corregidoEn: null,
+      modificadoEn: ahora,
+    })
   }
   await b.commit()
   return id
@@ -304,7 +345,8 @@ export async function cerrarAlPagar(listaId: string): Promise<{ lista: Lista; pe
   return { lista: l, pendientes: pend.docs.map((d) => desdeDoc<ItemLista>(d.id, d.data())) }
 }
 
-export const linkLista = (listaId: string) => `${location.origin}${import.meta.env.BASE_URL}?lista=${listaId}`
+export const linkLista = (listaId: string, tipo: TipoLista = 'compras') =>
+  `${location.origin}${import.meta.env.BASE_URL}?${tipo === 'tareas' ? 'tareas' : 'lista'}=${listaId}`
 
 /** Acepta el link completo o solo el código. */
 export function extraerListaId(texto: string): string | null {
@@ -345,19 +387,44 @@ export function agregarItem(
   return { id: ref.id, item: { ...item, id: ref.id }, guardado: setDoc(ref, item) }
 }
 
-/** Marca comprado. montoCent null = "ya comprado, sin gasto". */
-export const comprarItem = (listaId: string, itemId: string, quien: string, montoCent: number | null, moneda: Moneda | null) =>
+/** Marca comprado (o actualiza lo comprado al editar el gasto). gasto null = "ya comprado, sin gasto". */
+export const comprarItem = (listaId: string, itemId: string, quien: string, gasto: GastoCargado | null) =>
   updateDoc(doc(items(listaId), itemId), {
     comprado: true,
     compradoPorUid: uidActual(),
     compradoPor: quien.slice(0, 60),
-    montoCent,
-    moneda,
+    montoCent: gasto?.totalCent ?? null,
+    moneda: gasto?.moneda ?? null,
+    gasto,
     modificadoEn: Date.now(),
   })
 
-export const actualizarMonto = (listaId: string, itemId: string, montoCent: number, moneda: Moneda) =>
-  updateDoc(doc(items(listaId), itemId), { montoCent, moneda, modificadoEn: Date.now() })
+/** Texto de cantidad del ítem al corregirlo: el número si es más de uno; "1 kg" y similares se respetan. */
+function cantidadTexto(antes: string | null, cant: number): string | null {
+  if (cant > 1) return String(cant)
+  return antes && !/^\d+$/.test(antes.trim()) ? antes : null
+}
+
+/**
+ * El dueño de la lista corrige lo que compró otro miembro. Se guarda lo que había cargado esa persona
+ * (solo la primera vez: los cambios siguientes se comparan contra eso) y su teléfono aplica la corrección a su gasto.
+ */
+export function corregirComprado(listaId: string, it: ItemLista, gasto: GastoCargado, quien: string, original: GastoCargado) {
+  const ahora = Date.now()
+  return updateDoc(doc(items(listaId), it.id), {
+    nombre: gasto.descripcion.trim().slice(0, 100),
+    marca: gasto.marca?.trim().slice(0, 60) || null,
+    cantidad: cantidadTexto(it.cantidad, gasto.cantidad),
+    // Comprado sin gasto y corregido sin precio: sigue sin monto.
+    montoCent: it.montoCent === null && !gasto.totalCent ? null : gasto.totalCent,
+    moneda: gasto.moneda,
+    gasto,
+    original: it.original ?? original,
+    corregidoPor: quien.slice(0, 60),
+    corregidoEn: ahora,
+    modificadoEn: ahora,
+  })
+}
 
 export const volverAPendiente = (listaId: string, itemId: string) =>
   updateDoc(doc(items(listaId), itemId), {
@@ -366,6 +433,10 @@ export const volverAPendiente = (listaId: string, itemId: string) =>
     compradoPor: null,
     montoCent: null,
     moneda: null,
+    gasto: null,
+    original: null,
+    corregidoPor: null,
+    corregidoEn: null,
     modificadoEn: Date.now(),
   })
 
@@ -446,10 +517,13 @@ export function useCompradosDeOtros(listaIds: string[]): {
   items: Record<string, ItemLista[]>
   /** Dueño de cada lista: el dueño puede corregir lo que compraron los demás. */
   duenos: Record<string, string>
+  /** Lo que compraste vos y el dueño corrigió: tu teléfono lo aplica a tu gasto. */
+  corregidos: ItemLista[]
 } {
   const { usuario } = useUsuario()
   const uid = usuario?.uid ?? null
   const [porLista, setPorLista] = useState<Record<string, ItemLista[]>>({})
+  const [corregidosPorLista, setCorregidos] = useState<Record<string, ItemLista[]>>({})
   const [duenos, setDuenos] = useState<Record<string, string>>({})
   const clave = listaIds.join(',')
   useEffect(() => {
@@ -463,11 +537,12 @@ export function useCompradosDeOtros(listaIds: string[]): {
     const offs = ids.map((id) =>
       onSnapshot(
         query(items(id), where('comprado', '==', true)),
-        (s) =>
-          setPorLista((prev) => ({
-            ...prev,
-            [id]: s.docs.map((d) => desdeDoc<ItemLista>(d.id, d.data())).filter((it) => it.compradoPorUid !== uid),
-          })),
+        (s) => {
+          const todos = s.docs.map((d) => desdeDoc<ItemLista>(d.id, d.data()))
+          setPorLista((prev) => ({ ...prev, [id]: todos.filter((it) => it.compradoPorUid !== uid) }))
+          const mios = todos.filter((it) => it.compradoPorUid === uid && it.corregidoEn)
+          setCorregidos((prev) => (!mios.length && !prev[id]?.length ? prev : { ...prev, [id]: mios }))
+        },
         () => setPorLista((prev) => ({ ...prev, [id]: [] })),
       ),
     )
@@ -475,7 +550,10 @@ export function useCompradosDeOtros(listaIds: string[]): {
   }, [uid, clave])
   // El mismo objeto mientras no cambie nada: si fuera uno nuevo en cada render, quien lo pasa hacia arriba
   // en un efecto (CompradosDeOtros → Movimientos) dispararía otro render, y así sin fin.
-  return useMemo(() => ({ uid, items: porLista, duenos }), [uid, porLista, duenos])
+  return useMemo(
+    () => ({ uid, items: porLista, duenos, corregidos: Object.values(corregidosPorLista).flat() }),
+    [uid, porLista, duenos, corregidosPorLista],
+  )
 }
 
 /** Total pagado por moneda de los ítems comprados. */

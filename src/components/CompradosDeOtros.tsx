@@ -5,6 +5,7 @@ export interface Otros {
   uid: string | null
   items: Record<string, ItemLista[]>
   duenos: Record<string, string>
+  corregidos: ItemLista[]
 }
 
 /**

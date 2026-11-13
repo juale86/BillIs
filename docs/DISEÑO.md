@@ -47,10 +47,11 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 ## Pantallas
 
 1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer. Cada compra abierta con más de un ítem tiene, a la derecha del título, **su propia lupa** (busca en descripción y marca de esa compra) y **su botón de orden**: manual (como se cargó), A..Z o por grupos (el grupo se adivina como en la lista). Duran mientras la app está abierta (desde 1.15). El botón de plegar/desplegar (flecha) es un botón propio, siempre a la derecha; al desplegar, la lupa y el orden aparecen a su izquierda (desde 1.18). Si la compra tiene ítems de una lista compartida, también muestra **lo que otros miembros compraron de esa lista**, en gris y con "compró Ana": se ven, se buscan y se ordenan, pero solo quien lo compró lo cambia. Se une por el **id de la lista** (que ya guardan los gastos comprados desde ella, en `listaItem`); si usaste la lista en más de una compra, cada ítem va a la más cercana en el tiempo. El pie muestra **"Total"** (el real, con lo de todos; sin nombres, porque la lista puede tener muchos miembros, desde 1.18.3) y **"Solo lo tuyo"**; Resumen y Saldos siguen contando solo lo tuyo, porque lo de Ana ya está en su teléfono (desde 1.16).
-2. **Resumen del mes**: ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
+2. **Resumen del mes** (ícono de barras en la barra de abajo, desde 1.20): ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
 4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista, respaldo. Métodos, categorías y grupos se renombran, borran y agregan; renombrar y borrar muestran un aviso con **Deshacer** (borrar ya no pide confirmación) (desde 1.14).
-5. **Calculadora**: botón al lado del engranaje (lo vuelve a tocar o tocar afuera la cierra), abre una hoja apoyada sobre las pestañas, sin título ni ✕, con + − × ÷ %, ( ), punto, C, ⌫ e =. Se evalúa con un parser propio (sin `eval`); los paréntesis sin cerrar se cierran solos y `200 + 10%` da 220. Debajo de la cuenta se ve el resultado parcial. Sin historial: recuerda solo la última cuenta mientras la app está abierta (desde 1.17.1). Funciona también con el teclado físico (desde 1.17).
+5. **Tareas** (desde 1.20): ver "Tareas" más abajo.
+6. **Calculadora**: botón al lado del engranaje (lo vuelve a tocar o tocar afuera la cierra), abre una hoja apoyada sobre las pestañas, sin título ni ✕, con + − × ÷ %, ( ), punto, C, ⌫ e =. Se evalúa con un parser propio (sin `eval`); los paréntesis sin cerrar se cierran solos y `200 + 10%` da 220. Debajo de la cuenta se ve el resultado parcial. Sin historial: recuerda solo la última cuenta mientras la app está abierta (desde 1.17.1). Funciona también con el teclado físico (desde 1.17).
 
 ## Respaldo
 
@@ -115,6 +116,26 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - Caché persistente: funciona sin señal y sincroniza al volver.
 - Desarrollo con emuladores: `VITE_EMULADORES=1` + `npx firebase-tools emulators:start --only auth,firestore` (requiere Java 21).
 
+### Corrección de lo que compró otro (desde 1.20)
+
+- El dueño corrige lo que compró otro miembro con el **formulario de gasto completo** (producto, marca, cantidad, precio, fecha, promo, categoría, lugar y comentario; la ubicación no viaja): en la lista con el lápiz o tocando el comprado, y en Movimientos tocando el renglón gris. Reemplaza la hoja chica de 1.19.1.
+- Al comprar, el ítem guarda lo cargado en el gasto (`gasto`, con la categoría por nombre). En la primera corrección se guarda lo que había cargado quien lo compró (`original`): los cambios siguientes se muestran siempre contra eso.
+- Debajo de cada campo cambiado: "Precio que cargó Ana: $ 18.900,00". Al pie, quién lo cargó y cuándo, quién lo corrigió y cuándo, y la lista de cambios (antes tachado, después).
+- El teléfono de quien compró aplica la corrección a su gasto al abrir Movimientos en ese mes (si la categoría no existe, la crea) y lo marca "corrigió Juan". Si cambió el precio, las cuotas pierden el interés.
+- Las reglas solo dejan corregir al dueño, con la lista abierta o cerrada, y nadie más puede escribir `original` ni `corregidoPor`.
+
+### Historial de cada movimiento (desde 1.20)
+
+- Al editar un movimiento propio se guarda lo primero que se cargó (`historial.original`), quién hizo el último cambio y cuándo. Abrirlo muestra "Lo cargaste vos el…", "Lo modificaste vos el…" y qué cambió. Los cambios de pago (Pagar) no cuentan.
+
+## Tareas (desde 1.20)
+
+- Pestaña propia. Para que entre en la barra, **Resumen pasó a ser un ícono** (barras), junto a la calculadora y Ajustes.
+- Arriba, **Todo** y cada **sección** como chips (con la cantidad pendiente y la insignia de pedidos para unirse). Cada sección es una lista de Firestore con `tipo: 'tareas'`: se comparte por link (`?tareas=`), se aprueba a quien pide unirse y se dan permisos igual que en las de compras ("Tildar" en vez de "Comprar"; por defecto cada miembro agrega y tilda). Sin otros miembros, la ve solo quien la creó (igual hace falta iniciar sesión con Google).
+- **Subsecciones** en el documento de la sección; las crea, renombra y borra el dueño (desde el menú ⋯ o con "+ Nueva…" al agregar). Borrar una deja sus tareas "Sin subsección".
+- Cada tarea: texto, responsable (un miembro), fecha límite (`AAAA-MM-DD`), nota, subsección, quién la agregó y quién la hizo y cuándo. Pendientes ordenadas por fecha límite y después por orden de carga; las hechas, abajo y plegadas.
+- Tocar una tarea abre su hoja para corregirla o borrarla (con Deshacer); tildarla también ofrece Deshacer.
+
 ## Búsqueda
 
 - Lupa en Movimientos (solo el mes visible: texto en descripción, marca y lugar; chips Gastos / Ingresos / Categoría / Pagó otro; resumen "N resultados, gastaste $X (tu parte)").
@@ -122,6 +143,8 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - En la lista no hay lupa (desde 1.10): el campo **Buscar y filtrar** está siempre a la vista y busca **solo en los pendientes**, porque sirve para encontrar en el súper lo que falta comprar; con la búsqueda activa los comprados no se muestran. Chips **"Agregado por …"** para cada miembro de la lista (filtra por uid). Al comprar un ítem y volver, el texto de búsqueda queda vacío (desde 1.12). Sin contador "N de M pendientes"; si nada coincide dice "No hay coincidencias en la lista" (desde 1.18.3).
 
 ## Apariencia
+
+Estilo "libreta prolija" (desde 1.20): esquinas suaves (10 px en controles, 14 en avisos, 20 en hojas), rayas finas en vez de las negras gruesas, sombra suave solo en lo que flota (Pagar, +, avisos, modales), íconos sobre un fondo tenue sin recuadro, Pagar en tinta para no competir con el rojo de los gastos, textos en Barlow y montos en Barlow semicondensada. En oscuro los botones principales son azul sólido con letra blanca.
 
 Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guarda por dispositivo. La barra de arriba toma el color del fondo de la app (`theme-color` en la página: #f5f6f4 en claro, #14161b en oscuro) y lo sigue si cambia el tema. La barra de botones de Android abajo, en cambio, usa el color fijo del manifest (no admite claro/oscuro): va #14161b, el fondo oscuro (desde 1.19.1).
 
@@ -136,7 +159,6 @@ Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de t
 - Cambiar el orden de los grupos desde Ajustes. ¿Compartir los grupos con la lista en vez de por teléfono?
 - Historial de precios / búsqueda en varios meses (hoy la lupa de Movimientos busca solo en el mes visible).
 - Link de "solo ver" para una lista (opción C de permisos), además del link con aprobación.
-- El dueño de la lista corrige producto, marca y cantidad de lo que compraron los demás: en la lista con el lápiz de cada comprado, y en Movimientos tocando el renglón gris (hoja "Corregir lo que compró Ana"). El monto no, porque es el gasto de esa persona y vive en su teléfono; tampoco cambia el gasto guardado en el teléfono de quien lo compró (desde 1.19.1).
 - Quién puede "Volver a pendientes" un ítem que compró otra persona (hoy: cualquiera con permiso de comprar).
 - ~~"Pagar" un ticket completo en cuotas~~: resuelto en 1.8.1 (cuotas dentro del método, se reparten por producto sin interés). Pendiente: interés al pagar un ticket en cuotas.
 - Qué pasa con tus gastos vinculados a una lista si te sacan de ella o se borra (hoy el gasto queda y el vínculo se ignora).

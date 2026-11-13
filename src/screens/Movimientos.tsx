@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { amPm } from '../lib/hora'
 import { NombreItem } from '../components/NombreItem'
 import { textoCantidad } from '../lib/cantidad'
@@ -15,6 +15,7 @@ import { sugerirGrupo } from '../lib/grupos'
 import type { OrdenLista } from '../lib/orden'
 import { firebaseConfig } from '../lib/firebase-config'
 import type { ItemLista } from '../lib/listaCompras'
+import { aplicarCorreccion } from '../lib/historial'
 import { describirPromo } from '../lib/promo'
 import { SelectorMes } from './SelectorMes'
 
@@ -35,10 +36,11 @@ interface Props {
   panel?: ReactNode
   filtros: FiltrosMov
   setFiltros: (f: FiltrosMov) => void
+  /** El dueño de una lista corrige lo que compró otro miembro (formulario de gasto completo). */
+  onCorregir: (listaId: string, item: ItemLista) => void
 }
 
 const CompradosDeOtros = lazy(() => import('../components/CompradosDeOtros'))
-const CorregirAjeno = lazy(() => import('../components/CorregirAjeno'))
 
 /** Un renglón de una compra: un gasto tuyo o algo que compró otro miembro de la lista (solo para ver). */
 interface Renglon {
@@ -56,7 +58,8 @@ const fmtDia = (t: number) =>
 const fmtHora = (t: number) => amPm(new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }))
 
 export function Movimientos(props: Props) {
-  const { datos, mes, setMes, onEditar, onBorrar, onPagar, compraEnCurso, buscando, acciones, panel, filtros, setFiltros } = props
+  const { datos, mes, setMes, onEditar, onBorrar, onPagar, compraEnCurso, buscando, acciones, panel, filtros, setFiltros, onCorregir } =
+    props
   const { movimientos, personas, categorias, metodos, yo } = datos
   const nombre = (id?: string) => personas.find((p) => p.id === id)?.nombre ?? ''
 
@@ -133,9 +136,14 @@ export function Movimientos(props: Props) {
       [...new Set(movimientos.filter((m) => claveMes(m.fecha) === mes && m.listaItem).map((m) => m.listaItem!.listaId))].sort(),
     [movimientos, mes],
   )
-  const [otros, setOtros] = useState<Otros>({ uid: null, items: {}, duenos: {} })
-  // Ítem de otro que el dueño de la lista está corrigiendo.
-  const [corrigiendo, setCorrigiendo] = useState<{ listaId: string; item: ItemLista } | null>(null)
+  const [otros, setOtros] = useState<Otros>({ uid: null, items: {}, duenos: {}, corregidos: [] })
+  // Lo que compraste y el dueño de la lista corrigió: se aplica a tu gasto (una vez por corrección).
+  useEffect(() => {
+    for (const it of otros.corregidos) {
+      const m = movimientos.find((x) => x.listaItem?.itemId === it.id)
+      if (m && it.corregidoEn && (m.listaItem?.corregidoEn ?? 0) < it.corregidoEn) void aplicarCorreccion(m, it, categorias)
+    }
+  }, [otros.corregidos, movimientos, categorias])
   const listaDeItem = useMemo(() => {
     const m = new Map<string, string>()
     for (const [listaId, its] of Object.entries(otros.items)) for (const it of its) m.set(it.id, listaId)
@@ -341,6 +349,8 @@ export function Movimientos(props: Props) {
     if (m.tipo === 'gasto' && m.pagadorId && m.pagadorId !== yo?.id) partes.push(`pagó ${nombre(m.pagadorId)}`)
     if (m.tipo === 'pagoDeuda')
       partes.push(m.pagadorId === yo?.id ? `a ${nombre(m.contraparteId)}` : `de ${nombre(m.pagadorId)}`)
+    // Lo corrigió el dueño de la lista (tus propios cambios no se marcan).
+    if (m.historial && m.historial.editadoPor !== yo?.nombre) partes.push(`corrigió ${m.historial.editadoPor}`)
     if (m.comentario) partes.push(`“${m.comentario}”`)
     return partes.join(', ')
   }
@@ -353,10 +363,13 @@ export function Movimientos(props: Props) {
     const Fila = corrige ? 'button' : 'div'
     return (
     <li key={`otro-${it.id}`}>
-      <Fila className="mov ajeno" {...(corrige ? { onClick: () => setCorrigiendo({ listaId: listaId!, item: it }), 'aria-label': `Corregir ${it.nombre}` } : {})}>
+      <Fila className="mov ajeno" {...(corrige ? { onClick: () => onCorregir(listaId!, it), 'aria-label': `Corregir ${it.nombre}` } : {})}>
         <span className="mov-texto">
           <NombreItem nombre={it.nombre} marca={it.marca} cantidad={textoCantidad(it.cantidad)} />
-          <span className="mov-det">compró {it.compradoPor ?? 'otro'}</span>
+          <span className="mov-det">
+            compró {it.compradoPor ?? 'otro'}
+            {it.corregidoPor && `, corrigió ${it.corregidoPor}`}
+          </span>
         </span>
         <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin monto'}</span>
       </Fila>
@@ -397,11 +410,6 @@ export function Movimientos(props: Props) {
       {firebaseConfig && listaIds.length > 0 && (
         <Suspense fallback={null}>
           <CompradosDeOtros listaIds={listaIds} onCambio={setOtros} />
-        </Suspense>
-      )}
-      {corrigiendo && (
-        <Suspense fallback={null}>
-          <CorregirAjeno listaId={corrigiendo.listaId} item={corrigiendo.item} onCerrar={() => setCorrigiendo(null)} />
         </Suspense>
       )}
       {panel}

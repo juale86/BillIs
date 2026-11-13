@@ -18,12 +18,14 @@ export interface Datos {
   miembrosLista: string[]
   /** Grupos de la lista de compras de este teléfono, en orden. */
   grupos: Grupo[]
+  /** Sección de tareas elegida ('todo' o el id de una sección). */
+  tareasSeccion: string
 }
 
 /** Todos los datos vivos (no borrados), reactivos. Para uso personal el volumen es chico. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos] = await Promise.all([
+    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos, tareasSeccion] = await Promise.all([
       db.movimientos.toArray(),
       db.personas.toArray(),
       db.metodosPago.toArray(),
@@ -33,6 +35,7 @@ export function useDatos(): Datos | undefined {
       getAjuste<Record<string, string>>('gruposLista', {}),
       getAjuste<string[]>('miembrosLista', []),
       getAjuste<Grupo[] | null>(CLAVE_GRUPOS, null),
+      getAjuste('tareasSeccion', 'todo'),
     ])
     const ps = personas.filter(vivo)
     return {
@@ -46,6 +49,7 @@ export function useDatos(): Datos | undefined {
       gruposAprendidos,
       miembrosLista,
       grupos: gruposDesde(grupos),
+      tareasSeccion,
     }
   })
 }

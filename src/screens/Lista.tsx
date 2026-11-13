@@ -4,6 +4,7 @@ import { textoCantidad } from '../lib/cantidad'
 import { Buscador } from '../components/Buscador'
 import { BotonOrden } from '../components/BotonOrden'
 import { Modal } from '../components/Modal'
+import { BotonCompartir, Invitacion, Login, Miembros } from '../components/Compartir'
 import { ordenEntre, useArrastre } from '../components/useArrastre'
 import { db, normalizar, setAjuste } from '../db/db'
 import type { Moneda, Movimiento } from '../db/types'
@@ -11,15 +12,11 @@ import type { Datos } from '../lib/datos'
 import {
   agregarItem,
   cambiarGrupo,
-  cambiarPermiso,
-  ETIQUETAS_PERMISO,
+  esDeTareas,
   permisosDe,
-  type Permisos,
   editarItem,
-  aprobar,
   borrarItem,
   borrarLista,
-  cancelarPedido,
   cerrarLista,
   cerrarSesionGoogle,
   crearLista,
@@ -28,25 +25,19 @@ import {
   filtrar,
   guardarOrden,
   hayFiltrosLista,
-  iniciarSesion,
   leerOrden,
-  linkLista,
   marcarReciente,
   moverItem,
   nuevaConPendientes,
   olvidarRecientes,
   ordenDe,
-  pedirUnirse,
   recientesDe,
   restaurarItem,
-  rechazar,
   renombrarLista,
-  sacarMiembro,
   salirDeLista,
   sincronizacionDisponible,
   totales,
   useItems,
-  useListaDoc,
   useMisListas,
   useUsuario,
   volverAPendiente,
@@ -70,6 +61,8 @@ export interface Props {
   onComprar: (listaId: string, item: ItemLista) => void
   onVerGasto: (m: Movimiento) => void
   onBorrarGasto: (m: Movimiento) => void
+  /** El dueño corrige, con el formulario de gasto completo, lo que compró otro miembro. */
+  onCorregir: (listaId: string, item: ItemLista) => void
   /** deshacer: muestra el botón Deshacer en el aviso. */
   onAviso: (t: string, deshacer?: () => void) => void
 }
@@ -87,45 +80,22 @@ export default function Lista(props: Props) {
       </section>
     )
   if (cargando) return <p className="vacio pantalla">Cargando…</p>
-  if (!usuario) return <Login />
+  if (!usuario)
+    return (
+      <Login
+        titulo="Listas de compras compartidas"
+        texto="Anotá lo que falta, compartilo con tu familia y cargá los gastos desde la lista en el súper. Para eso cada persona inicia sesión con su cuenta de Google. Tus gastos siguen guardados solo en este teléfono."
+      />
+    )
   return <ConUsuario {...props} uid={usuario.uid} email={usuario.email ?? ''} />
-}
-
-function Login() {
-  const [ocupado, setOcupado] = useState(false)
-  return (
-    <section className="pantalla">
-      <div className="tarjeta">
-        <h3>Listas de compras compartidas</h3>
-        <p className="nota">
-          Anotá lo que falta, compartilo con tu familia y cargá los gastos desde la lista en el súper. Para eso cada
-          persona inicia sesión con su cuenta de Google. Tus gastos siguen guardados solo en este teléfono.
-        </p>
-        <button
-          className="primario"
-          disabled={ocupado}
-          onClick={async () => {
-            setOcupado(true)
-            try {
-              await iniciarSesion()
-            } catch (e) {
-              alert(`No se pudo iniciar sesión: ${e instanceof Error ? e.message : e}`)
-            } finally {
-              setOcupado(false)
-            }
-          }}
-        >
-          Iniciar sesión con Google
-        </button>
-      </div>
-    </section>
-  )
 }
 
 function ConUsuario(props: Props & { uid: string; email: string }) {
   const { datos, uid, invitacion, setInvitacion, onAviso } = props
   const yo = datos.yo?.nombre ?? 'Yo'
-  const { listas, cargando, error } = useMisListas(uid)
+  const { listas: todas, cargando, error } = useMisListas(uid)
+  // Las de tareas van en su pestaña.
+  const listas = todas.filter((l) => !esDeTareas(l))
   const [menu, setMenu] = useState(false)
   // Orden de los pendientes, elegido por teléfono.
   const [orden, setOrden] = useState<OrdenLista>(leerOrden)
@@ -206,7 +176,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           <span aria-hidden="true"> ▾</span>
           {pedidos > 0 && <span className="insignia">{pedidos}</span>}
         </button>
-        {!actual.cerrada && <BotonCompartir listaId={actual.id} onAviso={onAviso} />}
+        {!actual.cerrada && <BotonCompartir listaId={actual.id} tipo="compras" onAviso={onAviso} />}
         <BotonOrden
           orden={orden}
           onCambiar={(o) => {
@@ -234,84 +204,6 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
       )}
 
       <VistaLista {...props} key={actual.id} lista={actual} yo={yo} orden={orden} />
-    </section>
-  )
-}
-
-function BotonCompartir({ listaId, onAviso }: { listaId: string; onAviso: (t: string) => void }) {
-  return (
-    <button
-      className="icono borde"
-      aria-label="Compartir lista"
-      onClick={async () => {
-        const url = linkLista(listaId)
-        try {
-          if (navigator.share)
-            await navigator.share({ title: 'Lista de compras', text: 'Sumate a mi lista de compras en BillIs', url })
-          else {
-            await navigator.clipboard.writeText(url)
-            onAviso('Link copiado')
-          }
-        } catch {
-          /* canceló */
-        }
-      }}
-    >
-      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="18" cy="5" r="2.8" fill="currentColor" />
-        <circle cx="6" cy="12" r="2.8" fill="currentColor" />
-        <circle cx="18" cy="19" r="2.8" fill="currentColor" />
-        <path d="M8.5 10.7l7-4.2M8.5 13.3l7 4.2" stroke="currentColor" strokeWidth="2" />
-      </svg>
-    </button>
-  )
-}
-
-function Invitacion({ codigo, uid, yo, onListo }: { codigo: string; uid: string; yo: string; onListo: () => void }) {
-  const lista = useListaDoc(codigo)
-  if (lista === undefined) return <p className="vacio pantalla">Buscando la lista…</p>
-  if (lista === null)
-    return (
-      <section className="pantalla">
-        <div className="tarjeta">
-          <h3>No encontramos esa lista</h3>
-          <p className="nota">El link puede estar incompleto o la lista fue borrada.</p>
-          <button className="secundario" onClick={onListo}>
-            Volver
-          </button>
-        </div>
-      </section>
-    )
-  const pedido = !!lista.pendientes?.[uid]
-  return (
-    <section className="pantalla">
-      <div className="tarjeta">
-        <h3>
-          {lista.duenoNombre} te invitó a "{lista.nombre}"
-        </h3>
-        {lista.cerrada ? (
-          <p className="nota">Esta lista ya está cerrada.</p>
-        ) : pedido ? (
-          <p className="nota">Le pediste unirte. Cuando {lista.duenoNombre} te apruebe, la lista aparece acá sola.</p>
-        ) : (
-          <p className="nota">Pedí unirte y {lista.duenoNombre} te va a aprobar desde su teléfono.</p>
-        )}
-        <div className="botones">
-          {!lista.cerrada && !pedido && (
-            <button className="primario" onClick={() => pedirUnirse(codigo, yo).catch(() => alert('No se pudo enviar el pedido.'))}>
-              Pedir unirme
-            </button>
-          )}
-          {pedido && (
-            <button className="secundario" onClick={() => cancelarPedido(codigo).then(onListo)}>
-              Cancelar pedido
-            </button>
-          )}
-          <button className="secundario" onClick={onListo}>
-            Volver
-          </button>
-        </div>
-      </div>
     </section>
   )
 }
@@ -347,13 +239,10 @@ function MenuListas(
   },
 ) {
   const { actual, abiertas, cerradas, uid, email, onCerrar, onNueva, onUnirse, onAviso } = props
-  const dueno = esDueno(actual, uid)
   const elegir = (l: TLista) => {
     setAjuste('listaId', l.id)
     onCerrar()
   }
-  const miembros = Object.entries(actual.miembros ?? {}).sort(([a], [b]) => Number(b === actual.duenoUid) - Number(a === actual.duenoUid))
-  const pedidos = Object.entries(actual.pendientes ?? {})
   const accion = (p: Promise<unknown>, ok?: string) =>
     p.then(() => ok && onAviso(ok)).catch(() => alert('No se pudo completar. Revisá la conexión.'))
   // Lista sobre la que se abrió el modal de renombrar o de borrar/salir.
@@ -407,78 +296,7 @@ function MenuListas(
         </div>
 
         <div className="menu-seccion">
-          {dueno && pedidos.length > 0 && (
-            <>
-              <p className="nota">Quieren unirse:</p>
-              <ul className="lista">
-                {pedidos.map(([u, nombre]) => (
-                  <li key={u} className="item-ajuste">
-                    <span>{nombre}</span>
-                    <button
-                      className="enlace"
-                      onClick={() => accion(aprobar(actual, u), `${nombre} se unió. Puede agregar; dale más permisos abajo`)}
-                    >
-                      Aceptar
-                    </button>
-                    <button className="enlace peligro" onClick={() => accion(rechazar(actual, u))}>
-                      Rechazar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          <h3>Miembros</h3>
-          <ul className="lista">
-            {miembros.map(([u, nombre]) => {
-              const p = permisosDe(actual, u)
-              const esElDueno = u === actual.duenoUid
-              return (
-                <li key={u} className="miembro">
-                  <div className="item-ajuste">
-                    <span>
-                      {nombre}
-                      {esElDueno && <small> (dueño)</small>}
-                      {u === uid && <small> (vos)</small>}
-                      {!esElDueno && !dueno && (
-                        <small className="permisos-texto">
-                          {' '}
-                          puede {(Object.keys(ETIQUETAS_PERMISO) as (keyof Permisos)[])
-                            .filter((k) => p[k])
-                            .map((k) => ETIQUETAS_PERMISO[k].toLowerCase())
-                            .join(', ') || 'solo ver'}
-                        </small>
-                      )}
-                    </span>
-                    {/* El dueño da o quita cada permiso con un toque, a la derecha del nombre. */}
-                    {dueno && !esElDueno && !actual.cerrada && (
-                      <div className="permisos" role="group" aria-label={`Permisos de ${nombre}`}>
-                        {(Object.keys(ETIQUETAS_PERMISO) as (keyof Permisos)[]).map((k) => (
-                          <button
-                            key={k}
-                            className="chip"
-                            aria-pressed={p[k]}
-                            onClick={() => accion(cambiarPermiso(actual, u, k, !p[k]))}
-                          >
-                            {p[k] ? '✓ ' : ''}
-                            {ETIQUETAS_PERMISO[k]}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {dueno && u !== uid && !actual.cerrada && (
-                      <button
-                        className="enlace peligro"
-                        onClick={() => confirm(`¿Sacar a ${nombre} de la lista?`) && accion(sacarMiembro(actual, u))}
-                      >
-                        Sacar
-                      </button>
-                    )}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          <Miembros lista={actual} uid={uid} accion={accion} />
         </div>
 
         {cerradas.length > 0 && <ListasCerradas cerradas={cerradas} onElegir={elegir} />}
@@ -576,7 +394,7 @@ function HojaOpciones(props: {
 }
 
 function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; orden: OrdenLista }) {
-  const { datos, lista, uid, yo, orden, filtros, setFiltros, onComprar, onVerGasto, onBorrarGasto, onAviso } = props
+  const { datos, lista, uid, yo, orden, filtros, setFiltros, onComprar, onVerGasto, onBorrarGasto, onCorregir, onAviso } = props
   const { items, cargando, error, pendiente } = useItems(lista.id)
   const dueno = esDueno(lista, uid)
   const cerrada = lista.cerrada
@@ -1058,22 +876,35 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           <ul className="lista">
             {comprados.map((it) => {
               const g = miGasto(it)
+              // Lo que compró otro: el dueño lo corrige con el formulario de gasto completo.
+              const ajeno = it.compradoPorUid !== uid
+              const corrigeAjeno = dueno && ajeno
               return (
                 <li key={it.id} className="item-lista comprado">
                   <button
                     className="item-boton"
-                    disabled={!g}
-                    aria-label={g ? `Ver gasto de ${it.nombre}` : undefined}
-                    onClick={() => g && onVerGasto(g)}
+                    disabled={!g && !corrigeAjeno}
+                    aria-label={g ? `Ver gasto de ${it.nombre}` : corrigeAjeno ? `Corregir ${it.nombre}` : undefined}
+                    onClick={() => (g ? onVerGasto(g) : corrigeAjeno && onCorregir(lista.id, it))}
                   >
                     <span className="item-fila">
                       <NombreItem nombre={it.nombre} marca={it.marca} cantidad={textoCantidad(it.cantidad)} />
                       <span className="mov-monto">{it.montoCent !== null ? fmt(it.montoCent, it.moneda ?? 'ARS') : 'sin gasto'}</span>
                     </span>
-                    <span className="mov-det">compró {it.compradoPor ?? '—'}</span>
+                    <span className="mov-det">
+                      compró {it.compradoPor ?? '—'}
+                      {it.corregidoPor && `, corrigió ${it.corregidoPor}`}
+                    </span>
                   </button>
-                  {/* El dueño corrige lo comprado: siempre lo de los demás, y lo suyo cuando la lista está cerrada. */}
-                  {dueno && (cerrada || it.compradoPorUid !== uid) && lapiz(it)}
+                  {corrigeAjeno && (
+                    <button className="icono chico-icono lapiz" aria-label={`Corregir ${it.nombre}`} onClick={() => onCorregir(lista.id, it)}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+                      </svg>
+                    </button>
+                  )}
+                  {/* Lo suyo, cerrada la lista, el dueño lo corrige como ítem (su gasto se abre tocándolo). */}
+                  {dueno && cerrada && !ajeno && lapiz(it)}
                   {!cerrada && puede.comprar && (
                     <button
                       className="icono chico-icono"

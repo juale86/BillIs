@@ -1,23 +1,33 @@
 /*
- * BillIs — "libreta de almacén".
+ * BillIs — "libreta prolija" (desde 1.20).
  * Papel frío, tinta azul-negra, birome azul como acento, rojo/verde de libreta para gastos/ingresos.
- * Esquinas rectas, controles compactos. Lo único grande: el monto, escrito sobre un renglón.
+ * Esquinas suaves y parejas, rayas finas, sombra solo en lo que flota. Texto en Barlow, montos en
+ * Barlow semicondensada. Lo único grande: el monto, escrito sobre un renglón.
  */
 :root {
-  --alto-tabs: 42px;
+  --alto-tabs: 46px;
   --papel: #f5f6f4;
   --hoja: #ffffff;
-  --tinta: #1d2433;
-  --lapiz: #5d6573;
-  --renglon: #d5d9de;
-  --birome: #2a46b8;
-  --birome-suave: #e3e8f8;
+  --tinta: #1a2030;
+  --lapiz: #636b7a;
+  --renglon: #e1e4e8;
+  --birome: #2b48c9;
+  --birome-suave: #e9edfb;
   --sobre-birome: #ffffff;
-  --gasto: #c0262d;
-  --ingreso: #1d7a46;
+  /* Fondo de los botones principales (en oscuro, más fuerte que la birome de los textos). */
+  --primario: #2b48c9;
+  --gasto: #c8322f;
+  --ingreso: #1c7f4a;
+  /* Lo que flota sobre la pantalla: Pagar y los avisos. */
+  --flotante: #1a2030;
+  --sobre-flotante: #ffffff;
+  --anillo: rgb(43 72 201 / 0.25);
+  --sombra: 0 8px 22px -10px rgb(20 26 40 / 0.45);
+  --r1: 10px;
+  --r2: 14px;
 
-  --f-texto: 'Barlow Semi Condensed', system-ui, sans-serif;
-  --f-cifra: 'Barlow Condensed', 'Barlow Semi Condensed', system-ui, sans-serif;
+  --f-texto: 'Barlow', system-ui, sans-serif;
+  --f-cifra: 'Barlow Semi Condensed', 'Barlow', system-ui, sans-serif;
   /* Escala modular 1.2 sobre 15px */
   --t-xs: 0.75rem;
   --t-s: 0.8125rem;
@@ -41,29 +51,39 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema='claro']) {
     --papel: #14161b;
-    --hoja: #1b1e25;
-    --tinta: #e4e7ee;
-    --lapiz: #9199a8;
-    --renglon: #2e333d;
-    --birome: #8ea3ff;
-    --birome-suave: #232b47;
-    --sobre-birome: #0d1330;
-    --gasto: #ff7a74;
+    --hoja: #1c1f26;
+    --tinta: #e6e8ee;
+    --lapiz: #959cab;
+    --renglon: #2c3039;
+    --birome: #93a6ff;
+    --birome-suave: #232a44;
+    --sobre-birome: #ffffff;
+    --primario: #4d66ee;
+    --gasto: #ff8079;
     --ingreso: #5fd39a;
+    --flotante: #2b3040;
+    --sobre-flotante: #ffffff;
+    --anillo: rgb(147 166 255 / 0.3);
+    --sombra: 0 10px 26px -10px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
 }
 :root[data-tema='oscuro'] {
   --papel: #14161b;
-  --hoja: #1b1e25;
-  --tinta: #e4e7ee;
-  --lapiz: #9199a8;
-  --renglon: #2e333d;
-  --birome: #8ea3ff;
-  --birome-suave: #232b47;
-  --sobre-birome: #0d1330;
-  --gasto: #ff7a74;
+  --hoja: #1c1f26;
+  --tinta: #e6e8ee;
+  --lapiz: #959cab;
+  --renglon: #2c3039;
+  --birome: #93a6ff;
+  --birome-suave: #232a44;
+  --sobre-birome: #ffffff;
+  --primario: #4d66ee;
+  --gasto: #ff8079;
   --ingreso: #5fd39a;
+  --flotante: #2b3040;
+  --sobre-flotante: #ffffff;
+  --anillo: rgb(147 166 255 / 0.3);
+  --sombra: 0 10px 26px -10px rgb(0 0 0 / 0.7);
   color-scheme: dark;
 }
 
@@ -107,19 +127,21 @@ h3 {
 /* ---------- Botones ---------- */
 .primario,
 .secundario {
-  min-height: 40px;
-  padding: 0 14px;
+  min-height: 44px;
+  padding: 0 16px;
   font-weight: 600;
   font-size: var(--t-m);
-  border: 1px solid var(--birome);
+  border: 1px solid var(--primario);
+  border-radius: var(--r1);
 }
 .primario {
-  background: var(--birome);
+  background: var(--primario);
   color: var(--sobre-birome);
 }
 .secundario {
   background: transparent;
   color: var(--birome);
+  border-color: color-mix(in srgb, var(--birome) 40%, transparent);
 }
 button:disabled {
   opacity: 0.5;
@@ -182,6 +204,7 @@ button:disabled {
   width: 30px;
   height: 16px;
   border: 1.5px solid currentColor;
+  border-radius: 999px;
   position: relative;
   flex: none;
 }
@@ -191,6 +214,7 @@ button:disabled {
   left: 2px;
   width: 9px;
   height: 9px;
+  border-radius: 50%;
   background: currentColor;
   transition: transform 0.15s ease-out;
 }
@@ -232,7 +256,8 @@ button:disabled {
   height: var(--alto);
   background: var(--hoja);
   border: 1px solid var(--renglon);
-  padding: 0 9px;
+  border-radius: var(--r1);
+  padding: 0 11px;
   font-size: var(--t-m);
   color: var(--tinta);
 }
@@ -247,7 +272,7 @@ button:disabled {
 .campo select:focus {
   outline: none;
   border-color: var(--birome);
-  box-shadow: inset 0 -2px 0 var(--birome);
+  box-shadow: 0 0 0 3px var(--anillo);
 }
 
 /* El monto: lo único grande. Sin caja, escrito sobre un renglón. */
@@ -255,7 +280,7 @@ button:disabled {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  border-bottom: 2px solid var(--birome);
+  border-bottom: 1.5px solid var(--birome);
 }
 .signo {
   font-family: var(--f-cifra);
@@ -327,9 +352,12 @@ button:disabled {
   left: 0;
   right: 0;
   z-index: 5;
+  margin-top: 4px;
   background: var(--hoja);
-  border: 1px solid var(--birome);
-  border-top: 0;
+  border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+  overflow: hidden;
+  box-shadow: var(--sombra);
 }
 .sugerencias li + li {
   border-top: 1px solid var(--renglon);
@@ -354,19 +382,23 @@ button:disabled {
 .chip {
   flex: none;
   border: 1px solid var(--renglon);
+  border-radius: 999px;
   background: none;
-  padding: 3px 8px;
+  padding: 4px 11px;
   font-size: var(--t-s);
   color: var(--lapiz);
 }
 .chip-activo {
   border-color: var(--birome);
+  background: var(--birome-suave);
   color: var(--birome);
   font-weight: 600;
 }
 .segmentos {
   display: flex;
   border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+  overflow: hidden;
 }
 .segmentos button {
   flex: 1;
@@ -380,7 +412,7 @@ button:disabled {
   border-left: 1px solid var(--renglon);
 }
 .segmentos button[aria-pressed='true'] {
-  background: var(--birome);
+  background: var(--primario);
   color: var(--sobre-birome);
 }
 .segmentos + input {
@@ -424,7 +456,6 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--renglon);
 }
 .selector-mes strong {
   flex: 1;
@@ -462,7 +493,7 @@ main {
   background: none;
   border: 0;
   border-bottom: 1px solid var(--renglon);
-  padding: 7px 0;
+  padding: 9px 0;
 }
 .mov:active {
   background: var(--birome-suave);
@@ -473,10 +504,10 @@ main {
 .compra-cab {
   display: flex;
   justify-content: space-between;
-  font-size: var(--t-s);
+  font-size: var(--t-m);
   font-weight: 600;
   padding: 6px 0 2px;
-  border-bottom: 1px solid var(--tinta);
+  border-bottom: 1px solid var(--renglon);
 }
 .compra-cab small {
   font-weight: 400;
@@ -552,7 +583,8 @@ main {
 }
 .kpis strong {
   font-family: var(--f-cifra);
-  font-size: var(--t-xl);
+  /* Que entre "$ 850.000,00" en un tercio del ancho del teléfono. */
+  font-size: clamp(0.95rem, 4.6vw, var(--t-xl));
   font-weight: 700;
   overflow-wrap: anywhere;
   line-height: 1.1;
@@ -579,11 +611,14 @@ main {
 }
 .barra {
   height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
   background: var(--renglon);
 }
 .barra span {
   display: block;
   height: 100%;
+  border-radius: 999px;
   background: var(--birome);
 }
 .barra-monto {
@@ -651,8 +686,8 @@ main {
 }
 .banner {
   margin: 0 16px 6px;
-  padding: 4px 0 4px 10px;
-  border-left: 3px solid var(--birome);
+  padding: 8px 6px 8px 12px;
+  border-radius: var(--r1);
   background: var(--birome-suave);
   display: flex;
   align-items: center;
@@ -670,25 +705,27 @@ main {
   gap: 10px;
 }
 .pagar {
-  height: 44px;
-  padding: 0 16px;
+  height: 48px;
+  padding: 0 20px;
   border: 0;
-  background: var(--gasto);
-  color: #fff;
+  border-radius: 999px;
+  background: var(--flotante);
+  color: var(--sobre-flotante);
   font-family: var(--f-cifra);
   font-size: var(--t-l);
   font-weight: 700;
-  box-shadow: 3px 3px 0 var(--tinta);
+  box-shadow: var(--sombra);
 }
 .fab {
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   border: 0;
-  background: var(--birome);
+  border-radius: 50%;
+  background: var(--primario);
   color: var(--sobre-birome);
   font-size: 1.75rem;
   line-height: 1;
-  box-shadow: 3px 3px 0 var(--tinta);
+  box-shadow: 0 8px 20px -6px color-mix(in srgb, var(--primario) 70%, transparent);
 }
 .tabs {
   position: fixed;
@@ -697,7 +734,8 @@ main {
   right: 0;
   display: flex;
   justify-content: center;
-  background: var(--hoja);
+  background: color-mix(in srgb, var(--hoja) 92%, transparent);
+  backdrop-filter: blur(10px);
   border-top: 1px solid var(--renglon);
   padding-bottom: env(safe-area-inset-bottom);
 }
@@ -711,9 +749,10 @@ main {
   font-size: var(--t-s);
   color: var(--lapiz);
 }
+/* La pestaña activa: en birome, con una rayita arriba. */
 .tabs button[aria-current='true'] {
   color: var(--birome);
-  box-shadow: inset 0 2px 0 var(--birome);
+  background: linear-gradient(var(--birome), var(--birome)) top center / 28px 3px no-repeat;
 }
 .toast {
   position: fixed;
@@ -722,9 +761,11 @@ main {
   bottom: calc(128px + env(safe-area-inset-bottom));
   max-width: 528px;
   margin: 0 auto;
-  background: var(--tinta);
-  color: var(--papel);
-  padding: 8px 12px;
+  background: var(--flotante);
+  color: var(--sobre-flotante);
+  border-radius: var(--r2);
+  box-shadow: var(--sombra);
+  padding: 11px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -735,7 +776,7 @@ main {
   bottom: calc(68px + env(safe-area-inset-bottom));
 }
 .toast .enlace {
-  color: var(--birome-suave);
+  color: #b7c4ff;
 }
 
 /* ---------- Bienvenida ---------- */
@@ -755,8 +796,6 @@ main {
   font-weight: 700;
   line-height: 1;
   color: var(--birome);
-  border-bottom: 2px solid var(--birome);
-  padding-bottom: 4px;
 }
 .bienvenida p {
   margin: 0;
@@ -779,7 +818,8 @@ main {
 }
 .icono[aria-pressed='true'] {
   color: var(--sobre-birome);
-  background: var(--birome);
+  background: var(--primario);
+  border-radius: var(--r1);
 }
 .boton-chico {
   min-height: 32px;
@@ -801,11 +841,12 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  background: var(--birome);
+  background: var(--primario);
   color: var(--sobre-birome);
   font-size: var(--t-s);
   font-weight: 600;
-  padding-left: 8px;
+  padding-left: 11px;
+  border-radius: 999px;
 }
 .filtro button {
   background: none;
@@ -851,8 +892,9 @@ main {
   font-size: var(--t-s);
   font-weight: 600;
   color: var(--lapiz);
-  border-bottom: 1px solid var(--tinta);
+  border-bottom: 1px solid var(--renglon);
   margin-top: 6px;
+  padding-bottom: 2px;
 }
 .tabs button {
   max-width: 140px;
@@ -884,6 +926,7 @@ main {
   right: 8px;
   width: 8px;
   height: 8px;
+  border-radius: 50%;
   background: var(--gasto);
   border: 1.5px solid var(--papel);
 }
@@ -921,28 +964,42 @@ main {
   font-weight: 700;
   min-width: 18px;
   padding: 1px 5px;
+  border-radius: 999px;
   text-align: center;
 }
 .hoja-fondo {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgb(0 0 0 / 0.35);
+  background: rgb(10 14 24 / 0.45);
   display: flex;
   align-items: flex-end;
   justify-content: center;
 }
+/* Hoja que sube desde abajo, con la manija arriba. */
 .hoja {
   width: 100%;
   max-width: 560px;
   max-height: 85dvh;
   overflow-y: auto;
   background: var(--papel);
-  border-top: 3px solid var(--birome);
-  padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  padding: 20px 16px calc(8px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
+}
+.hoja::before {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: 4px;
+  background: var(--renglon);
 }
 .hoja .acciones {
   position: static;
@@ -975,7 +1032,8 @@ main {
 .menu-item[aria-current='true'] {
   font-weight: 600;
   color: var(--birome);
-  box-shadow: inset 3px 0 0 var(--birome);
+  background: var(--birome-suave);
+  border-radius: var(--r1);
 }
 .menu-pie {
   flex-direction: row;
@@ -1060,7 +1118,7 @@ main {
 /* ---------- Engranaje en el menú, campos en fila ---------- */
 .tabs .ajustes {
   flex: none;
-  width: 52px;
+  width: 46px;
   max-width: none;
   display: grid;
   place-items: center;
@@ -1101,7 +1159,8 @@ main {
   justify-content: center;
   gap: 4px;
   background: var(--hoja);
-  border: 1px dashed var(--birome);
+  border: 1px solid color-mix(in srgb, var(--birome) 40%, transparent);
+  border-radius: var(--r1);
   color: var(--birome);
   font-weight: 600;
   font-size: var(--t-s);
@@ -1111,8 +1170,9 @@ main {
   height: var(--alto);
   display: flex;
   align-items: center;
-  padding-left: 8px;
+  padding-left: 10px;
   border: 1px solid var(--renglon);
+  border-radius: var(--r1);
   background: var(--hoja);
   font-size: var(--t-s);
   font-weight: 600;
@@ -1136,14 +1196,15 @@ main {
 .lista-cab .borde + .borde {
   margin-left: 6px;
 }
-/* Botón ícono con borde azul (lupa, compartir). */
+/* Botón ícono (lupa, compartir, orden): birome sobre un fondo tenue, sin recuadro. */
 .icono.borde {
   display: grid;
   place-items: center;
   color: var(--birome);
-  border: 1.5px solid var(--birome);
-  min-width: 38px;
-  min-height: 38px;
+  background: var(--birome-suave);
+  border-radius: var(--r1);
+  min-width: 40px;
+  min-height: 40px;
 }
 .selector-mes .borde {
   margin: 2px 0;
@@ -1179,7 +1240,7 @@ main {
   position: fixed;
   inset: 0;
   z-index: 30;
-  background: rgb(0 0 0 / 0.45);
+  background: rgb(10 14 24 / 0.5);
   display: grid;
   place-items: center;
   padding: 16px;
@@ -1187,13 +1248,13 @@ main {
 .modal {
   width: 100%;
   max-width: 360px;
-  background: var(--papel);
-  border-top: 3px solid var(--birome);
-  padding: 14px 16px 12px;
+  background: var(--hoja);
+  border-radius: 18px;
+  padding: 18px 18px 14px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 4px 4px 0 var(--tinta);
+  box-shadow: var(--sombra);
 }
 .modal h3 {
   font-size: var(--t-l);
@@ -1224,6 +1285,7 @@ main {
 }
 .icono.borde[aria-pressed='true'] {
   color: var(--sobre-birome);
+  background: var(--primario);
 }
 /* Método de pago con cuotas dentro del mismo campo. */
 .campo.metodo {
@@ -1234,10 +1296,12 @@ main {
   height: var(--alto);
   background: var(--hoja);
   border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+  overflow: hidden;
 }
 .metodo-caja:focus-within {
   border-color: var(--birome);
-  box-shadow: inset 0 -2px 0 var(--birome);
+  box-shadow: 0 0 0 3px var(--anillo);
 }
 .campo .metodo-caja select {
   flex: 1;
@@ -1315,14 +1379,14 @@ main {
 .seccion-saldos h3 {
   font-size: var(--t-m);
   font-weight: 600;
-  border-bottom: 1px solid var(--tinta);
+  border-bottom: 1px solid var(--renglon);
   padding-bottom: 2px;
 }
 /* Total al pie de Movimientos y de la lista. */
 .total-pie {
   margin-top: 8px;
   padding-top: 6px;
-  border-top: 2px solid var(--tinta);
+  border-top: 1px solid var(--renglon);
 }
 /* Pie de cada compra: total y forma de pago; tocándolo se abre el pago. */
 .compra {
@@ -1335,7 +1399,7 @@ main {
   gap: 1px;
   background: none;
   border: 0;
-  border-top: 2px solid var(--tinta);
+  border-top: 1px solid var(--renglon);
   padding: 6px 0 4px;
   text-align: left;
   color: var(--tinta);
@@ -1407,7 +1471,7 @@ button.compra-cab {
   width: 100%;
   background: none;
   border: 0;
-  border-bottom: 1px solid var(--tinta);
+  border-bottom: 1px solid var(--renglon);
   color: var(--tinta);
   text-align: left;
   align-items: baseline;
@@ -1435,7 +1499,7 @@ button.compra-cab {
   display: flex;
   align-items: center;
   gap: 6px;
-  border-bottom: 1px solid var(--tinta);
+  border-bottom: 1px solid var(--renglon);
 }
 .compra.plegada .compra-cab-fila {
   border-bottom-color: var(--renglon);
@@ -1542,10 +1606,11 @@ button.compra-cab {
   gap: 6px;
   white-space: nowrap;
   border: 1px solid var(--renglon);
+  border-radius: 8px;
   background: none;
   color: var(--lapiz);
   font-size: var(--t-xs);
-  padding: 3px 6px;
+  padding: 3px 7px;
 }
 .chip-grupo.vacio {
   border-color: var(--birome);
@@ -1616,8 +1681,6 @@ button.compra-cab {
   opacity: 0.75;
   border-bottom: 1px solid var(--renglon);
   margin-top: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
 }
 .agregado-por {
   font-size: var(--t-xs);
@@ -1736,7 +1799,7 @@ button.compra-cab {
   gap: 8px;
 }
 .calc-pantalla {
-  border-bottom: 1px solid var(--tinta);
+  border-bottom: 1px solid var(--renglon);
   padding: 4px 2px 6px;
   text-align: right;
   min-width: 0;
@@ -1761,6 +1824,7 @@ button.compra-cab {
 .calc-tecla {
   height: 52px;
   border: 1px solid var(--renglon);
+  border-radius: var(--r1);
   background: var(--hoja);
   color: var(--tinta);
   font-family: var(--f-cifra);
@@ -1779,8 +1843,8 @@ button.compra-cab {
 }
 .calc-tecla.igual {
   grid-column: 1 / -1;
-  background: var(--birome);
-  border-color: var(--birome);
+  background: var(--primario);
+  border-color: var(--primario);
   color: var(--sobre-birome);
 }
 
@@ -1844,10 +1908,11 @@ button.compra-cab {
   padding: 0 4px;
   background: var(--hoja);
   border: 1px solid var(--renglon);
+  border-radius: var(--r1);
 }
 .campo-marca.con-chips:focus-within {
   border-color: var(--birome);
-  box-shadow: inset 0 -2px 0 var(--birome);
+  box-shadow: 0 0 0 3px var(--anillo);
 }
 .campo-marca.con-chips .chip {
   flex: 0 1 auto;
@@ -1878,4 +1943,222 @@ button.compra-cab {
 }
 .fila:has(> .con-chips) > .campo:first-child {
   flex-basis: 100%;
+}
+
+/* Debajo de un campo cambiado: lo que se había cargado (corrección del dueño o edición propia). */
+.antes {
+  margin: -6px 0 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--birome);
+  font-size: var(--t-xs);
+  color: var(--lapiz);
+}
+.antes span {
+  color: var(--tinta);
+  font-weight: 600;
+}
+/* Al pie del gasto: quién lo cargó y cuándo, quién lo cambió y qué cambió. */
+.historial {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--renglon);
+  font-size: var(--t-xs);
+  color: var(--lapiz);
+}
+.historial p {
+  margin: 0;
+}
+.historial ul {
+  list-style: none;
+  margin: 2px 0 0;
+  padding: 0 0 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  color: var(--tinta);
+}
+.historial s {
+  color: var(--lapiz);
+  margin-right: 4px;
+}
+
+/* ---------- Tareas ---------- */
+.secciones-fila {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chips.secciones {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 2px 0;
+}
+.seccion-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  font-weight: 600;
+}
+.seccion-chip[aria-selected='true'] {
+  border-color: var(--birome);
+  color: var(--birome);
+  background: var(--birome-suave);
+}
+.seccion-chip small {
+  font-weight: 500;
+  color: var(--lapiz);
+}
+.seccion-chip .insignia {
+  margin-left: 0;
+}
+.seccion-nueva {
+  min-height: 32px;
+  color: var(--birome);
+  border-color: color-mix(in srgb, var(--birome) 40%, transparent);
+}
+.progreso {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: var(--t-s);
+  font-weight: 600;
+}
+.progreso-texto small {
+  font-weight: 400;
+  color: var(--lapiz);
+}
+.progreso .barra {
+  grid-column: 1 / -1;
+}
+.bloque-tareas {
+  display: flex;
+  flex-direction: column;
+}
+.seccion-tit {
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--renglon);
+  padding: 10px 0 3px;
+  text-align: left;
+  font-size: var(--t-m);
+  font-weight: 700;
+  color: var(--tinta);
+}
+.tarea {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--renglon);
+}
+.tilde {
+  flex: none;
+  width: 40px;
+  height: 42px;
+  margin-left: -8px;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  color: var(--lapiz);
+}
+.tilde circle {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+.tilde path {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tilde[aria-checked='true'] {
+  color: var(--primario);
+}
+.tilde[aria-checked='true'] circle {
+  fill: var(--primario);
+}
+.tilde[aria-checked='true'] path {
+  stroke: var(--sobre-birome);
+}
+.tilde:disabled {
+  opacity: 0.4;
+}
+.tarea-texto {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 8px 0;
+  color: var(--tinta);
+}
+.tarea-texto:active {
+  background: var(--birome-suave);
+}
+.tarea.hecha .tarea-nombre {
+  text-decoration: line-through;
+  color: var(--lapiz);
+}
+.vencida {
+  color: var(--gasto);
+  font-weight: 600;
+}
+.para-hoy {
+  color: var(--birome);
+  font-weight: 600;
+}
+button.hechas-tit {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--renglon);
+  padding: 8px 0 2px;
+  margin-top: 10px;
+}
+/* Fecha límite vacía: se lee "Fecha límite" en vez de dd/mm/aaaa. */
+.fecha-limite {
+  position: relative;
+}
+.placeholder-fecha {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--lapiz);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.fecha-limite:has(.placeholder-fecha) input:not(:focus) {
+  color: transparent;
+}
+.campo textarea {
+  width: 100%;
+  background: var(--hoja);
+  border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+  padding: 8px 9px;
+  font: inherit;
+  font-size: var(--t-m);
+  color: var(--tinta);
+  resize: vertical;
+}
+.campo textarea:focus {
+  outline: none;
+  border-color: var(--birome);
+  box-shadow: 0 0 0 3px var(--anillo);
+}
+.hoja-tarea {
+  gap: 10px;
+}
+.hoja-tarea .peligro {
+  padding: 0;
 }

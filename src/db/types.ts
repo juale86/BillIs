@@ -73,8 +73,38 @@ export interface Movimiento extends Base {
   cuotas?: Cuotas
   /** Agrupa los gastos de una misma compra (mismo lugar, hasta "Pagar"). */
   compraId?: Id
-  /** Ítem de lista de compras que se compró con este gasto. */
-  listaItem?: { listaId: string; itemId: string }
+  /** Ítem de lista de compras que se compró con este gasto. corregidoEn: última corrección del dueño ya aplicada. */
+  listaItem?: { listaId: string; itemId: string; corregidoEn?: number }
+  /** Lo que se cargó primero y el último cambio, para mostrarlo al editar. */
+  historial?: Historial
+}
+
+/**
+ * Los datos de un movimiento tal como se cargaron, para comparar versiones.
+ * La categoría va por nombre: así se entiende en el teléfono de otra persona (listas compartidas).
+ */
+export interface GastoCargado {
+  descripcion: string
+  marca: string | null
+  cantidad: number
+  precioUnitCent: number
+  promo: Promo | null
+  totalCent: number
+  moneda: Moneda
+  fecha: number
+  lugar: string | null
+  comentario: string | null
+  categoria: string | null
+  /** Cuándo se cargó por primera vez. */
+  cargadoEn: number
+}
+
+export interface Historial {
+  /** Lo que se cargó antes del primer cambio. Los cambios siguientes se comparan siempre contra esto. */
+  original: GastoCargado
+  /** Quién hizo el último cambio (vos, o el dueño de la lista al corregir lo que compraste). */
+  editadoPor: string
+  editadoEn: number
 }
 
 export interface Persona extends Base {

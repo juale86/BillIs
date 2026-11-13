@@ -13,12 +13,13 @@
 
 BillIs es una aplicación web progresiva (PWA) para registrar gastos e ingresos personales con la menor fricción posible: el ícono abre directo en "nuevo gasto", el lugar y el pagador se recuerdan, el último precio de cada producto se precarga y una compra completa se paga una sola vez al final, como en la caja del súper.
 
-Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por internet son las **listas de compras compartidas**, que usan Firebase.
+Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet son las **listas de compras** y las **tareas** compartidas, que usan Firebase.
 
 <p align="center">
   <img src="docs/capturas/formulario.png" width="240" alt="Formulario de nuevo gasto">
   <img src="docs/capturas/movimientos.png" width="240" alt="Movimientos del mes agrupados por compra">
   <img src="docs/capturas/pagar.png" width="240" alt="Pagar una compra eligiendo el método de pago">
+  <img src="docs/capturas/tareas.png" width="240" alt="Tareas compartidas de un viaje, por subsección">
 </p>
 
 ## Funcionalidades
@@ -50,18 +51,27 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 - Cada ítem en un renglón: producto, marca y cantidad (`x2`) pegados, igual que en Movimientos; los chips de grupo tienen todos el mismo ancho; el **lápiz** abre el formulario con sus datos para corregirlos y la **✕** lo quita, con **Deshacer**.
 - Tres órdenes que se alternan con un botón: **manual** (arrastrando ≡, lo último primero), **alfabético** y **por grupos** de compra (Almacén, Bebidas, Frescos, Carnicería, Verdulería, Congelados, Mascotas, Limpieza, Herramientas). El grupo se adivina por el nombre, se corrige con un toque y se recuerda. Los grupos se renombran, borran y agregan desde Ajustes.
 - Tocar un ítem abre el formulario de gasto con todo precargado; al guardar pasa a **Comprados** con su monto, visible para todos. Tocar un comprado abre su gasto y el botón − lo devuelve a pendientes.
+- El dueño **corrige lo que compró otro miembro** con el mismo formulario de gasto completo (en la lista con el lápiz, o en Movimientos tocando el renglón gris). Debajo de cada campo cambiado ve lo que había cargado esa persona, siempre contra lo primero que cargó; la corrección se aplica también al gasto en el teléfono de quien compró.
 - **Total** de la lista en vivo, siempre visible abajo; al lado, **Cerrar lista** la archiva y ofrece empezar otra con lo que quedó pendiente. También se cierra cuando el dueño paga la compra, y si quedó de otro día pregunta si empezar una nueva.
 - Funciona **sin señal** y se sincroniza al volver la conexión.
 
+### Tareas
+- Pestaña **Tareas** con **secciones** (por ejemplo Viaje o Casa) y, dentro de cada una, **subsecciones** (Qué hacer allá, Cosas para buscar, Comprar antes). **Todo** muestra todas juntas.
+- Cada tarea tiene **responsable**, **fecha límite** (las vencidas en rojo, las de hoy resaltadas) y **nota**; se tilda con un toque, queda quién la hizo y se puede deshacer. Arriba, cuántas van hechas, y el chip **Mías**.
+- Cada sección se **comparte** por link como las listas (piden unirse y el dueño aprueba), o se deja solo para vos. Permisos: agregar y tildar por defecto; editar las de otros, si el dueño lo da.
+
+### Historial de cada gasto
+- Al abrir un gasto se ve quién lo cargó y cuándo, quién hizo el último cambio y cuándo, y qué cambió (antes tachado, después). Mientras editás, debajo de cada campo cambiado aparece lo que se había cargado.
+
 ### Consulta
 - **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos), y muestra también lo que otros compraron de la misma lista compartida, con el total real y "Solo lo tuyo".
-- **Resumen** mensual: ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
+- **Resumen** mensual (el ícono de barras de abajo): ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles.
 - **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, punto, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial.
 
 ### Datos y apariencia
 - **Respaldo** completo en JSON (exportar e importar), exportación a **CSV** compatible con Excel y aviso si pasó más de una semana sin respaldo.
-- Tema **automático, claro u oscuro**.
+- Tema **automático, claro u oscuro**, con el estilo "libreta prolija": esquinas suaves, rayas finas y sombra solo en lo que flota.
 - Si algo falla, la app muestra el error y un botón para recargar en lugar de quedar en blanco.
 - Instalable como app: ícono propio y accesos directos **Gasto** e **Ingreso** al mantener apretado el ícono.
 
@@ -71,16 +81,16 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 |---|---|
 | Interfaz | [React 19](https://react.dev) + TypeScript, [Vite](https://vite.dev) |
 | Datos locales | IndexedDB con [Dexie](https://dexie.org) (`dexie-react-hooks` para consultas reactivas) |
-| Listas compartidas | [Firebase](https://firebase.google.com): Cloud Firestore con caché offline y Authentication (Google) |
+| Listas y tareas compartidas | [Firebase](https://firebase.google.com): Cloud Firestore con caché offline y Authentication (Google) |
 | PWA | [`vite-plugin-pwa`](https://vite-pwa-org.netlify.app) (Workbox) y `@vite-pwa/assets-generator` para los íconos |
-| Tipografía | Barlow Semi Condensed y Barlow Condensed, autoalojadas con Fontsource |
+| Tipografía | Barlow (textos) y Barlow Semi Condensed (montos), autoalojadas con Fontsource |
 | Calidad | `tsc` estricto y [oxlint](https://oxc.rs) |
 | Publicación | GitHub Actions → GitHub Pages |
 
 ### Decisiones de arquitectura
 - **Local primero.** Todos los gastos viven en IndexedDB. Cada registro tiene ID UUID, fechas de creación y modificación, y borrado lógico, para poder sincronizar en el futuro.
 - **Montos en centavos enteros**, para evitar errores de redondeo; se muestran con `Intl.NumberFormat('es-AR')`.
-- **Firebase solo donde hace falta.** Firestore y Auth se cargan de forma diferida, recién al abrir la pestaña Listas, así el formulario abre rápido.
+- **Firebase solo donde hace falta.** Firestore y Auth se cargan de forma diferida, recién al abrir Listas o Tareas, así el formulario abre rápido.
 - **La seguridad está en las reglas.** La clave web de Firebase es pública por diseño; los permisos los aplica [`firestore.rules`](firestore.rules) y la clave está restringida por sitio y por API.
 
 ## Estructura
@@ -88,13 +98,13 @@ Los gastos se guardan **solo en el teléfono**. Las únicas que pasan por intern
 ```
 src/
 ├── App.tsx               Navegación, compra abierta, sincronización gasto ↔ lista
-├── components/           Formulario de movimiento, Pagar, buscador, chips, arrastre, errores
-├── screens/              Movimientos, Resumen, Saldos, Listas, Ajustes
+├── components/           Formulario de movimiento, Pagar, compartir y miembros, buscador, chips, arrastre, errores
+├── screens/              Movimientos, Resumen, Saldos, Listas, Tareas, Ajustes
 ├── db/                   Esquema Dexie y tipos del modelo
 └── lib/                  Cálculos (promos, cuotas, saldos), sugerencias, sesión de compra,
-                          grupos de compra, respaldo, tema, filtros y cliente de Firebase
+                          grupos de compra, historial, respaldo, tema, filtros, tareas y cliente de Firebase
 docs/DISEÑO.md            Decisiones de diseño y temas pendientes
-firestore.rules           Reglas de seguridad de las listas
+firestore.rules           Reglas de seguridad de las listas y las tareas
 ```
 
 ## Desarrollo

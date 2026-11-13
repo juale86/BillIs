@@ -1,12 +1,13 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { BotonLupa } from './components/Buscador'
 import { Calculadora } from './components/Calculadora'
-import { FormMovimiento } from './components/FormMovimiento'
+import { FormMovimiento, type Correccion } from './components/FormMovimiento'
 import { Pagar, textoTotal, totalCompra } from './components/Pagar'
 import { db, inicializar, setAjuste } from './db/db'
 import type { Movimiento } from './db/types'
 import { claveCompra, claveMes } from './lib/calculos'
 import { useDatos } from './lib/datos'
+import { cargaDe, cargaDeItem } from './lib/historial'
 import { hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from './lib/filtrosMov'
 import type { FiltrosLista, ItemLista } from './lib/listaCompras'
 import { necesitaRespaldo, pedirPersistencia } from './lib/respaldo'
@@ -15,26 +16,30 @@ import { Ajustes } from './screens/Ajustes'
 import { Movimientos } from './screens/Movimientos'
 import { Resumen } from './screens/Resumen'
 
-// Firebase pesa: la lista se carga recién cuando se abre.
+// Firebase pesa: las listas y las tareas se cargan recién cuando se abren.
 const Lista = lazy(() => import('./screens/Lista'))
+const Tareas = lazy(() => import('./screens/Tareas'))
 const listaCompras = () => import('./lib/listaCompras')
 
-type Pestana = 'movimientos' | 'resumen' | 'lista' | 'ajustes'
+type Pestana = 'movimientos' | 'resumen' | 'lista' | 'tareas' | 'ajustes'
 interface Form {
   tipo: 'gasto' | 'ingreso'
   editando?: Movimiento
   prefill?: { descripcion: string; marca?: string; cantidad?: number; listaItem?: Movimiento['listaItem']; agregadoPor?: string }
   contexto?: 'lista'
+  /** El dueño de una lista corrige lo que compró otro miembro. */
+  correccion?: { listaId: string; item: ItemLista }
 }
 
-const TITULOS: Record<Pestana, string> = {
+/** Pestañas con texto; Resumen, la calculadora y Ajustes van como íconos a la derecha. */
+const TITULOS: Partial<Record<Pestana, string>> = {
   movimientos: 'Movimientos',
-  resumen: 'Resumen',
   lista: 'Listas',
-  ajustes: 'Ajustes',
+  tareas: 'Tareas',
 }
 const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', persona: null }
 const invitacionUrl = () => new URLSearchParams(location.search).get('lista')
+const invitacionTareasUrl = () => new URLSearchParams(location.search).get('tareas')
 
 interface Aviso {
   texto: string
@@ -43,7 +48,7 @@ interface Aviso {
 
 /** El ícono abre en "nuevo gasto"; el acceso directo ?nuevo=ingreso abre en ingreso; ?lista= abre la invitación. */
 function formInicial(): Form | null {
-  if (invitacionUrl()) return null
+  if (invitacionUrl() || invitacionTareasUrl()) return null
   const p = new URLSearchParams(location.search).get('nuevo')
   return { tipo: p === 'ingreso' ? 'ingreso' : 'gasto' }
 }
@@ -51,8 +56,11 @@ function formInicial(): Form | null {
 export default function App() {
   const datos = useDatos()
   const [form, setForm] = useState<Form | null>(formInicial)
-  const [pestana, setPestana] = useState<Pestana>(() => (invitacionUrl() ? 'lista' : 'movimientos'))
+  const [pestana, setPestana] = useState<Pestana>(() =>
+    invitacionUrl() ? 'lista' : invitacionTareasUrl() ? 'tareas' : 'movimientos',
+  )
   const [invitacion, setInvitacionState] = useState(invitacionUrl)
+  const [invitacionTareas, setInvitacionTareasState] = useState(invitacionTareasUrl)
   const [mes, setMes] = useState(() => claveMes(Date.now()))
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [avisoRespaldo, setAvisoRespaldo] = useState(false)
@@ -76,6 +84,10 @@ export default function App() {
     setInvitacionState(id)
     if (!id) history.replaceState(null, '', location.pathname)
   }, [])
+  const setInvitacionTareas = useCallback((id: string | null) => {
+    setInvitacionTareasState(id)
+    if (!id) history.replaceState(null, '', location.pathname)
+  }, [])
 
   function mostrarAviso(a: Aviso) {
     clearTimeout(timer.current)
@@ -88,11 +100,33 @@ export default function App() {
 
   /** Mantiene el ítem de la lista sincronizado con su gasto. */
   function sincronizarItem(m: Movimiento) {
-    if (!m.listaItem) return
+    if (!m.listaItem || !datos) return
     const { listaId, itemId } = m.listaItem
+    const gasto = cargaDe(m, datos.categorias)
     listaCompras()
-      .then((lc) => lc.comprarItem(listaId, itemId, yo, m.totalCent, m.moneda))
+      .then((lc) => lc.comprarItem(listaId, itemId, yo, gasto))
       .catch(fallaLista)
+  }
+
+  /** El dueño de la lista abre lo que compró otro miembro en el formulario de gasto, para corregirlo. */
+  const corregir = (listaId: string, item: ItemLista) => setForm({ tipo: 'gasto', correccion: { listaId, item } })
+
+  function datosCorreccion(c: NonNullable<Form['correccion']>): Correccion {
+    const { listaId, item } = c
+    const actual = cargaDeItem(item)
+    const original = item.original ?? actual
+    return {
+      quien: item.compradoPor ?? 'otra persona',
+      actual,
+      original,
+      corregidoPor: item.corregidoPor ?? null,
+      corregidoEn: item.corregidoEn ?? null,
+      sinMonto: item.montoCent === null,
+      onGuardar: (g) =>
+        listaCompras()
+          .then((lc) => lc.corregirComprado(listaId, item, g, yo, original))
+          .catch(fallaLista),
+    }
   }
 
   /** Al pagar una compra con ítems de tu lista, la lista se cierra; si quedó algo pendiente, se ofrece una nueva. */
@@ -207,12 +241,13 @@ export default function App() {
     <div className="app">
       {form ? (
         <FormMovimiento
-          key={form.editando?.id ?? form.prefill?.listaItem?.itemId ?? form.tipo}
+          key={form.editando?.id ?? form.correccion?.item.id ?? form.prefill?.listaItem?.itemId ?? form.tipo}
           datos={datos}
           tipoInicial={form.tipo}
           editando={form.editando}
           prefill={form.prefill}
           contexto={form.contexto}
+          correccion={form.correccion && datosCorreccion(form.correccion)}
           onCerrar={() => {
             setForm(null)
             if (!invitacion) history.replaceState(null, '', location.pathname)
@@ -225,7 +260,7 @@ export default function App() {
             setForm(null)
             if (li)
               listaCompras()
-                .then((lc) => lc.comprarItem(li.listaId, li.itemId, yo, null, null))
+                .then((lc) => lc.comprarItem(li.listaId, li.itemId, yo, null))
                 .catch(fallaLista)
           }}
         />
@@ -251,6 +286,7 @@ export default function App() {
                 panel={panelAlertas}
                 filtros={filtrosMov}
                 setFiltros={setFiltrosMov}
+                onCorregir={corregir}
               />
             )}
             {pestana === 'resumen' && (
@@ -274,6 +310,17 @@ export default function App() {
                   onComprar={comprarDesdeLista}
                   onVerGasto={(m) => setForm({ tipo: 'gasto', editando: m })}
                   onBorrarGasto={borrar}
+                  onCorregir={corregir}
+                  onAviso={(texto, deshacer) => mostrarAviso({ texto, deshacer })}
+                />
+              </Suspense>
+            )}
+            {pestana === 'tareas' && (
+              <Suspense fallback={<p className="vacio">Cargando…</p>}>
+                <Tareas
+                  datos={datos}
+                  invitacion={invitacionTareas}
+                  setInvitacion={setInvitacionTareas}
                   onAviso={(texto, deshacer) => mostrarAviso({ texto, deshacer })}
                 />
               </Suspense>
@@ -296,7 +343,7 @@ export default function App() {
                   Pagar {textoTotal(totalCompra(gastosCompra))}
                 </button>
               )}
-              {pestana !== 'lista' && (
+              {pestana !== 'lista' && pestana !== 'tareas' && (
                 <button className="fab" aria-label="Nuevo gasto" onClick={() => setForm({ tipo: 'gasto' })}>
                   +
                 </button>
@@ -309,11 +356,19 @@ export default function App() {
             // Tocar otra pestaña cierra la calculadora (su propio botón la alterna).
             onClickCapture={(e) => !(e.target as Element).closest('.boton-calc') && setCalculadora(false)}
           >
-            {(['movimientos', 'resumen', 'lista'] as Pestana[]).map((p) => (
+            {(['movimientos', 'lista', 'tareas'] as Pestana[]).map((p) => (
               <button key={p} aria-current={pestana === p} onClick={() => setPestana(p)}>
                 {TITULOS[p]}
               </button>
             ))}
+            <button className="ajustes" aria-label="Resumen" aria-current={pestana === 'resumen'} onClick={() => setPestana('resumen')}>
+              <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 20h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                <rect x="5" y="11" width="3.6" height="7" rx="0.8" fill="currentColor" />
+                <rect x="10.2" y="6" width="3.6" height="12" rx="0.8" fill="currentColor" />
+                <rect x="15.4" y="13.5" width="3.6" height="4.5" rx="0.8" fill="currentColor" />
+              </svg>
+            </button>
             <button
               className="ajustes boton-calc"
               aria-label="Calculadora"

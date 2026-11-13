@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Listas de compras compartidas. Todos inician sesión con Google.
+// Listas compartidas: de compras y de tareas (tipo 'tareas', sus tareas en /tareas). Todos inician sesión con Google.
 // - Dueño: todo; además renombra, cierra, borra, aprueba/rechaza pedidos, saca miembros y da permisos.
 // - Miembros: ven todo y pueden salir. Lo demás según sus permisos (permisos.{uid}), que da el dueño:
 //     agregar (sí por defecto): agregar ítems y corregir o quitar los propios.
@@ -8,6 +8,9 @@ rules_version = '2';
 //     editar  (no por defecto): corregir, mover y quitar cualquier ítem.
 // - Cualquiera con el link (logueado): ve el nombre de la lista y pide unirse.
 // - Una lista cerrada: solo el dueño corrige nombre, cantidad, marca y grupo de los ítems (y puede borrarla).
+// - Lo comprado por otro miembro: el dueño lo corrige (producto, marca, cantidad, monto y el gasto cargado),
+//   abierta o cerrada la lista; se guarda lo que había cargado quien lo compró ("original").
+// - Tareas: "comprar" es "tildar" y por defecto también lo tiene cada miembro.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -22,13 +25,32 @@ service cloud.firestore {
     match /listas/{lista} {
       function esDueno() { return logueado() && resource.data.duenoUid == uid(); }
       function esMiembro() { return logueado() && uid() in resource.data.miembroUids; }
+      function subseccionesOk(d) { return d.get('subsecciones', []) is list && d.get('subsecciones', []).size() <= 30; }
+
+      // Para las subcolecciones: la lista, quién es miembro y qué puede.
+      function datosLista() { return get(/databases/$(database)/documents/listas/$(lista)).data; }
+      function miembro() { return logueado() && uid() in datosLista().miembroUids; }
+      function abierta() { return datosLista().cerrada == false; }
+      function duenoLista() { return logueado() && datosLista().duenoUid == uid(); }
+      // Permiso del miembro (el dueño los tiene todos). Sin dato: agregar sí, editar no;
+      // comprar (tildar) no en las de compras y sí en las de tareas.
+      function puede(p) {
+        let porDefecto = p == 'agregar' || (p == 'comprar' && datosLista().get('tipo', 'compras') == 'tareas');
+        return duenoLista() || datosLista().get('permisos', {}).get(uid(), {}).get(p, porDefecto) == true;
+      }
+      function esSuyo() { return resource.data.agregadoPorUid == uid(); }
+      function cambiaSolo(campos) {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
+      }
 
       allow get: if logueado();
       allow list: if logueado() && uid() in resource.data.miembroUids;
 
       allow create: if logueado()
-        && request.resource.data.keys().hasOnly(['nombre', 'duenoUid', 'duenoNombre', 'miembros', 'miembroUids', 'pendientes', 'cerrada', 'cerradaEn', 'creadoEn', 'permisos'])
+        && request.resource.data.keys().hasOnly(['nombre', 'duenoUid', 'duenoNombre', 'miembros', 'miembroUids', 'pendientes', 'cerrada', 'cerradaEn', 'creadoEn', 'permisos', 'tipo', 'subsecciones'])
         && request.resource.data.get('permisos', {}) is map
+        && request.resource.data.get('tipo', 'compras') in ['compras', 'tareas']
+        && subseccionesOk(request.resource.data)
         && nombreOk(request.resource.data.nombre)
         && nombreOk(request.resource.data.duenoNombre)
         && request.resource.data.duenoUid == uid()
@@ -42,9 +64,11 @@ service cloud.firestore {
         && request.resource.data.creadoEn is number;
 
       allow update: if
-        // Dueño: todo menos cambiar de dueño o reabrir una lista cerrada.
+        // Dueño: todo menos cambiar de dueño o de tipo, o reabrir una lista cerrada.
         (esDueno()
           && request.resource.data.duenoUid == resource.data.duenoUid
+          && request.resource.data.get('tipo', 'compras') == resource.data.get('tipo', 'compras')
+          && subseccionesOk(request.resource.data)
           && nombreOk(request.resource.data.nombre)
           && uid() in request.resource.data.miembroUids
           && request.resource.data.miembroUids.size() <= 50
@@ -65,21 +89,9 @@ service cloud.firestore {
       allow delete: if esDueno();
 
       match /items/{item} {
-        function datosLista() { return get(/databases/$(database)/documents/listas/$(lista)).data; }
-        function miembro() { return logueado() && uid() in datosLista().miembroUids; }
-        function abierta() { return datosLista().cerrada == false; }
-        function duenoLista() { return logueado() && datosLista().duenoUid == uid(); }
-        // Permiso del miembro (el dueño los tiene todos). Sin dato: agregar sí, comprar y editar no.
-        function puede(p) {
-          return duenoLista() || datosLista().get('permisos', {}).get(uid(), {}).get(p, p == 'agregar') == true;
-        }
-        function esSuyo() { return resource.data.agregadoPorUid == uid(); }
-        function cambiaSolo(campos) {
-          return request.resource.data.diff(resource.data).affectedKeys().hasOnly(campos);
-        }
-
+        function mapaOpcional(v) { return v == null || v is map; }
         function itemValido(d) {
-          return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPorUid', 'agregadoPor', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'creadoEn', 'modificadoEn', 'orden', 'grupo'])
+          return d.keys().hasOnly(['nombre', 'cantidad', 'marca', 'comprado', 'agregadoPorUid', 'agregadoPor', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'creadoEn', 'modificadoEn', 'orden', 'grupo', 'gasto', 'original', 'corregidoPor', 'corregidoEn'])
             && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 100
             && textoOpcional(d.cantidad, 30)
             && textoOpcional(d.marca, 60)
@@ -92,7 +104,18 @@ service cloud.firestore {
             && (d.moneda == null || d.moneda in ['ARS', 'USD'])
             && d.creadoEn is number && d.modificadoEn is number
             && d.get('orden', 0) is number
-            && textoOpcional(d.get('grupo', null), 30);
+            && textoOpcional(d.get('grupo', null), 30)
+            && mapaOpcional(d.get('gasto', null))
+            && mapaOpcional(d.get('original', null))
+            && textoOpcional(d.get('corregidoPor', null), 60)
+            && (d.get('corregidoEn', null) == null || d.corregidoEn is number);
+        }
+        // Al comprar (o volver a pendiente) la corrección del dueño solo se puede borrar, no inventar.
+        function sinInventarCorreccion() {
+          return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['original', 'corregidoPor', 'corregidoEn'])
+            || (request.resource.data.get('original', null) == null
+              && request.resource.data.get('corregidoPor', null) == null
+              && request.resource.data.get('corregidoEn', null) == null);
         }
 
         allow read: if miembro();
@@ -105,15 +128,59 @@ service cloud.firestore {
             // Abierta: comprar (o deshacerlo, o corregir el monto) pide "comprar";
             // corregir pide "editar", o "agregar" si el ítem es tuyo.
             (abierta() && (
-              (cambiaSolo(['comprado', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'modificadoEn']) && puede('comprar'))
+              (cambiaSolo(['comprado', 'compradoPorUid', 'compradoPor', 'montoCent', 'moneda', 'modificadoEn', 'gasto', 'original', 'corregidoPor', 'corregidoEn'])
+                && puede('comprar') && sinInventarCorreccion())
               || (cambiaSolo(['nombre', 'cantidad', 'marca', 'grupo', 'orden', 'modificadoEn'])
                   && (puede('editar') || (esSuyo() && puede('agregar'))))
             ))
             // Cerrada: solo el dueño corrige los datos del ítem.
             || (!abierta() && duenoLista() && cambiaSolo(['nombre', 'cantidad', 'marca', 'grupo', 'modificadoEn']))
+            // Lo que compró otro: el dueño lo corrige con el gasto completo, abierta o cerrada.
+            || (duenoLista() && resource.data.comprado == true && request.resource.data.comprado == true
+                && request.resource.data.compradoPorUid == resource.data.compradoPorUid
+                && request.resource.data.get('original', null) is map
+                && cambiaSolo(['nombre', 'cantidad', 'marca', 'montoCent', 'moneda', 'gasto', 'original', 'corregidoPor', 'corregidoEn', 'modificadoEn']))
           );
         allow delete: if miembro()
           && ((abierta() && ((esSuyo() && puede('agregar')) || puede('editar'))) || duenoLista());
+      }
+
+      // Tareas de una sección (lista de tipo 'tareas').
+      match /tareas/{tarea} {
+        function deTareas() { return datosLista().get('tipo', 'compras') == 'tareas'; }
+        function tareaValida(d) {
+          return d.keys().hasOnly(['texto', 'hecha', 'hechaPorUid', 'hechaPor', 'hechaEn', 'agregadoPorUid', 'agregadoPor', 'responsableUid', 'responsable', 'vence', 'nota', 'subseccion', 'creadoEn', 'modificadoEn'])
+            && d.texto is string && d.texto.size() > 0 && d.texto.size() <= 200
+            && d.hecha is bool
+            && (d.hechaPorUid == null || d.hechaPorUid is string)
+            && textoOpcional(d.hechaPor, 60)
+            && (d.hechaEn == null || d.hechaEn is number)
+            && d.agregadoPorUid is string
+            && d.agregadoPor is string && d.agregadoPor.size() <= 60
+            && (d.responsableUid == null || d.responsableUid is string)
+            && textoOpcional(d.responsable, 60)
+            && textoOpcional(d.vence, 10)
+            && textoOpcional(d.nota, 1000)
+            && textoOpcional(d.subseccion, 20)
+            && d.creadoEn is number && d.modificadoEn is number;
+        }
+
+        allow read: if miembro();
+        allow create: if miembro() && deTareas() && tareaValida(request.resource.data)
+          && request.resource.data.agregadoPorUid == uid()
+          && request.resource.data.hecha == false
+          && (puede('agregar') || puede('editar'));
+        allow update: if miembro() && tareaValida(request.resource.data)
+          && request.resource.data.agregadoPorUid == resource.data.agregadoPorUid
+          && request.resource.data.creadoEn == resource.data.creadoEn
+          && (
+            // Tildar o destildar: con el permiso "tildar"; queda quién la hizo.
+            (cambiaSolo(['hecha', 'hechaPorUid', 'hechaPor', 'hechaEn', 'modificadoEn']) && puede('comprar')
+              && (request.resource.data.hecha == false || request.resource.data.hechaPorUid == uid()))
+            // Corregirla: "editar", o "agregar" si es tuya.
+            || puede('editar') || (esSuyo() && puede('agregar'))
+          );
+        allow delete: if miembro() && (puede('editar') || (esSuyo() && puede('agregar')));
       }
     }
   }
