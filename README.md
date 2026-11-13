@@ -58,7 +58,7 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 ### Tareas
 - Pestaña **Tareas** con **secciones** (por ejemplo Viaje o Casa) y, dentro de cada una, **subsecciones** (Qué hacer allá, Cosas para buscar, Comprar antes). **Todo** muestra todas juntas.
 - Cada tarea tiene **responsable**, **fecha límite** (las vencidas en rojo, las de hoy resaltadas) y **nota**; se tilda con un toque, queda quién la hizo y se puede deshacer. Subsección, responsable y fecha se eligen en un botón desplegable a la derecha del campo para agregar. Arriba, cuántas van hechas, y el chip **Mías**.
-- Cada sección se **comparte** por link como las listas (piden unirse y el dueño aprueba), o se deja solo para vos. Permisos: agregar y tildar por defecto; editar las de otros, si el dueño lo da.
+- Cada sección se **comparte** por link como las listas (piden unirse y el dueño aprueba; el menú ⋯ de la sección muestra un punto rojo mientras haya pedidos), o se deja solo para vos. Permisos: agregar y tildar por defecto; editar las de otros, si el dueño lo da.
 
 ### Historial de cada gasto
 - Al abrir un gasto se ve quién lo cargó y cuándo, quién hizo el último cambio y cuándo, y qué cambió (antes tachado, después). Mientras editás, debajo de cada campo cambiado aparece lo que se había cargado.

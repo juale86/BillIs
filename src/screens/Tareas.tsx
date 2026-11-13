@@ -143,6 +143,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const hechas = todas.filter((t) => t.hecha).length
   const hayResponsables = vistas.some((l) => (porLista[l.id] ?? []).some((t) => t.responsableUid))
   const pendientesDe = (l: Lista) => (porLista[l.id] ?? []).filter((t) => !t.hecha).length
+  const pedidosActual = actual && esDueno(actual, uid) ? Object.keys(actual.pendientes ?? {}).length : 0
   const otrosMiembros = actual ? Object.entries(actual.miembros ?? {}).filter(([u]) => u !== uid).map(([, n]) => n) : []
 
   function tildar(l: Lista, t: Tarea) {
@@ -175,12 +176,18 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
         {actual && (
           <>
             <BotonCompartir listaId={actual.id} tipo="tareas" onAviso={onAviso} />
-            <button className="icono borde" aria-label={`Opciones de ${actual.nombre}`} onClick={() => setMenu(true)}>
+            <button
+              className="icono borde con-aviso"
+              aria-label={`Opciones de ${actual.nombre}` + (pedidosActual ? ': hay pedidos para unirse' : '')}
+              onClick={() => setMenu(true)}
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="5" cy="12" r="2" fill="currentColor" />
                 <circle cx="12" cy="12" r="2" fill="currentColor" />
                 <circle cx="19" cy="12" r="2" fill="currentColor" />
               </svg>
+              {/* Alguien pidió unirse: se acepta desde este menú. */}
+              {pedidosActual > 0 && <span className="aviso-menu" aria-hidden="true" />}
             </button>
           </>
         )}

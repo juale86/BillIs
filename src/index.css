@@ -1339,6 +1339,20 @@ main {
 .alertas {
   position: relative;
 }
+/* Punto rojo abajo a la derecha de un ícono (pedidos para unirse en el menú ⋯ de Tareas). */
+.con-aviso {
+  position: relative;
+}
+.aviso-menu {
+  position: absolute;
+  bottom: -3px;
+  right: -3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--gasto);
+  box-shadow: 0 0 0 2px var(--papel);
+}
 .insignia-alerta {
   position: absolute;
   top: -6px;
