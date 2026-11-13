@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { confirmar, pedirTexto } from '../lib/dialogos'
-import { avisarError } from '../lib/avisos'
+import { avisar, avisarError } from '../lib/avisos'
 import { Bandera } from '../components/Bandera'
 import { amPm } from '../lib/hora'
 import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
@@ -13,7 +13,7 @@ import { guardarTema, leerTema, type Tema } from '../lib/tema'
 
 type Tabla = 'metodosPago' | 'categorias'
 
-export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string, deshacer?: () => void) => void }) {
+export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () => void }) {
   const { yo, metodos, categorias, multimoneda, grupos } = datos
   const refArchivo = useRef<HTMLInputElement>(null)
   const [tema, setTema] = useState<Tema>(leerTema)
@@ -22,7 +22,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
     const nombre = await pedirTexto({ titulo: `Renombrar "${item.nombre}"`, valor: item.nombre, boton: 'Renombrar' })
     if (!nombre || nombre === item.nombre) return
     await db.table(tabla).update(item.id, { nombre, modificadoEn: Date.now() })
-    onAviso(`Renombraste "${item.nombre}" a "${nombre}"`, () =>
+    avisar(`Renombraste "${item.nombre}" a "${nombre}"`, () =>
       db.table(tabla).update(item.id, { nombre: item.nombre, modificadoEn: Date.now() }),
     )
   }
@@ -31,7 +31,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
   async function borrar(tabla: Tabla, item: MetodoPago | Categoria) {
     const ahora = Date.now()
     await db.table(tabla).update(item.id, { borradoEn: ahora, modificadoEn: ahora })
-    onAviso(`Borraste "${item.nombre}"`, () =>
+    avisar(`Borraste "${item.nombre}"`, () =>
       db.table(tabla).update(item.id, { borradoEn: null, modificadoEn: Date.now() }),
     )
   }
@@ -43,7 +43,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
     const nombre = await pedirTexto({ titulo: `Renombrar "${g.nombre}"`, valor: g.nombre, boton: 'Renombrar' })
     if (!nombre || nombre === g.nombre) return
     await guardarGrupos(grupos.map((x) => (x.id === g.id ? { ...x, nombre, corto: nombre } : x)))
-    onAviso(`Renombraste "${g.nombre}" a "${nombre}"`, () =>
+    avisar(`Renombraste "${g.nombre}" a "${nombre}"`, () =>
       guardarGrupos(grupos.map((x) => (x.id === g.id ? g : x))),
     )
   }
@@ -52,7 +52,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
     const i = grupos.findIndex((x) => x.id === g.id)
     await guardarGrupos(grupos.filter((x) => x.id !== g.id))
     // Se repone en su lugar, sobre los grupos que haya en ese momento.
-    onAviso(`Borraste "${g.nombre}". Sus ítems quedan sin grupo`, async () => {
+    avisar(`Borraste "${g.nombre}". Sus ítems quedan sin grupo`, async () => {
       const ahora = await getAjuste<Grupo[] | null>(CLAVE_GRUPOS, null)
       const resto = (ahora ?? []).filter((x) => x.id !== g.id)
       await guardarGrupos([...resto.slice(0, i), g, ...resto.slice(i)])
@@ -84,7 +84,8 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
     if (!ok) return
     try {
       await importarJSON(f)
-      onAviso('Respaldo restaurado')
+      avisar('Respaldo restaurado')
+      onRespaldo()
     } catch (e) {
       avisarError(e instanceof Error ? e.message : 'No se pudo importar')
     }
@@ -183,7 +184,12 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
               className="icono borde respaldo"
               aria-label="Exportar respaldo"
               title="Exportar respaldo"
-              onClick={() => exportarJSON().then(() => onAviso('Respaldo exportado'))}
+              onClick={() =>
+                exportarJSON().then(() => {
+                  avisar('Respaldo exportado')
+                  onRespaldo()
+                })
+              }
             >
               <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 11.5l9-3.5 9 3.5-9 3.5z" />

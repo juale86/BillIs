@@ -13,10 +13,9 @@ interface Props {
   /** Botón de alertas al lado del mes y su panel. */
   acciones?: ReactNode
   panel?: ReactNode
-  onAviso: (t: string) => void
 }
 
-export function Resumen({ datos, mes, setMes, acciones, panel, onAviso }: Props) {
+export function Resumen({ datos, mes, setMes, acciones, panel }: Props) {
   const { movimientos, categorias } = datos
   const monedas = useMemo(() => {
     const usadas = new Set<Moneda>(movimientos.map((m) => m.moneda))
@@ -70,7 +69,7 @@ export function Resumen({ datos, mes, setMes, acciones, panel, onAviso }: Props)
           </div>
         )
       })}
-      <Saldos datos={datos} onAviso={onAviso} />
+      <Saldos datos={datos} />
     </section>
   )
 }

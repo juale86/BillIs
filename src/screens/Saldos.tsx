@@ -1,4 +1,5 @@
 import { db, nuevoBase, normalizar } from '../db/db'
+import { avisar } from '../lib/avisos'
 import { pedirTexto } from '../lib/dialogos'
 import type { Moneda, Persona } from '../db/types'
 import { saldos } from '../lib/calculos'
@@ -6,7 +7,7 @@ import type { Datos } from '../lib/datos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 
 /** Cuenta corriente con cada persona (no depende del mes), con botón para saldar. */
-export function Saldos({ datos, onAviso }: { datos: Datos; onAviso: (t: string) => void }) {
+export function Saldos({ datos }: { datos: Datos }) {
   const { movimientos, personas, yo } = datos
   if (!yo) return null
   const tabla = saldos(movimientos, yo.id)
@@ -43,7 +44,7 @@ export function Saldos({ datos, onAviso }: { datos: Datos; onAviso: (t: string) 
       pagadorId: v > 0 ? persona.id : yo!.id,
       contraparteId: v > 0 ? yo!.id : persona.id,
     })
-    onAviso(`Pago registrado: ${fmt(monto, moneda)}`)
+    avisar(`Pago registrado: ${fmt(monto, moneda)}`)
   }
 
   // Dentro de Resumen: si estás al día con todos, la sección no aparece.

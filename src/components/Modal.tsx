@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useUltimo } from './useUltimo'
 
 interface Props {
   titulo: string
@@ -21,16 +22,14 @@ export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, pelig
   const conTexto = valorInicial !== undefined
 
   // Escape cancela; se lee la última versión de onCancelar sin re-suscribir.
-  const cancelar = useRef(onCancelar)
-  useEffect(() => {
-    cancelar.current = onCancelar
-  })
+  const cancelar = useUltimo(onCancelar)
   useEffect(() => {
     ref.current?.select()
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && cancelar.current()
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
-  }, [])
+    // El ref no cambia: corre una sola vez, al abrir.
+  }, [cancelar])
 
   return (
     <div

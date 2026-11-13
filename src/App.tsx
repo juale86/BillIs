@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { confirmar } from './lib/dialogos'
-import { registrarErrores } from './lib/avisos'
+import { registrarAvisos, type Aviso } from './lib/avisos'
 import { BotonLupa } from './components/Buscador'
 import { Calculadora } from './components/Calculadora'
 import { FormMovimiento, type Correccion } from './components/FormMovimiento'
@@ -42,13 +42,6 @@ const TITULOS: Partial<Record<Pestana, string>> = {
 const SIN_FILTROS_LISTA: FiltrosLista = { texto: '', persona: null }
 const invitacionUrl = () => new URLSearchParams(location.search).get('lista')
 const invitacionTareasUrl = () => new URLSearchParams(location.search).get('tareas')
-
-interface Aviso {
-  texto: string
-  deshacer?: () => void
-  /** Algo salió mal: se ve en rojo, dura más y se cierra tocándolo. */
-  error?: boolean
-}
 
 /** El ícono abre en "nuevo gasto"; el acceso directo ?nuevo=ingreso abre en ingreso; ?lista= abre la invitación. */
 function formInicial(): Form | null {
@@ -104,8 +97,8 @@ export default function App() {
   }
   // mostrarAviso solo usa setAviso y timer, que no cambian: alcanza con registrarla una vez.
   useEffect(() => {
-    registrarErrores((texto) => mostrarAviso({ texto, error: true }))
-    return () => registrarErrores(null)
+    registrarAvisos(mostrarAviso)
+    return () => registrarAvisos(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -267,7 +260,6 @@ export default function App() {
             if (!invitacion) history.replaceState(null, '', location.pathname)
           }}
           onBorrar={borrar}
-          onGuardado={(texto) => mostrarAviso({ texto })}
           onGuardadoMov={sincronizarItem}
           onSinGasto={() => {
             const li = form.prefill?.listaItem
@@ -310,7 +302,6 @@ export default function App() {
                 setMes={setMes}
                 acciones={botonAlertas}
                 panel={panelAlertas}
-                onAviso={(texto) => mostrarAviso({ texto })}
               />
             )}
             {pestana === 'lista' && (
@@ -325,7 +316,6 @@ export default function App() {
                   onVerGasto={(m) => setForm({ tipo: 'gasto', editando: m })}
                   onBorrarGasto={borrar}
                   onCorregir={corregir}
-                  onAviso={(texto, deshacer) => mostrarAviso({ texto, deshacer })}
                 />
               </Suspense>
             )}
@@ -335,17 +325,14 @@ export default function App() {
                   datos={datos}
                   invitacion={invitacionTareas}
                   setInvitacion={setInvitacionTareas}
-                  onAviso={(texto, deshacer) => mostrarAviso({ texto, deshacer })}
                 />
               </Suspense>
             )}
             {pestana === 'ajustes' && (
               <Ajustes
                 datos={datos}
-                onAviso={(texto, deshacer) => {
-                  mostrarAviso({ texto, deshacer })
-                  necesitaRespaldo().then(setAvisoRespaldo)
-                }}
+                // Al exportar o restaurar, se vuelve a ver si hace falta recordar el respaldo.
+                onRespaldo={() => necesitaRespaldo().then(setAvisoRespaldo)}
               />
             )}
           </main>

@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { accionConAviso, avisarError } from '../lib/avisos'
+import { accion, avisar, avisarError } from '../lib/avisos'
+import { confirmar, pedirTexto } from '../lib/dialogos'
 import { BotonCompartir, Invitacion, Login, Miembros, PieMenu } from '../components/Compartir'
-import { Modal } from '../components/Modal'
 import { BotonCerrar } from '../components/BotonCerrar'
 import type { Datos } from '../lib/datos'
 import { setAjuste } from '../db/db'
@@ -41,7 +41,6 @@ export interface Props {
   /** Código recibido por link (?tareas=...). */
   invitacion: string | null
   setInvitacion: (id: string | null) => void
-  onAviso: (t: string, deshacer?: () => void) => void
 }
 
 const TODO = 'todo'
@@ -66,7 +65,7 @@ export default function Tareas(props: Props) {
 }
 
 function ConUsuario(props: Props & { uid: string; email: string }) {
-  const { datos, uid, email, invitacion, setInvitacion, onAviso } = props
+  const { datos, uid, email, invitacion, setInvitacion } = props
   const yo = datos.yo?.nombre ?? 'Yo'
   const { listas, cargando, error } = useMisListas(uid)
   const secciones = useMemo(() => listas.filter(esDeTareas), [listas])
@@ -77,7 +76,6 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const actual = secciones.find((l) => l.id === datos.tareasSeccion) ?? null
   const elegir = (id: string) => setAjuste('tareasSeccion', id)
   const [menu, setMenu] = useState(false)
-  const [creando, setCreando] = useState(false)
   const [abierta, setAbierta] = useState<{ lista: Lista; tarea: Tarea } | null>(null)
   const [soloMias, setSoloMias] = useState(false)
   const [verHechas, setVerHechas] = useState(false)
@@ -95,25 +93,20 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   if (cargando) return <p className="vacio pantalla">Cargando tareas…</p>
   if (invitacion && !yaEsMiembro) return <Invitacion codigo={invitacion} uid={uid} yo={yo} onListo={() => setInvitacion(null)} />
 
-  const nuevaSeccion = (
-    <Modal
-      titulo="Nueva sección"
-      valorInicial=""
-      etiquetaConfirmar="Crear"
-      onCancelar={() => setCreando(false)}
-      onConfirmar={async (nombre) => {
-        setCreando(false)
-        try {
-          elegir(await crearLista(nombre, yo, undefined, undefined, 'tareas'))
-          onAviso(`Sección "${nombre}" creada`)
-        } catch {
-          avisarError('No se pudo crear la sección. Revisá la conexión.')
-        }
-      }}
-    >
-      Por ejemplo Viaje o Casa. Después le podés agregar subsecciones y compartirla.
-    </Modal>
-  )
+  async function nuevaSeccion() {
+    const nombre = await pedirTexto({
+      titulo: 'Nueva sección',
+      texto: 'Por ejemplo Viaje o Casa. Después le podés agregar subsecciones y compartirla.',
+      boton: 'Crear',
+    })
+    if (!nombre) return
+    try {
+      elegir(await crearLista(nombre, yo, undefined, undefined, 'tareas'))
+      avisar(`Sección "${nombre}" creada`)
+    } catch {
+      avisarError('No se pudo crear la sección. Revisá la conexión.')
+    }
+  }
 
   if (secciones.length === 0)
     return (
@@ -125,12 +118,11 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
             quien viaja con vos o dejarla solo para vos.
           </p>
           <div className="botones">
-            <button className="primario" onClick={() => setCreando(true)}>
+            <button className="primario" onClick={nuevaSeccion}>
               Nueva sección
             </button>
           </div>
         </div>
-        {creando && nuevaSeccion}
       </section>
     )
 
@@ -145,7 +137,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
 
   function tildar(l: Lista, t: Tarea) {
     tildarTarea(l.id, t, !t.hecha, yo).catch(() => avisarError('No se pudo actualizar la tarea'))
-    if (!t.hecha) onAviso(`Hecha: ${t.texto}`, () => tildarTarea(l.id, t, false, yo).catch(() => {}))
+    if (!t.hecha) avisar(`Hecha: ${t.texto}`, () => tildarTarea(l.id, t, false, yo).catch(() => {}))
   }
 
   return (
@@ -166,13 +158,13 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
               </button>
             )
           })}
-          <button className="chip seccion-nueva" onClick={() => setCreando(true)}>
+          <button className="chip seccion-nueva" onClick={nuevaSeccion}>
             + Sección
           </button>
         </div>
         {actual && (
           <>
-            <BotonCompartir listaId={actual.id} tipo="tareas" onAviso={onAviso} />
+            <BotonCompartir listaId={actual.id} tipo="tareas" />
             <button
               className="icono borde con-aviso"
               aria-label={`Opciones de ${actual.nombre}` + (pedidosActual ? ': hay pedidos para unirse' : '')}
@@ -260,13 +252,11 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
         </>
       )}
 
-      {creando && nuevaSeccion}
       {menu && actual && (
         <MenuSeccion
           lista={actual}
           uid={uid}
           email={email}
-          onAviso={onAviso}
           onCerrar={() => setMenu(false)}
           onSalio={() => {
             setMenu(false)
@@ -280,7 +270,6 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           lista={secciones.find((l) => l.id === abierta.lista.id) ?? abierta.lista}
           tarea={(porLista[abierta.lista.id] ?? []).find((t) => t.id === abierta.tarea.id) ?? abierta.tarea}
           uid={uid}
-          onAviso={onAviso}
           onCerrar={() => setAbierta(null)}
         />
       )}
@@ -398,7 +387,6 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
   const [responsableUid, setResponsableUid] = useState<string | null>(null)
   const [vence, setVence] = useState('')
   const [abierto, setAbierto] = useState(false)
-  const [nuevaSub, setNuevaSub] = useState(false)
   const ref = useRef<HTMLInputElement>(null)
 
   const destino = actual ?? posibles.find((l) => l.id === destinoId) ?? posibles[0] ?? null
@@ -426,8 +414,20 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
   // Con los detalles plegados, el botón muestra un punto si hay alguno elegido.
   const conDetalles = !!sub || !!vence || !!responsableUid
 
+  async function nuevaSub() {
+    const nombre = await pedirTexto({
+      titulo: `Nueva subsección en ${destino!.nombre}`,
+      texto: 'Por ejemplo Qué hacer allá, Cosas para buscar o Comprar antes.',
+      boton: 'Crear',
+    })
+    if (!nombre) return
+    const s = { id: nuevoIdSubseccion(), nombre: nombre.slice(0, 40) }
+    guardarSubsecciones(destino!, [...subs, s]).catch(() => avisarError('No se pudo crear la subsección'))
+    setSubseccion(s.id)
+    ref.current?.focus()
+  }
+
   return (
-    <>
     <form
       className="agregar-item agregar-tarea"
       onSubmit={(e) => {
@@ -487,7 +487,7 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
                 <select
                   aria-label="Subsección"
                   value={sub ?? ''}
-                  onChange={(e) => (e.target.value === '+' ? setNuevaSub(true) : setSubseccion(e.target.value || null))}
+                  onChange={(e) => (e.target.value === '+' ? nuevaSub() : setSubseccion(e.target.value || null))}
                 >
                   <option value="">{subs.length ? 'Sin subsección' : 'Subsección'}</option>
                   {subs.map((s) => (
@@ -526,31 +526,12 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
         </div>
       )}
     </form>
-    {/* Afuera del formulario: el Modal es otro form y anidado recargaba la página. */}
-    {nuevaSub && (
-      <Modal
-        titulo={`Nueva subsección en ${destino.nombre}`}
-        valorInicial=""
-        etiquetaConfirmar="Crear"
-        onCancelar={() => setNuevaSub(false)}
-        onConfirmar={(nombre) => {
-          setNuevaSub(false)
-          const s = { id: nuevoIdSubseccion(), nombre: nombre.slice(0, 40) }
-          guardarSubsecciones(destino, [...subs, s]).catch(() => avisarError('No se pudo crear la subsección'))
-          setSubseccion(s.id)
-          ref.current?.focus()
-        }}
-      >
-        Por ejemplo Qué hacer allá, Cosas para buscar o Comprar antes.
-      </Modal>
-    )}
-    </>
   )
 }
 
 /** Hoja de una tarea: corregirla, elegir responsable, fecha y nota, o borrarla. */
-function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onAviso: Props['onAviso']; onCerrar: () => void }) {
-  const { lista, tarea, uid, onAviso, onCerrar } = props
+function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCerrar: () => void }) {
+  const { lista, tarea, uid, onCerrar } = props
   const p = permisosDe(lista, uid)
   const editable = p.editar || (p.agregar && tarea.agregadoPorUid === uid)
   const subs = lista.subsecciones ?? []
@@ -579,7 +560,7 @@ function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onAviso: Pr
 
   function borrar() {
     borrarTarea(lista.id, tarea.id).catch(() => avisarError('No se pudo borrar'))
-    onAviso(`Borraste "${tarea.texto}"`, () => restaurarTarea(lista.id, tarea).catch(() => avisarError('No se pudo recuperar')))
+    avisar(`Borraste "${tarea.texto}"`, () => restaurarTarea(lista.id, tarea).catch(() => avisarError('No se pudo recuperar')))
     onCerrar()
   }
 
@@ -686,23 +667,57 @@ function MenuSeccion(props: {
   lista: Lista
   uid: string
   email: string
-  onAviso: Props['onAviso']
   onCerrar: () => void
   onSalio: () => void
 }) {
-  const { lista, uid, email, onAviso, onCerrar, onSalio } = props
+  const { lista, uid, email, onCerrar, onSalio } = props
   const dueno = esDueno(lista, uid)
   const subs = lista.subsecciones ?? []
-  const accion = accionConAviso(onAviso)
-  const [modal, setModal] = useState<
-    { tipo: 'renombrar' } | { tipo: 'borrar' } | { tipo: 'sub'; sub: Subseccion | null } | null
-  >(null)
-  const cerrarModal = () => setModal(null)
+
+  async function renombrar() {
+    const n = await pedirTexto({ titulo: 'Renombrar sección', valor: lista.nombre, boton: 'Guardar' })
+    if (n && n !== lista.nombre) accion(renombrarLista(lista, n), 'Sección renombrada')
+  }
+
+  /** Renombra `s`, o crea una nueva si es null. */
+  async function editarSub(s: Subseccion | null) {
+    const n = await pedirTexto(
+      s
+        ? { titulo: 'Renombrar subsección', valor: s.nombre, boton: 'Guardar' }
+        : {
+            titulo: `Nueva subsección en ${lista.nombre}`,
+            texto: 'Por ejemplo Qué hacer allá, Cosas para buscar o Comprar antes.',
+            boton: 'Crear',
+          },
+    )
+    if (!n) return
+    const nombre = n.slice(0, 40)
+    accion(
+      guardarSubsecciones(lista, s ? subs.map((x) => (x.id === s.id ? { ...x, nombre } : x)) : [...subs, { id: nuevoIdSubseccion(), nombre }]),
+    )
+  }
+
+  /** El dueño la borra para todos; un miembro sale. */
+  async function quitar() {
+    const ok = await confirmar(
+      dueno
+        ? { titulo: `¿Borrar "${lista.nombre}"?`, texto: 'Se borra para todos los miembros, con sus tareas. No se puede deshacer.', boton: 'Borrar', peligro: true }
+        : {
+            titulo: `¿Salir de "${lista.nombre}"?`,
+            texto: `Para volver a entrar vas a necesitar el link y que ${lista.duenoNombre} te acepte.`,
+            boton: 'Salir',
+            peligro: true,
+          },
+    )
+    if (!ok) return
+    if (dueno) accion(borrarLista(lista).then(onSalio), 'Sección borrada')
+    else accion(salirDeLista(lista).then(onSalio), 'Saliste de la sección')
+  }
 
   function quitarSub(s: Subseccion) {
     const antes = subs
     accion(guardarSubsecciones(lista, subs.filter((x) => x.id !== s.id)))
-    onAviso(`Borraste "${s.nombre}". Sus tareas quedan sin subsección`, () => {
+    avisar(`Borraste "${s.nombre}". Sus tareas quedan sin subsección`, () => {
       guardarSubsecciones(lista, antes).catch(() => {})
     })
   }
@@ -717,7 +732,7 @@ function MenuSeccion(props: {
               {!dueno && <small> de {lista.duenoNombre}</small>}
             </h3>
             {dueno && (
-              <button className="icono chico-icono" aria-label={`Renombrar ${lista.nombre}`} onClick={() => setModal({ tipo: 'renombrar' })}>
+              <button className="icono chico-icono" aria-label={`Renombrar ${lista.nombre}`} onClick={renombrar}>
                 <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
                 </svg>
@@ -735,7 +750,7 @@ function MenuSeccion(props: {
                 <span className="menu-item">{s.nombre}</span>
                 {dueno && (
                   <>
-                    <button className="icono chico-icono" aria-label={`Renombrar ${s.nombre}`} onClick={() => setModal({ tipo: 'sub', sub: s })}>
+                    <button className="icono chico-icono" aria-label={`Renombrar ${s.nombre}`} onClick={() => editarSub(s)}>
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
                       </svg>
@@ -750,7 +765,7 @@ function MenuSeccion(props: {
           </ul>
           {dueno && (
             <div className="botones">
-              <button className="enlace" onClick={() => setModal({ tipo: 'sub', sub: null })}>
+              <button className="enlace" onClick={() => editarSub(null)}>
                 + Nueva subsección
               </button>
             </div>
@@ -758,7 +773,7 @@ function MenuSeccion(props: {
         </div>
 
         <div className="menu-seccion">
-          <Miembros lista={lista} uid={uid} accion={accion} />
+          <Miembros lista={lista} uid={uid} />
           {Object.keys(lista.miembros ?? {}).length < 2 && (
             <p className="nota">Solo la ves vos. Para compartirla, mandá el link con el botón de compartir.</p>
           )}
@@ -766,7 +781,7 @@ function MenuSeccion(props: {
 
         <div className="menu-seccion">
           <div className="botones">
-            <button className="enlace peligro" onClick={() => setModal({ tipo: 'borrar' })}>
+            <button className="enlace peligro" onClick={quitar}>
               {dueno ? 'Borrar sección' : 'Salir de la sección'}
             </button>
           </div>
@@ -775,67 +790,6 @@ function MenuSeccion(props: {
         <PieMenu email={email} onCerrar={onCerrar} />
       </div>
 
-      {modal?.tipo === 'renombrar' && (
-        <Modal
-          titulo="Renombrar sección"
-          valorInicial={lista.nombre}
-          etiquetaConfirmar="Guardar"
-          onCancelar={cerrarModal}
-          onConfirmar={(n) => {
-            cerrarModal()
-            if (n !== lista.nombre) accion(renombrarLista(lista, n), 'Sección renombrada')
-          }}
-        />
-      )}
-      {modal?.tipo === 'sub' && (
-        <Modal
-          titulo={modal.sub ? 'Renombrar subsección' : `Nueva subsección en ${lista.nombre}`}
-          valorInicial={modal.sub?.nombre ?? ''}
-          etiquetaConfirmar={modal.sub ? 'Guardar' : 'Crear'}
-          onCancelar={cerrarModal}
-          onConfirmar={(n) => {
-            const s = modal.sub
-            cerrarModal()
-            const nombre = n.slice(0, 40)
-            accion(
-              guardarSubsecciones(
-                lista,
-                s ? subs.map((x) => (x.id === s.id ? { ...x, nombre } : x)) : [...subs, { id: nuevoIdSubseccion(), nombre }],
-              ),
-            )
-          }}
-        >
-          {!modal.sub && 'Por ejemplo Qué hacer allá, Cosas para buscar o Comprar antes.'}
-        </Modal>
-      )}
-      {modal?.tipo === 'borrar' &&
-        (dueno ? (
-          <Modal
-            titulo={`¿Borrar "${lista.nombre}"?`}
-            etiquetaConfirmar="Borrar"
-            peligro
-            onCancelar={cerrarModal}
-            onConfirmar={() => {
-              cerrarModal()
-              accion(borrarLista(lista).then(onSalio), 'Sección borrada')
-            }}
-          >
-            Se borra para todos los miembros, con sus tareas. No se puede deshacer.
-          </Modal>
-        ) : (
-          <Modal
-            titulo={`¿Salir de "${lista.nombre}"?`}
-            etiquetaConfirmar="Salir"
-            peligro
-            onCancelar={cerrarModal}
-            onConfirmar={() => {
-              cerrarModal()
-              accion(salirDeLista(lista).then(onSalio), 'Saliste de la sección')
-            }}
-          >
-            Para volver a entrar vas a necesitar el link y que {lista.duenoNombre} te acepte.
-          </Modal>
-        ))}
     </div>
   )
 }

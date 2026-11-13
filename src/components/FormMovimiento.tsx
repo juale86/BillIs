@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
+import { avisar } from '../lib/avisos'
 import { pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
@@ -48,7 +49,6 @@ interface Props {
   contexto?: 'lista'
   onCerrar: () => void
   onBorrar?: (m: Movimiento) => void
-  onGuardado?: (texto: string) => void
   /** Se llama con el movimiento guardado (alta o edición). */
   onGuardadoMov?: (m: Movimiento) => void
   /** "Ya comprado, sin gasto" (solo desde la lista). */
@@ -82,7 +82,6 @@ export function FormMovimiento({
   contexto,
   onCerrar,
   onBorrar,
-  onGuardado,
   onGuardadoMov,
   onSinGasto,
   correccion,
@@ -366,7 +365,7 @@ export function FormMovimiento({
     if (correccion) {
       if (cambios(correccion.actual, carga).length) {
         correccion.onGuardar(carga)
-        onGuardado?.('Corrección guardada')
+        avisar('Corrección guardada')
       }
       return onCerrar()
     }
@@ -428,7 +427,7 @@ export function FormMovimiento({
         guardarSesion(nueva)
         setSesion({ ...nueva, ultimaActividad: Date.now() })
       }
-      onGuardado?.(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} guardado: ${fmt(total, moneda)}`)
+      avisar(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} guardado: ${fmt(total, moneda)}`)
       if (otro) limpiarParaOtro()
       else onCerrar()
     } finally {

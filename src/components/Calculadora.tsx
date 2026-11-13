@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useUltimo } from './useUltimo'
 import { evaluar, mostrar, teclear } from '../lib/calculadora'
 import { Bandera } from './Bandera'
 import { convertir, MONEDAS_CONVERSOR, redondear, type Cotizaciones } from '../lib/conversor'
@@ -68,10 +69,7 @@ export function Calculadora({ cotizaciones, onCerrar }: { cotizaciones: Cotizaci
     else setCuenta(r)
   }
 
-  const ref = useRef(pulsar)
-  useEffect(() => {
-    ref.current = pulsar
-  })
+  const ref = useUltimo(pulsar)
   useEffect(() => {
     const tecla = (e: KeyboardEvent) => {
       if (e.key === 'Escape') return onCerrar()
@@ -83,7 +81,7 @@ export function Calculadora({ cotizaciones, onCerrar }: { cotizaciones: Cotizaci
     }
     addEventListener('keydown', tecla)
     return () => removeEventListener('keydown', tecla)
-  }, [onCerrar])
+  }, [onCerrar, ref])
 
   // Calculadora: el resultado parcial debajo de la cuenta.
   const previa = cuenta.hecho ? null : evaluar(cuenta.expr)

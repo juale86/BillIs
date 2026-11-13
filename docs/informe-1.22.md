@@ -106,8 +106,8 @@ Encontró 9 cosas. Se arreglaron 7:
 6. **Tocar el aviso de error no cortaba su temporizador.** → un solo `cerrarAviso` que lo corta (también lo usa Deshacer).
 7. y 8. **La documentación** (DISEÑO y `CLAUDE.md`) todavía decía que quedaban `confirm` y `prompt` y no mencionaba `dialogos.ts`. → actualizada.
 
-No se cambió:
-9. Mientras está abierto "¿Borrar también el gasto?", otro miembro podría cambiar el ítem. Con el `confirm()` nativo pasaba lo mismo (los datos se leían antes de preguntar) y el efecto es mínimo.
+No se cambió en la 1.22.0 (**se arregló en la 1.22.1**, ver la sección 9):
+9. Mientras está abierto "¿Borrar también el gasto?", el gasto puede cambiar, y al confirmar se usaban los datos de antes de preguntar.
 
 ## 7. `/simplify` (cuatro revisiones: reutilización, simplificación, eficiencia y profundidad)
 
@@ -119,10 +119,11 @@ Arreglado:
 - **El tipo de `accion` estaba escrito a mano** en `Miembros`. → `Accion = ReturnType<typeof accionConAviso>`.
 - **Prop `onAviso` sin uso** en `AgregarTarea`. → quitada.
 
-Quedó pendiente (toca mucho código fuera de estos cambios):
-- **Los menús de listas y secciones todavía arman sus propios `<Modal>`** con estado (renombrar, borrar, salir, nueva sección, nueva subsección). Se podrían pasar a `await pedirTexto(...)` / `await confirmar(...)` y ahorrar unas 100 líneas de estado y JSX.
-- **Los avisos comunes viajan como prop `onAviso`** por todas las pantallas, mientras que los errores ya no. Se podría usar una sola función global `avisar({ texto, deshacer?, error? })` y sacar esa prop de todos lados.
-- El patrón "ref con la última versión de una función" se repite en `Calculadora.tsx` y `Modal.tsx`. Se podría armar un hook chico (`useUltimo`).
+Quedó pendiente en la 1.22.0 y **se hizo en la 1.22.1** (ver la sección 9):
+- ~~Los menús de listas y secciones todavía arman sus propios `<Modal>`.~~
+- ~~Los avisos comunes viajan como prop `onAviso`.~~
+
+- ~~El patrón "ref con la última versión de una función" se repite en `Calculadora.tsx` y `Modal.tsx`.~~ También en la 1.22.1.
 
 ## 8. Cómo se probó
 
@@ -133,6 +134,40 @@ Quedó pendiente (toca mucho código fuera de estos cambios):
   - Pruebas de antes que se repitieron: Tareas compartidas (secciones, subsecciones, responsables, tildar) y corrección de lo que compró otro (historial y propagación al gasto de Ana).
 - Las pruebas que contestaban el `prompt()` nativo se actualizaron para usar el diálogo.
 
+## 9. 1.22.1: los dos pendientes de `/simplify`
+
+**Un solo tipo de diálogo.** Los menús ya no arman su propio `<Modal>` con estado:
+- **Listas:** renombrar una lista y borrarla (dueño) o salir (miembro).
+- **Tareas:** nueva sección (en la pantalla vacía y en el chip "+ Sección"), nueva subsección desde el campo de agregar tarea y, en el menú ⋯, renombrar la sección, crear o renombrar subsecciones y borrar o salir.
+
+Todo pasa por `await pedirTexto(...)` / `await confirmar(...)`, con los mismos textos que antes. Ahora `Modal` lo usa solo `<Dialogos />`. Se fueron los estados `modal`, `creando` y `nuevaSub`, el `cerrarModal` y el fragmento que envolvía el formulario de tareas solo para poner el modal afuera.
+
+**Un solo camino para los avisos.** `lib/avisos.ts` tiene:
+- `avisar(texto, deshacer?)` para avisos comunes y con Deshacer;
+- `avisarError(texto)` para errores en rojo;
+- `accion(promesa, ok?)` para los menús.
+
+App se registra una vez con `registrarAvisos`. Se sacó la prop `onAviso` de Lista, Tareas, Resumen, Saldos, Ajustes, `BotonCompartir`, `MenuListas`, `MenuSeccion` y `HojaTarea`, `onGuardado` de `FormMovimiento` y `accion` de `Miembros`. Ajustes solo recibe `onRespaldo`, que vuelve a mirar si hace falta el recordatorio de respaldo después de exportar o restaurar, como antes.
+
+**Hook `useUltimo`** (`src/components/useUltimo.ts`). Es un ref que siempre tiene la última versión de un valor. Reemplaza el `useRef` + efecto que estaba repetido en la calculadora (teclado físico) y en `Modal` (Escape).
+
+**Datos frescos al confirmar** (punto 9 de `/code-review`). En "volver a pendiente", al responder "¿Borrar también el gasto?" el gasto se vuelve a leer de la base. Si mientras tanto lo borraron o dejó de ser de ese ítem, no se toca, y el ítem igual vuelve a pendiente. El ítem no hace falta releerlo: volverlo a pendiente da igual aunque otro ya lo haya hecho, y si lo borraron sale el aviso de error.
+
+**Resultado:** el código duplicado bajó de 0,53 % a 0,28 %. Quedan 2 bloques: las promos y el ícono del lápiz.
+
+**Cómo se probó:**
+- `tsc`, `lint` (sin avisos nuevos), `build` y `knip@5` pasan.
+- Con los emuladores:
+  - diálogos de Ajustes;
+  - crear, renombrar ("Lista renombrada") y cancelar el borrado de una lista (botón rojo);
+  - sacar a un miembro;
+  - Tareas completa (secciones, subsecciones desde el menú, unirse y aceptar);
+  - corrección de compras.
+  - volver a pendiente: cancelar deja el gasto sin vincular, aceptar lo borra (con Deshacer) y, si el gasto se borra con el diálogo abierto, no se vuelve a borrar y el ítem igual queda pendiente.
+- Calculadora con el teclado físico: `12*3` Enter da 36 y Escape la cierra.
+- Sin emuladores: "Ingreso guardado: $ 850.000,00" desde el formulario y "Respaldo exportado" con la descarga.
+- **0** ventanas nativas en todas las pruebas.
+
 ## Archivos nuevos
 
 - `src/lib/avisos.ts`: `avisarError`, `registrarErrores`, `accionConAviso`, tipo `Accion`.
@@ -140,6 +175,11 @@ Quedó pendiente (toca mucho código fuera de estos cambios):
 - `src/components/Dialogos.tsx`: dibuja el diálogo abierto.
 - `knip.json`.
 - `docs/informe-1.22.md`: este informe.
+
+## Lo que queda
+
+- **Partir los archivos largos:** `Lista.tsx` (~950 líneas), `FormMovimiento.tsx` (~930) y `Tareas.tsx` (~830), de a uno y probando cada uno.
+- Menor: unir los campos de las promos 3x2 / N-ésima y el ícono del lápiz repetido (los 2 duplicados que quedan).
 
 ## Cómo seguir buscando code smells
 

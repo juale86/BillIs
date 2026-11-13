@@ -1,11 +1,10 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { confirmar, pedirTexto } from '../lib/dialogos'
-import { accionConAviso, avisarError } from '../lib/avisos'
+import { accion, avisar, avisarError } from '../lib/avisos'
 import { NombreItem } from '../components/NombreItem'
 import { textoCantidad } from '../lib/cantidad'
 import { Buscador } from '../components/Buscador'
 import { BotonOrden } from '../components/BotonOrden'
-import { Modal } from '../components/Modal'
 import { BotonCompartir, Invitacion, Login, Miembros, PieMenu } from '../components/Compartir'
 import { ordenEntre, useArrastre } from '../components/useArrastre'
 import { db, normalizar, setAjuste } from '../db/db'
@@ -65,7 +64,6 @@ export interface Props {
   /** El dueño corrige, con el formulario de gasto completo, lo que compró otro miembro. */
   onCorregir: (listaId: string, item: ItemLista) => void
   /** deshacer: muestra el botón Deshacer en el aviso. */
-  onAviso: (t: string, deshacer?: () => void) => void
 }
 
 const inicioDeHoy = () => new Date(new Date().toDateString()).getTime()
@@ -92,7 +90,7 @@ export default function Lista(props: Props) {
 }
 
 function ConUsuario(props: Props & { uid: string; email: string }) {
-  const { datos, uid, invitacion, setInvitacion, onAviso } = props
+  const { datos, uid, invitacion, setInvitacion } = props
   const yo = datos.yo?.nombre ?? 'Yo'
   const { listas: todas, cargando, error } = useMisListas(uid)
   // Las de tareas van en su pestaña.
@@ -131,7 +129,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
     try {
       await setAjuste('listaId', await crearLista(nombre, yo))
       setMenu(false)
-      onAviso(`Lista "${nombre}" creada`)
+      avisar(`Lista "${nombre}" creada`)
     } catch {
       avisarError('No se pudo crear la lista. Revisá la conexión.')
     }
@@ -177,7 +175,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           <span aria-hidden="true"> ▾</span>
           {pedidos > 0 && <span className="insignia">{pedidos}</span>}
         </button>
-        {!actual.cerrada && <BotonCompartir listaId={actual.id} tipo="compras" onAviso={onAviso} />}
+        {!actual.cerrada && <BotonCompartir listaId={actual.id} tipo="compras" />}
         <BotonOrden
           orden={orden}
           onCambiar={(o) => {
@@ -186,7 +184,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
             guardarOrden(o)
             setOrden(o)
             const op = OPCIONES_ORDEN.find((x) => x.id === o)!
-            onAviso(`Orden ${op.etiqueta.toLowerCase()}: ${op.detalle}`)
+            avisar(`Orden ${op.etiqueta.toLowerCase()}: ${op.detalle}`)
           }}
         />
       </div>
@@ -239,15 +237,40 @@ function MenuListas(
     onUnirse: () => void
   },
 ) {
-  const { actual, abiertas, cerradas, uid, email, onCerrar, onNueva, onUnirse, onAviso } = props
+  const { actual, abiertas, cerradas, uid, email, onCerrar, onNueva, onUnirse } = props
   const elegir = (l: TLista) => {
     setAjuste('listaId', l.id)
     onCerrar()
   }
-  const accion = accionConAviso(onAviso)
-  // Lista sobre la que se abrió el modal de renombrar o de borrar/salir.
-  const [modal, setModal] = useState<{ tipo: 'renombrar' | 'borrar'; lista: TLista } | null>(null)
-  const cerrarModal = () => setModal(null)
+
+  async function renombrar(l: TLista) {
+    const n = await pedirTexto({ titulo: 'Renombrar lista', valor: l.nombre, boton: 'Guardar' })
+    if (n && n !== l.nombre) accion(renombrarLista(l, n), 'Lista renombrada')
+  }
+
+  /** El dueño la borra para todos; un miembro sale. */
+  async function quitar(l: TLista) {
+    const dueno = esDueno(l, uid)
+    const ok = await confirmar(
+      dueno
+        ? {
+            titulo: `¿Borrar "${l.nombre}"?`,
+            texto: 'Se borra para todos los miembros, con sus ítems. No se puede deshacer. Tus gastos no se tocan.',
+            boton: 'Borrar',
+            peligro: true,
+          }
+        : {
+            titulo: `¿Salir de "${l.nombre}"?`,
+            texto: `Para volver a entrar vas a necesitar el link y que ${l.duenoNombre} te acepte.`,
+            boton: 'Salir',
+            peligro: true,
+          },
+    )
+    if (!ok) return
+    const cerrarSiEra = () => l.id === actual.id && onCerrar()
+    if (dueno) accion(borrarLista(l).then(cerrarSiEra), 'Lista borrada')
+    else accion(salirDeLista(l).then(cerrarSiEra), 'Saliste de la lista')
+  }
 
   return (
     <div className="hoja-fondo" onClick={onCerrar}>
@@ -267,7 +290,7 @@ function MenuListas(
                     <button
                       className="icono chico-icono"
                       aria-label={`Renombrar ${l.nombre}`}
-                      onClick={() => setModal({ tipo: 'renombrar', lista: l })}
+                      onClick={() => renombrar(l)}
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M4 20l1-5L16 4l4 4L9 19z M14 6l4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -277,7 +300,7 @@ function MenuListas(
                   <button
                     className="icono chico-icono"
                     aria-label={mia ? `Borrar ${l.nombre}` : `Salir de ${l.nombre}`}
-                    onClick={() => setModal({ tipo: 'borrar', lista: l })}
+                    onClick={() => quitar(l)}
                   >
                     ✕
                   </button>
@@ -296,7 +319,7 @@ function MenuListas(
         </div>
 
         <div className="menu-seccion">
-          <Miembros lista={actual} uid={uid} accion={accion} />
+          <Miembros lista={actual} uid={uid} />
         </div>
 
         {cerradas.length > 0 && <ListasCerradas cerradas={cerradas} onElegir={elegir} />}
@@ -304,46 +327,6 @@ function MenuListas(
         <PieMenu email={email} onCerrar={onCerrar} />
       </div>
 
-      {modal?.tipo === 'renombrar' && (
-        <Modal
-          titulo="Renombrar lista"
-          valorInicial={modal.lista.nombre}
-          etiquetaConfirmar="Guardar"
-          onCancelar={cerrarModal}
-          onConfirmar={(n) => {
-            setModal(null)
-            if (n !== modal.lista.nombre) accion(renombrarLista(modal.lista, n), 'Lista renombrada')
-          }}
-        />
-      )}
-      {modal?.tipo === 'borrar' &&
-        (esDueno(modal.lista, uid) ? (
-          <Modal
-            titulo={`¿Borrar "${modal.lista.nombre}"?`}
-            etiquetaConfirmar="Borrar"
-            peligro
-            onCancelar={cerrarModal}
-            onConfirmar={() => {
-              setModal(null)
-              accion(borrarLista(modal.lista).then(() => modal.lista.id === actual.id && onCerrar()), 'Lista borrada')
-            }}
-          >
-            Se borra para todos los miembros, con sus ítems. No se puede deshacer. Tus gastos no se tocan.
-          </Modal>
-        ) : (
-          <Modal
-            titulo={`¿Salir de "${modal.lista.nombre}"?`}
-            etiquetaConfirmar="Salir"
-            peligro
-            onCancelar={cerrarModal}
-            onConfirmar={() => {
-              setModal(null)
-              accion(salirDeLista(modal.lista).then(() => modal.lista.id === actual.id && onCerrar()), 'Saliste de la lista')
-            }}
-          >
-            Para volver a entrar vas a necesitar el link y que {modal.lista.duenoNombre} te acepte.
-          </Modal>
-        ))}
     </div>
   )
 }
@@ -386,7 +369,7 @@ function HojaOpciones(props: {
 }
 
 function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; orden: OrdenLista }) {
-  const { datos, lista, uid, yo, orden, filtros, setFiltros, onComprar, onVerGasto, onBorrarGasto, onCorregir, onAviso } = props
+  const { datos, lista, uid, yo, orden, filtros, setFiltros, onComprar, onVerGasto, onBorrarGasto, onCorregir } = props
   const { items, cargando, error, pendiente } = useItems(lista.id)
   const dueno = esDueno(lista, uid)
   const cerrada = lista.cerrada
@@ -472,7 +455,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
       if (!ok) return
       await cerrarLista(lista)
       await setAjuste('listaId', await nuevaConPendientes(lista, items.filter((it) => !it.comprado), yo))
-      onAviso('Lista nueva para hoy')
+      avisar('Lista nueva para hoy')
     }, 300)
     return () => clearTimeout(t)
     // Solo cuando se cumple la condición; items y lista se leen en ese momento.
@@ -550,9 +533,20 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
   async function aPendiente(it: ItemLista) {
     const g = miGasto(it)
-    if (g && (await confirmar({ titulo: `¿Borrar también el gasto de ${fmt(g.totalCent, g.moneda)}?`, texto: 'Si no, el gasto queda en Movimientos.', boton: 'Borrar', peligro: true })))
-      return onBorrarGasto(g)
-    if (g) await db.movimientos.update(g.id, { listaItem: undefined, modificadoEn: Date.now() })
+    const borrarGasto =
+      !!g &&
+      (await confirmar({
+        titulo: `¿Borrar también el gasto de ${fmt(g.totalCent, g.moneda)}?`,
+        texto: 'Si no, el gasto queda en Movimientos.',
+        boton: 'Borrar',
+        peligro: true,
+      }))
+    // Mientras se preguntaba el gasto pudo cambiar (otra pestaña, una corrección): se usa como está ahora,
+    // y si ya lo borraron o dejó de ser de este ítem, no se toca.
+    const ahora = g && (await db.movimientos.get(g.id))
+    const sigue = !!ahora && !ahora.borradoEn && ahora.listaItem?.itemId === it.id
+    if (sigue && borrarGasto) return onBorrarGasto(ahora)
+    if (sigue) await db.movimientos.update(ahora.id, { listaItem: undefined, modificadoEn: Date.now() })
     volverAPendiente(lista.id, it.id).catch(() => avisarError('No se pudo actualizar el ítem'))
   }
 
@@ -560,7 +554,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     const ok = await confirmar({ titulo: `¿Cerrar "${lista.nombre}"?`, texto: 'Queda archivada con su total y ya nadie puede editarla.', boton: 'Cerrar' })
     if (!ok) return
     await cerrarLista(lista)
-    onAviso('Lista cerrada')
+    avisar('Lista cerrada')
     if (todosPendientes.length) await ofrecerNueva()
   }
 
@@ -568,7 +562,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     const ok = await confirmar({ titulo: `¿Abrir una lista nueva con los ${todosPendientes.length} pendientes?`, texto: 'Con los mismos miembros.', boton: 'Abrir' })
     if (!ok) return
     await setAjuste('listaId', await nuevaConPendientes(lista, todosPendientes, yo))
-    onAviso('Lista nueva creada')
+    avisar('Lista nueva creada')
   }
 
   const filtrosActivos = filtros.persona
@@ -578,7 +572,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   /** Quita un ítem y ofrece deshacerlo. */
   function quitar(it: ItemLista) {
     borrarItem(lista.id, it.id).catch(() => avisarError('No se pudo quitar'))
-    onAviso(`Quitaste ${it.nombre}`, () => {
+    avisar(`Quitaste ${it.nombre}`, () => {
       restaurarItem(lista.id, it).catch(() => avisarError('No se pudo volver a agregar'))
     })
   }

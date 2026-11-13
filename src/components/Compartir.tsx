@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { confirmar } from '../lib/dialogos'
-import { avisarError, type Accion } from '../lib/avisos'
+import { accion, avisar, avisarError } from '../lib/avisos'
 import {
   aprobar,
   cambiarPermiso,
@@ -56,11 +56,9 @@ export function Login({ titulo, texto }: { titulo: string; texto: string }) {
 export function BotonCompartir({
   listaId,
   tipo,
-  onAviso,
 }: {
   listaId: string
   tipo: TipoLista
-  onAviso: (t: string) => void
 }) {
   return (
     <button
@@ -77,7 +75,7 @@ export function BotonCompartir({
             )
           else {
             await navigator.clipboard.writeText(url)
-            onAviso('Link copiado')
+            avisar('Link copiado')
           }
         } catch {
           /* canceló */
@@ -148,12 +146,9 @@ export function Invitacion({ codigo, uid, yo, onListo }: { codigo: string; uid: 
 export function Miembros({
   lista,
   uid,
-  accion,
 }: {
   lista: Lista
   uid: string
-  /** Corre la operación y avisa si salió bien (texto) o mal. */
-  accion: Accion
 }) {
   const dueno = esDueno(lista, uid)
   const etiquetas = etiquetasPermiso(lista)
