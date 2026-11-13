@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { Bandera } from '../components/Bandera'
 import { amPm } from '../lib/hora'
 import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
@@ -245,7 +246,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
 
 const fmtCot = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 2 })
 
-/** "🇧🇷 1 BRL = [0,18] US$", y debajo la cuenta al revés ("1 US$ = 5,56 BRL"). Se guarda al escribir un número válido. */
+/** "[bandera] 1 BRL = [0,18] US$", y debajo la cuenta al revés ("1 US$ = 5,56 BRL"). Se guarda al escribir un número válido. */
 function FilaCotizacion({ moneda, cotizaciones }: { moneda: MonedaConversor; cotizaciones: Cotizaciones }) {
   const actual = cotizaciones[moneda.codigo]
   const [texto, setTexto] = useState(() => String(actual).replace('.', ','))
@@ -254,7 +255,9 @@ function FilaCotizacion({ moneda, cotizaciones }: { moneda: MonedaConversor; cot
   return (
     <li className="item-ajuste cotizacion">
       <span>
-        {moneda.bandera} 1 {moneda.codigo} =
+        <span className="cotizacion-moneda">
+          <Bandera codigo={moneda.codigo} /> 1 {moneda.codigo} =
+        </span>
         {valido && <small>1 US$ = {fmtCot(1 / valor)} {moneda.codigo}</small>}
       </span>
       <label className="campo">

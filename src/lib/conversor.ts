@@ -7,13 +7,12 @@
 export interface MonedaConversor {
   codigo: string
   nombre: string
-  bandera: string
 }
 
 export const MONEDAS_CONVERSOR: MonedaConversor[] = [
-  { codigo: 'ARS', nombre: 'Peso argentino', bandera: '🇦🇷' },
-  { codigo: 'BRL', nombre: 'Real brasileño', bandera: '🇧🇷' },
-  { codigo: 'USD', nombre: 'Dólar', bandera: '🇺🇸' },
+  { codigo: 'ARS', nombre: 'Peso argentino' },
+  { codigo: 'BRL', nombre: 'Real brasileño' },
+  { codigo: 'USD', nombre: 'Dólar' },
 ]
 
 /** Código de moneda → cuántos dólares vale una unidad. */

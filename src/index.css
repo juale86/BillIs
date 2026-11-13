@@ -2234,61 +2234,108 @@ button.hechas-tit {
   padding: 2px 0 8px;
   border-bottom: 1px solid var(--renglon);
 }
-.conv-fila {
+.conv-linea {
   display: flex;
-  gap: 6px;
+  align-items: center;
+  gap: 4px;
+}
+.conv-grupo {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  height: 48px;
+  background: var(--hoja);
+  border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+}
+.conv-grupo.activo {
+  border-color: var(--birome);
+  box-shadow: 0 0 0 3px var(--anillo);
 }
 .conv-monto {
   flex: 1;
   min-width: 0;
-  height: 48px;
-  padding: 0 12px;
+  height: 100%;
+  padding: 0 4px 0 8px;
   text-align: right;
   font-family: var(--f-cifra);
-  font-size: var(--t-xl);
+  font-size: var(--t-l);
   font-weight: 700;
   color: var(--tinta);
-  background: var(--hoja);
-  border: 1px solid var(--renglon);
-  border-radius: var(--r1);
+  background: none;
+  border: none;
   caret-color: transparent;
 }
 .conv-monto:focus {
   outline: none;
 }
-.conv-monto.activo {
-  border-color: var(--birome);
-  box-shadow: 0 0 0 3px var(--anillo);
-}
 .conv-monto::placeholder {
   color: var(--lapiz);
   opacity: 0.6;
 }
-.conversor select {
+.conv-moneda {
   flex: none;
-  width: 108px;
-  height: 48px;
-  padding: 0 8px;
-  font-size: var(--t-m);
-  font-weight: 600;
-  color: var(--tinta);
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 0 8px 0 4px;
+  background: none;
+  border: none;
+}
+.bandera {
+  display: block;
+  border-radius: 2px;
+}
+.conv-monedas {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 6px);
+  right: 0;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
   background: var(--hoja);
   border: 1px solid var(--renglon);
   border-radius: var(--r1);
+  box-shadow: var(--sombra);
+}
+.conv-monedas button {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 36px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r1);
+}
+.conv-monedas button[aria-checked='true'] {
+  border-color: var(--birome);
+  background: var(--birome-suave);
 }
 .conv-signo {
-  min-height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: none;
+  font-family: var(--f-cifra);
+  font-size: var(--t-xl);
+  font-weight: 600;
   color: var(--lapiz);
+}
+.conv-aviso {
   text-align: center;
+  font-size: var(--t-xs);
+  color: var(--lapiz);
 }
 
 /* Cotizaciones en Ajustes: "1 BRL = [0,18] US$", con la cuenta al revés debajo. */
 .cotizacion > span:first-child {
   display: flex;
   flex-direction: column;
+}
+.cotizacion-moneda {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .cotizacion small {
   font-size: var(--t-xs);
