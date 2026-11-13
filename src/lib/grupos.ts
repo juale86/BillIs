@@ -8,7 +8,7 @@ export interface Grupo {
 }
 
 /** Grupos de compra que trae la app, en el orden en que se recorre el súper. */
-export const GRUPOS_BASE = [
+const GRUPOS_BASE = [
   { id: 'almacen', corto: 'Almacén', nombre: 'Almacén (Secos y Conservas)' },
   { id: 'bebidas', corto: 'Bebidas', nombre: 'Bebidas' },
   { id: 'frescos', corto: 'Frescos', nombre: 'Frescos (Lácteos, Fiambrería y Masas)' },
@@ -107,7 +107,7 @@ const INDICE: [string, GrupoId][] = (Object.entries(PALABRAS) as [GrupoId, strin
   .sort((a, b) => b[0].length - a[0].length)
 
 /** Adivina el grupo por las palabras del nombre (y la marca), entre los grupos que siguen existiendo. */
-export function adivinarGrupo(nombre: string, marca: string, grupos: Grupo[]): string | null {
+function adivinarGrupo(nombre: string, marca: string, grupos: Grupo[]): string | null {
   const texto = ` ${normalizar(`${nombre} ${marca}`)} `
   for (const [palabra, g] of INDICE) if (texto.includes(` ${palabra}`) && grupoPorId(grupos, g)) return g
   return null

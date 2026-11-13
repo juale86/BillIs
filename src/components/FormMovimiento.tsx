@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
+import { pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
@@ -323,7 +324,7 @@ export function FormMovimiento({
   }
 
   async function agregarOpcion(cual: 'metodo' | 'categoria') {
-    const nombre = window.prompt(cual === 'metodo' ? 'Nuevo método de pago' : 'Nueva categoría')?.trim()
+    const nombre = await pedirTexto({ titulo: cual === 'metodo' ? 'Nuevo método de pago' : 'Nueva categoría', boton: 'Agregar' })
     if (!nombre) return
     const base = nuevoBase()
     const id = base.id

@@ -1,4 +1,5 @@
 import { Fragment, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { confirmar } from '../lib/dialogos'
 import { amPm } from '../lib/hora'
 import { NombreItem } from '../components/NombreItem'
 import { textoCantidad } from '../lib/cantidad'
@@ -73,7 +74,7 @@ export function Movimientos(props: Props) {
       const dia = new Date(m.fecha).toDateString()
       let d = res.at(-1)
       if (!d || d.dia !== dia) res.push((d = { dia, grupos: [] }))
-      const g = m.tipo === 'gasto' ? d.grupos.find((g) => g[0].tipo === 'gasto' && claveCompra(g[0]) === claveCompra(m)) : undefined
+      const g = m.tipo === 'gasto' ? d.grupos.find((x) => x[0].tipo === 'gasto' && claveCompra(x[0]) === claveCompra(m)) : undefined
       if (g) g.push(m)
       else d.grupos.push([m])
     }
@@ -381,8 +382,10 @@ export function Movimientos(props: Props) {
     <li key={m.id}>
       <button
         className="mov"
-        onClick={() =>
-          m.tipo === 'pagoDeuda' ? confirm('¿Borrar este pago de deuda?') && onBorrar(m) : onEditar(m)
+        onClick={async () =>
+          m.tipo === 'pagoDeuda'
+            ? (await confirmar({ titulo: '¿Borrar este pago de deuda?', boton: 'Borrar', peligro: true })) && onBorrar(m)
+            : onEditar(m)
         }
       >
         <span className="mov-texto">

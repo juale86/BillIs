@@ -101,7 +101,7 @@ export function sugerirCategoria(
   const g = sugerirGrupo(descripcion, '', diccionario.aprendidos, [], diccionario.grupos)
   const nombres = (g && CATEGORIA_DE_GRUPO[g]) || []
   for (const n of nombres) {
-    const c = diccionario.categorias.find((c) => c.tipo === 'gasto' && !c.borradoEn && normalizar(c.nombre) === normalizar(n))
+    const c = diccionario.categorias.find((x) => x.tipo === 'gasto' && !x.borradoEn && normalizar(x.nombre) === normalizar(n))
     if (c) return c.id
   }
   return undefined

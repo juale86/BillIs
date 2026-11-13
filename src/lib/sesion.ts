@@ -6,7 +6,7 @@ import type { Id, Ubicacion } from '../db/types'
  * Vence al "Pagar" o tras 2 h sin cargar nada.
  * El pagador se recuerda aparte y no vence.
  */
-export interface SesionCompra {
+interface SesionCompra {
   compraId: Id
   lugar: string
   /** Ubicación GPS del lugar, si se tomó. */

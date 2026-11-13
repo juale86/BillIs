@@ -7,7 +7,7 @@ PWA (React 19 + TS estricto + Vite 8 + vite-plugin-pwa) para anotar gastos en An
 - Actualizar `README.md` y `docs/DISEÑO.md` con cada función nueva.
 - Commit y push solo cuando el usuario lo pide. Si cambió `firestore.rules`, antes del push: `npx firebase-tools deploy --only firestore:rules --project billis-juale86`.
 - Cambios visuales grandes: mostrar capturas antes/después y esperar el OK.
-- Verificar con `npx tsc -b`, `npm run lint` (hay ~6 warnings de purity/only-export-components conocidos) y `npm run build`.
+- Verificar con `npx tsc -b`, `npm run lint` (hay ~6 warnings de purity/only-export-components conocidos) y `npm run build`. Opcionales: `npx knip@5` (código sin usar, configurado en `knip.json`) y `npx jscpd src --min-lines 6 --min-tokens 60` (duplicados).
 
 ## Mapa del código
 - `src/App.tsx`: pestañas (Movimientos, Listas, Tareas + íconos Resumen, Calculadora, Ajustes), formulario abierto (`Form`: nuevo, editando, prefill de lista, corrección), Pagar, avisos con Deshacer, invitaciones `?lista=` / `?tareas=`, sincronización gasto → ítem (`sincronizarItem`).
@@ -16,7 +16,7 @@ PWA (React 19 + TS estricto + Vite 8 + vite-plugin-pwa) para anotar gastos en An
 - `src/components/Compartir.tsx`: Login, Invitacion, BotonCompartir, Miembros (permisos) — compartido entre Listas y Tareas.
 - `src/screens/`: `Movimientos` (compras plegables, lo de otros en gris, aplica correcciones), `Lista` (lista de compras), `Tareas`, `Resumen` + `Saldos`, `Ajustes`, `SelectorMes`.
 - `src/db/`: Dexie (`movimientos`, `personas`, `metodosPago`, `categorias`, `ajustes`) y tipos (`Movimiento`, `GastoCargado`, `Historial`).
-- `src/lib/`: `datos.ts` (useDatos reactivo), `listaCompras.ts` (Firebase: auth, listas, ítems, permisos, corrección), `tareas.ts` (tareas y subsecciones), `historial.ts` (cargaDe, cambios, aplicarCorreccion), `calculos.ts` (`claveCompra`), `conversor.ts` (cotizaciones contra el dólar, conversor de la calculadora), `promo.ts`, `sesion.ts` (compra en curso, 2 h), `sugerencias.ts`, `grupos.ts`, `respaldo.ts`, `tema.ts`, `money.ts` (centavos).
+- `src/lib/`: `datos.ts` (useDatos reactivo), `listaCompras.ts` (Firebase: auth, listas, ítems, permisos, corrección), `tareas.ts` (tareas y subsecciones), `historial.ts` (cargaDe, cambios, aplicarCorreccion), `calculos.ts` (`claveCompra`), `conversor.ts` (cotizaciones contra el dólar, conversor de la calculadora), `promo.ts`, `sesion.ts` (compra en curso, 2 h), `avisos.ts` (`avisarError`: errores en el aviso de abajo; `accionConAviso`), `dialogos.ts` (`confirmar` / `pedirTexto` con el modal de la app: no usar `alert`/`confirm`/`prompt`, lo frena `no-alert`), `sugerencias.ts`, `grupos.ts`, `respaldo.ts`, `tema.ts`, `money.ts` (centavos).
 - `src/index.css`: un solo archivo, tokens en `:root` (claro) y oscuro duplicado en `@media` y `[data-tema='oscuro']`.
 
 ## Modelo

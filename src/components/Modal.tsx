@@ -8,12 +8,14 @@ interface Props {
   etiquetaConfirmar: string
   /** Acción destructiva: el botón se pinta de rojo. */
   peligro?: boolean
+  /** Teclado del teléfono para el texto. */
+  inputMode?: 'text' | 'decimal'
   onConfirmar: (valor: string) => void
   onCancelar: () => void
 }
 
 /** Diálogo centrado para confirmar una acción o pedir un texto. */
-export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, peligro, onConfirmar, onCancelar }: Props) {
+export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, peligro, inputMode, onConfirmar, onCancelar }: Props) {
   const [valor, setValor] = useState(valorInicial ?? '')
   const ref = useRef<HTMLInputElement>(null)
   const conTexto = valorInicial !== undefined
@@ -53,7 +55,7 @@ export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, pelig
         {children && <div className="modal-texto">{children}</div>}
         {conTexto && (
           <div className="campo">
-            <input ref={ref} value={valor} aria-label={titulo} onChange={(e) => setValor(e.target.value)} />
+            <input ref={ref} value={valor} aria-label={titulo} inputMode={inputMode} onChange={(e) => setValor(e.target.value)} />
           </div>
         )}
         <div className="modal-botones">

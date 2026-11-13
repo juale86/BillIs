@@ -13,7 +13,7 @@ export const nombreMes = (clave: number) =>
 export const parteDe = (m: Movimiento) => m.miParteCent ?? m.totalCent
 
 /** Reparte un monto en n cuotas; el redondeo va a la primera. */
-export function repartir(cent: number, n: number): number[] {
+function repartir(cent: number, n: number): number[] {
   const base = Math.trunc(cent / n)
   const cuotas = Array<number>(n).fill(base)
   cuotas[0] += cent - base * n
@@ -21,14 +21,14 @@ export function repartir(cent: number, n: number): number[] {
 }
 
 /** Imputaciones mensuales de un gasto: [claveMes, monto]. Sin cuotas → una sola. */
-export function imputaciones(m: Movimiento): [number, number][] {
+function imputaciones(m: Movimiento): [number, number][] {
   const mes = claveMes(m.fecha)
   const n = m.cuotas?.cantidad ?? 1
   if (n <= 1) return [[mes, parteDe(m)]]
   return repartir(parteDe(m), n).map((c, i) => [mes + i, c])
 }
 
-export interface Resumen {
+interface Resumen {
   ingresos: number
   gastos: number
   porCategoria: Map<Id | '', number>

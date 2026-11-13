@@ -19,7 +19,7 @@ export const MONEDAS_CONVERSOR: MonedaConversor[] = [
 export type Cotizaciones = Record<string, number>
 
 export const CLAVE_COTIZACIONES = 'cotizaciones'
-export const COTIZACIONES_INICIALES: Cotizaciones = { ARS: 0.00065, BRL: 0.18, USD: 1 }
+const COTIZACIONES_INICIALES: Cotizaciones = { ARS: 0.00065, BRL: 0.18, USD: 1 }
 
 /** Las guardadas sobre las iniciales; el dólar siempre vale 1. */
 export const cotizacionesDesde = (guardadas: Cotizaciones | null): Cotizaciones => ({

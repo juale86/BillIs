@@ -3,7 +3,10 @@ import type { Movimiento, Ubicacion } from '../db/types'
 /** Pide la posición al GPS del teléfono. */
 export function obtenerUbicacion(): Promise<Ubicacion> {
   return new Promise((resolve, reject) => {
-    if (!('geolocation' in navigator)) return reject(new Error('Este navegador no tiene localizador'))
+    if (!('geolocation' in navigator)) {
+      reject(new Error('Este navegador no tiene localizador'))
+      return
+    }
     navigator.geolocation.getCurrentPosition(
       (p) =>
         resolve({
@@ -27,7 +30,7 @@ export function obtenerUbicacion(): Promise<Ubicacion> {
 }
 
 /** Distancia en metros entre dos puntos (haversine). */
-export function distancia(a: Ubicacion, b: Ubicacion): number {
+function distancia(a: Ubicacion, b: Ubicacion): number {
   const rad = (g: number) => (g * Math.PI) / 180
   const dLat = rad(b.lat - a.lat)
   const dLon = rad(b.lon - a.lon)

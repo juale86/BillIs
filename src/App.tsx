@@ -1,4 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { confirmar } from './lib/dialogos'
+import { registrarErrores } from './lib/avisos'
 import { BotonLupa } from './components/Buscador'
 import { Calculadora } from './components/Calculadora'
 import { FormMovimiento, type Correccion } from './components/FormMovimiento'
@@ -44,6 +46,8 @@ const invitacionTareasUrl = () => new URLSearchParams(location.search).get('tare
 interface Aviso {
   texto: string
   deshacer?: () => void
+  /** Algo salió mal: se ve en rojo, dura más y se cierra tocándolo. */
+  error?: boolean
 }
 
 /** El ícono abre en "nuevo gasto"; el acceso directo ?nuevo=ingreso abre en ingreso; ?lista= abre la invitación. */
@@ -92,11 +96,21 @@ export default function App() {
   function mostrarAviso(a: Aviso) {
     clearTimeout(timer.current)
     setAviso(a)
-    timer.current = window.setTimeout(() => setAviso(null), a.deshacer ? 6000 : 2500)
+    timer.current = window.setTimeout(() => setAviso(null), a.error ? 7000 : a.deshacer ? 6000 : 2500)
   }
+  function cerrarAviso() {
+    clearTimeout(timer.current)
+    setAviso(null)
+  }
+  // mostrarAviso solo usa setAviso y timer, que no cambian: alcanza con registrarla una vez.
+  useEffect(() => {
+    registrarErrores((texto) => mostrarAviso({ texto, error: true }))
+    return () => registrarErrores(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const yo = datos?.yo?.nombre ?? 'Yo'
-  const fallaLista = () => mostrarAviso({ texto: 'No se pudo actualizar la lista de compras' })
+  const fallaLista = () => mostrarAviso({ texto: 'No se pudo actualizar la lista de compras', error: true })
 
   /** Mantiene el ítem de la lista sincronizado con su gasto. */
   function sincronizarItem(m: Movimiento) {
@@ -137,7 +151,7 @@ export default function App() {
       if (!r) return
       mostrarAviso({ texto: `Lista "${r.lista.nombre}" cerrada` })
       const n = r.pendientes.length
-      if (n && confirm(`¿Abrir una lista nueva con los ${n} pendientes y los mismos miembros?`))
+      if (n && (await confirmar({ titulo: `¿Abrir una lista nueva con los ${n} pendientes?`, texto: 'Con los mismos miembros.', boton: 'Abrir' })))
         await setAjuste('listaId', await lc.nuevaConPendientes(r.lista, r.pendientes, yo))
     } catch {
       fallaLista()
@@ -421,14 +435,18 @@ export default function App() {
       )}
 
       {aviso && (
-        <div className="toast" role="status">
+        <div
+          className={'toast' + (aviso.error ? ' toast-error' : '')}
+          role={aviso.error ? 'alert' : 'status'}
+          onClick={aviso.error ? cerrarAviso : undefined}
+        >
           <span>{aviso.texto}</span>
           {aviso.deshacer && (
             <button
               className="enlace"
               onClick={() => {
                 aviso.deshacer!()
-                setAviso(null)
+                cerrarAviso()
               }}
             >
               Deshacer

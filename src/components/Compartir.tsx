@@ -1,8 +1,11 @@
 import { useState } from 'react'
+import { confirmar } from '../lib/dialogos'
+import { avisarError, type Accion } from '../lib/avisos'
 import {
   aprobar,
   cambiarPermiso,
   cancelarPedido,
+  cerrarSesionGoogle,
   esDueno,
   etiquetasPermiso,
   iniciarSesion,
@@ -37,7 +40,7 @@ export function Login({ titulo, texto }: { titulo: string; texto: string }) {
             try {
               await iniciarSesion()
             } catch (e) {
-              alert(`No se pudo iniciar sesión: ${e instanceof Error ? e.message : e}`)
+              avisarError(`No se pudo iniciar sesión: ${e instanceof Error ? e.message : e}`)
             } finally {
               setOcupado(false)
             }
@@ -123,7 +126,7 @@ export function Invitacion({ codigo, uid, yo, onListo }: { codigo: string; uid: 
         )}
         <div className="botones">
           {!lista.cerrada && !pedido && (
-            <button className="primario" onClick={() => pedirUnirse(codigo, yo).catch(() => alert('No se pudo enviar el pedido.'))}>
+            <button className="primario" onClick={() => pedirUnirse(codigo, yo).catch(() => avisarError('No se pudo enviar el pedido. Revisá la conexión.'))}>
               Pedir unirme
             </button>
           )}
@@ -150,7 +153,7 @@ export function Miembros({
   lista: Lista
   uid: string
   /** Corre la operación y avisa si salió bien (texto) o mal. */
-  accion: (p: Promise<unknown>, ok?: string) => void
+  accion: Accion
 }) {
   const dueno = esDueno(lista, uid)
   const etiquetas = etiquetasPermiso(lista)
@@ -218,7 +221,10 @@ export function Miembros({
                 {dueno && u !== uid && !lista.cerrada && (
                   <button
                     className="enlace peligro"
-                    onClick={() => confirm(`¿Sacar a ${nombre}?`) && accion(sacarMiembro(lista, u))}
+                    onClick={async () =>
+                      (await confirmar({ titulo: `¿Sacar a ${nombre}?`, texto: 'Deja de ver la lista. Puede volver a pedir unirse con el link.', boton: 'Sacar', peligro: true })) &&
+                      accion(sacarMiembro(lista, u))
+                    }
                   >
                     Sacar
                   </button>
@@ -229,5 +235,20 @@ export function Miembros({
         })}
       </ul>
     </>
+  )
+}
+
+/** Pie de los menús de listas y secciones: con qué cuenta entraste, cerrar sesión y Listo. */
+export function PieMenu({ email, onCerrar }: { email: string | null | undefined; onCerrar: () => void }) {
+  return (
+    <div className="menu-seccion menu-pie">
+      <span className="nota">{email}</span>
+      <button className="enlace" onClick={() => cerrarSesionGoogle().then(onCerrar)}>
+        Cerrar sesión
+      </button>
+      <button className="primario" onClick={onCerrar}>
+        Listo
+      </button>
+    </div>
   )
 }

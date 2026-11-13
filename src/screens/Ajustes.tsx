@@ -1,4 +1,6 @@
 import { useRef, useState } from 'react'
+import { confirmar, pedirTexto } from '../lib/dialogos'
+import { avisarError } from '../lib/avisos'
 import { Bandera } from '../components/Bandera'
 import { amPm } from '../lib/hora'
 import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
@@ -17,7 +19,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
   const [tema, setTema] = useState<Tema>(leerTema)
 
   async function renombrar(tabla: Tabla, item: MetodoPago | Categoria) {
-    const nombre = prompt('Nuevo nombre', item.nombre)?.trim()
+    const nombre = await pedirTexto({ titulo: `Renombrar "${item.nombre}"`, valor: item.nombre, boton: 'Renombrar' })
     if (!nombre || nombre === item.nombre) return
     await db.table(tabla).update(item.id, { nombre, modificadoEn: Date.now() })
     onAviso(`Renombraste "${item.nombre}" a "${nombre}"`, () =>
@@ -38,7 +40,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
   const guardarGrupos = (gs: Grupo[]) => setAjuste(CLAVE_GRUPOS, gs)
 
   async function renombrarGrupo(g: Grupo) {
-    const nombre = prompt('Nuevo nombre', g.nombre)?.trim()
+    const nombre = await pedirTexto({ titulo: `Renombrar "${g.nombre}"`, valor: g.nombre, boton: 'Renombrar' })
     if (!nombre || nombre === g.nombre) return
     await guardarGrupos(grupos.map((x) => (x.id === g.id ? { ...x, nombre, corto: nombre } : x)))
     onAviso(`Renombraste "${g.nombre}" a "${nombre}"`, () =>
@@ -58,24 +60,33 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
   }
 
   async function agregarGrupo() {
-    const nombre = prompt('Nombre del grupo')?.trim()
+    const nombre = await pedirTexto({ titulo: 'Nuevo grupo', texto: 'Por ejemplo Verdulería o Limpieza.', boton: 'Agregar' })
     if (!nombre) return
     await guardarGrupos([...grupos, { id: nuevoIdGrupo(), nombre, corto: nombre }])
   }
 
   async function agregar(tabla: Tabla, tipo?: 'gasto' | 'ingreso') {
-    const nombre = prompt('Nombre')?.trim()
+    const nombre = await pedirTexto({
+      titulo: tabla === 'metodosPago' ? 'Nuevo método de pago' : tipo === 'ingreso' ? 'Nueva categoría de ingreso' : 'Nueva categoría de gasto',
+      boton: 'Agregar',
+    })
     if (!nombre) return
     await db.table(tabla).add(tipo ? { ...nuevoBase(), nombre, tipo } : { ...nuevoBase(), nombre })
   }
 
   async function importar(f: File) {
-    if (!confirm('Esto reemplaza TODOS los datos actuales por los del archivo. ¿Seguir?')) return
+    const ok = await confirmar({
+      titulo: '¿Restaurar este respaldo?',
+      texto: 'Reemplaza todos los datos de este teléfono por los del archivo.',
+      boton: 'Restaurar',
+      peligro: true,
+    })
+    if (!ok) return
     try {
       await importarJSON(f)
       onAviso('Respaldo restaurado')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'No se pudo importar')
+      avisarError(e instanceof Error ? e.message : 'No se pudo importar')
     }
   }
 
@@ -84,15 +95,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
       <h3>{titulo}</h3>
       <ul className="lista">
         {items.map((it) => (
-          <li key={it.id} className="item-ajuste">
-            <span>{it.nombre}</span>
-            <button className="enlace" onClick={() => renombrar(tabla, it)}>
-              Renombrar
-            </button>
-            <button className="enlace peligro" onClick={() => borrar(tabla, it)}>
-              Borrar
-            </button>
-          </li>
+          <FilaEditable key={it.id} nombre={it.nombre} onRenombrar={() => renombrar(tabla, it)} onBorrar={() => borrar(tabla, it)} />
         ))}
       </ul>
       <button className="enlace" onClick={() => agregar(tabla, tipo)}>
@@ -110,7 +113,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
           <button
             className="enlace"
             onClick={async () => {
-              const nombre = prompt('Tu nombre', yo?.nombre)?.trim()
+              const nombre = await pedirTexto({ titulo: 'Tu nombre', valor: yo?.nombre ?? '', boton: 'Guardar' })
               if (nombre && yo) await db.personas.update(yo.id, { nombre, modificadoEn: Date.now() })
             }}
           >
@@ -163,15 +166,7 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
         <p className="nota">El orden "Por grupos" de la lista sigue este recorrido del súper.</p>
         <ul className="lista">
           {grupos.map((g) => (
-            <li key={g.id} className="item-ajuste">
-              <span>{g.nombre}</span>
-              <button className="enlace" onClick={() => renombrarGrupo(g)}>
-                Renombrar
-              </button>
-              <button className="enlace peligro" onClick={() => borrarGrupo(g)}>
-                Borrar
-              </button>
-            </li>
+            <FilaEditable key={g.id} nombre={g.nombre} onRenombrar={() => renombrarGrupo(g)} onBorrar={() => borrarGrupo(g)} />
           ))}
         </ul>
         <button className="enlace" onClick={agregarGrupo}>
@@ -276,6 +271,21 @@ function FilaCotizacion({ moneda, cotizaciones }: { moneda: MonedaConversor; cot
         />
       </label>
       <span className="cotizacion-usd">US$</span>
+    </li>
+  )
+}
+
+/** Un método, categoría o grupo con Renombrar y Borrar. */
+function FilaEditable({ nombre, onRenombrar, onBorrar }: { nombre: string; onRenombrar: () => void; onBorrar: () => void }) {
+  return (
+    <li className="item-ajuste">
+      <span>{nombre}</span>
+      <button className="enlace" onClick={onRenombrar}>
+        Renombrar
+      </button>
+      <button className="enlace peligro" onClick={onBorrar}>
+        Borrar
+      </button>
     </li>
   )
 }

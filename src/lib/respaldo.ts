@@ -2,7 +2,7 @@ import { db, getAjuste, setAjuste, TABLAS } from '../db/db'
 import { describirPromo } from './promo'
 
 const CLAVE_ULTIMO = 'ultimoRespaldo'
-export const DIAS_AVISO = 7
+const DIAS_AVISO = 7
 
 function descargar(nombre: string, contenido: string, tipo: string) {
   const url = URL.createObjectURL(new Blob([contenido], { type: tipo }))

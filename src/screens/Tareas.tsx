@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { BotonCompartir, Invitacion, Login, Miembros } from '../components/Compartir'
+import { accionConAviso, avisarError } from '../lib/avisos'
+import { BotonCompartir, Invitacion, Login, Miembros, PieMenu } from '../components/Compartir'
 import { Modal } from '../components/Modal'
 import { BotonCerrar } from '../components/BotonCerrar'
 import type { Datos } from '../lib/datos'
@@ -7,7 +8,6 @@ import { setAjuste } from '../db/db'
 import { fmtFechaHora } from '../lib/historial'
 import {
   borrarLista,
-  cerrarSesionGoogle,
   crearLista,
   esDeTareas,
   esDueno,
@@ -45,9 +45,6 @@ export interface Props {
 }
 
 const TODO = 'todo'
-
-const accionCon = (onAviso: Props['onAviso']) => (p: Promise<unknown>, ok?: string) =>
-  p.then(() => ok && onAviso(ok)).catch(() => alert('No se pudo completar. Revisá la conexión.'))
 
 export default function Tareas(props: Props) {
   const { usuario, cargando } = useUsuario()
@@ -110,7 +107,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           elegir(await crearLista(nombre, yo, undefined, undefined, 'tareas'))
           onAviso(`Sección "${nombre}" creada`)
         } catch {
-          alert('No se pudo crear la sección. Revisá la conexión.')
+          avisarError('No se pudo crear la sección. Revisá la conexión.')
         }
       }}
     >
@@ -147,7 +144,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const otrosMiembros = actual ? Object.entries(actual.miembros ?? {}).filter(([u]) => u !== uid).map(([, n]) => n) : []
 
   function tildar(l: Lista, t: Tarea) {
-    tildarTarea(l.id, t, !t.hecha, yo).catch(() => onAviso('No se pudo actualizar la tarea'))
+    tildarTarea(l.id, t, !t.hecha, yo).catch(() => avisarError('No se pudo actualizar la tarea'))
     if (!t.hecha) onAviso(`Hecha: ${t.texto}`, () => tildarTarea(l.id, t, false, yo).catch(() => {}))
   }
 
@@ -214,7 +211,7 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
         </div>
       )}
 
-      <AgregarTarea secciones={secciones} actual={actual} uid={uid} yo={yo} onAviso={onAviso} />
+      <AgregarTarea secciones={secciones} actual={actual} uid={uid} yo={yo} />
 
       {cargandoTareas && <p className="vacio">Cargando…</p>}
       {!cargandoTareas && todas.length === 0 && (
@@ -392,8 +389,8 @@ function FilaTarea(props: { t: Tarea; uid: string; puedeTildar: boolean; extra?:
 }
 
 /** Campo para agregar: al escribir aparecen sección (en Todo), subsección, responsable y fecha límite. */
-function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: string; yo: string; onAviso: Props['onAviso'] }) {
-  const { secciones, actual, uid, yo, onAviso } = props
+function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: string; yo: string }) {
+  const { secciones, actual, uid, yo } = props
   const posibles = secciones.filter((l) => permisosDe(l, uid).agregar)
   const [texto, setTexto] = useState('')
   const [destinoId, setDestinoId] = useState<string | null>(null)
@@ -418,7 +415,7 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
       destino.id,
       { texto, subseccion: sub, responsableUid: resp?.[0] ?? null, responsable: resp?.[1] ?? null, vence: vence || null, nota: null },
       yo,
-    ).catch(() => onAviso('No se pudo guardar la tarea'))
+    ).catch(() => avisarError('No se pudo guardar la tarea'))
     // La subsección queda (para cargar varias seguidas); la fecha y el responsable, no.
     setTexto('')
     setVence('')
@@ -539,7 +536,7 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
         onConfirmar={(nombre) => {
           setNuevaSub(false)
           const s = { id: nuevoIdSubseccion(), nombre: nombre.slice(0, 40) }
-          guardarSubsecciones(destino, [...subs, s]).catch(() => onAviso('No se pudo crear la subsección'))
+          guardarSubsecciones(destino, [...subs, s]).catch(() => avisarError('No se pudo crear la subsección'))
           setSubseccion(s.id)
           ref.current?.focus()
         }}
@@ -576,13 +573,13 @@ function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onAviso: Pr
       vence: vence || null,
       nota,
     }
-    editarTarea(lista.id, tarea.id, d).catch(() => onAviso('No se pudo guardar la tarea'))
+    editarTarea(lista.id, tarea.id, d).catch(() => avisarError('No se pudo guardar la tarea'))
     onCerrar()
   }
 
   function borrar() {
-    borrarTarea(lista.id, tarea.id).catch(() => onAviso('No se pudo borrar'))
-    onAviso(`Borraste "${tarea.texto}"`, () => restaurarTarea(lista.id, tarea).catch(() => onAviso('No se pudo recuperar')))
+    borrarTarea(lista.id, tarea.id).catch(() => avisarError('No se pudo borrar'))
+    onAviso(`Borraste "${tarea.texto}"`, () => restaurarTarea(lista.id, tarea).catch(() => avisarError('No se pudo recuperar')))
     onCerrar()
   }
 
@@ -696,7 +693,7 @@ function MenuSeccion(props: {
   const { lista, uid, email, onAviso, onCerrar, onSalio } = props
   const dueno = esDueno(lista, uid)
   const subs = lista.subsecciones ?? []
-  const accion = accionCon(onAviso)
+  const accion = accionConAviso(onAviso)
   const [modal, setModal] = useState<
     { tipo: 'renombrar' } | { tipo: 'borrar' } | { tipo: 'sub'; sub: Subseccion | null } | null
   >(null)
@@ -775,15 +772,7 @@ function MenuSeccion(props: {
           </div>
         </div>
 
-        <div className="menu-seccion menu-pie">
-          <span className="nota">{email}</span>
-          <button className="enlace" onClick={() => cerrarSesionGoogle().then(onCerrar)}>
-            Cerrar sesión
-          </button>
-          <button className="primario" onClick={onCerrar}>
-            Listo
-          </button>
-        </div>
+        <PieMenu email={email} onCerrar={onCerrar} />
       </div>
 
       {modal?.tipo === 'renombrar' && (

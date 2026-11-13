@@ -4,7 +4,7 @@
  * "%" divide por 100, salvo después de + o −: 200 + 10% = 220 (como las calculadoras de bolsillo).
  */
 
-export const OPERADORES = ['+', '−', '×', '÷'] as const
+const OPERADORES = ['+', '−', '×', '÷'] as const
 const esOperador = (c: string) => (OPERADORES as readonly string[]).includes(c)
 const esDigito = (c: string) => c >= '0' && c <= '9'
 

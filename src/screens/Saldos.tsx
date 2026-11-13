@@ -1,4 +1,5 @@
 import { db, nuevoBase, normalizar } from '../db/db'
+import { pedirTexto } from '../lib/dialogos'
 import type { Moneda, Persona } from '../db/types'
 import { saldos } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
@@ -19,10 +20,12 @@ export function Saldos({ datos, onAviso }: { datos: Datos; onAviso: (t: string) 
     .sort((a, b) => normalizar(a.persona.nombre).localeCompare(normalizar(b.persona.nombre)))
 
   async function saldar(persona: Persona, moneda: Moneda, v: number) {
-    const texto = prompt(
-      v > 0 ? `¿Cuánto te pagó ${persona.nombre}?` : `¿Cuánto le pagaste a ${persona.nombre}?`,
-      montoAInput(Math.abs(v)),
-    )
+    const texto = await pedirTexto({
+      titulo: v > 0 ? `¿Cuánto te pagó ${persona.nombre}?` : `¿Cuánto le pagaste a ${persona.nombre}?`,
+      valor: montoAInput(Math.abs(v)),
+      inputMode: 'decimal',
+      boton: 'Anotar',
+    })
     if (texto === null) return
     const monto = parseMonto(texto)
     if (!monto || monto <= 0) return

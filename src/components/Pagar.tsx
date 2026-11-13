@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre } from '../db/db'
 import type { Id, ModoParte, Moneda, Movimiento, Parte } from '../db/types'
 import type { Datos } from '../lib/datos'
@@ -52,7 +53,7 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const nombreYo = datos.yo?.nombre ?? 'Yo'
   // Para "Compartido con": las personas ya cargadas y con quienes compartís la lista.
   const otras = unicos([...datos.personas.filter((p) => !p.esYo).map((p) => p.nombre), ...datos.miembrosLista]).filter(
-    (n) => normalizar(n) !== normalizar(nombreYo),
+    (nombre) => normalizar(nombre) !== normalizar(nombreYo),
   )
   // Arranca con lo que ya tiene la compra (al corregir un pago) o con el último pagador (al pagar).
   const primero = gastos[0]
@@ -108,7 +109,7 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   }
 
   async function nuevoMetodo() {
-    const nombre = prompt('Nuevo método de pago')?.trim()
+    const nombre = await pedirTexto({ titulo: 'Nuevo método de pago', boton: 'Agregar' })
     if (!nombre) return
     const base = nuevoBase()
     await db.metodosPago.add({ ...base, nombre })
@@ -160,9 +161,9 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
           <label className="campo">
             <span>Pagador</span>
             <select value={pagador} onChange={(e) => setPagador(e.target.value)}>
-              {pagadores.map((n) => (
-                <option key={n} value={n}>
-                  {normalizar(n) === normalizar(nombreYo) ? `${n} (vos)` : n}
+              {pagadores.map((nombre) => (
+                <option key={nombre} value={nombre}>
+                  {normalizar(nombre) === normalizar(nombreYo) ? `${nombre} (vos)` : nombre}
                 </option>
               ))}
             </select>

@@ -1,10 +1,12 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { confirmar, pedirTexto } from '../lib/dialogos'
+import { accionConAviso, avisarError } from '../lib/avisos'
 import { NombreItem } from '../components/NombreItem'
 import { textoCantidad } from '../lib/cantidad'
 import { Buscador } from '../components/Buscador'
 import { BotonOrden } from '../components/BotonOrden'
 import { Modal } from '../components/Modal'
-import { BotonCompartir, Invitacion, Login, Miembros } from '../components/Compartir'
+import { BotonCompartir, Invitacion, Login, Miembros, PieMenu } from '../components/Compartir'
 import { ordenEntre, useArrastre } from '../components/useArrastre'
 import { db, normalizar, setAjuste } from '../db/db'
 import type { Moneda, Movimiento } from '../db/types'
@@ -18,7 +20,6 @@ import {
   borrarItem,
   borrarLista,
   cerrarLista,
-  cerrarSesionGoogle,
   crearLista,
   esDueno,
   extraerListaId,
@@ -125,19 +126,19 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   if (invitacion && !yaEsMiembro) return <Invitacion codigo={invitacion} uid={uid} yo={yo} onListo={() => setInvitacion(null)} />
 
   async function nuevaLista() {
-    const nombre = prompt('Nombre de la lista', abiertas.length ? '' : 'Súper')?.trim()
+    const nombre = await pedirTexto({ titulo: 'Nueva lista', valor: abiertas.length ? '' : 'Súper', boton: 'Crear' })
     if (!nombre) return
     try {
       await setAjuste('listaId', await crearLista(nombre, yo))
       setMenu(false)
       onAviso(`Lista "${nombre}" creada`)
     } catch {
-      alert('No se pudo crear la lista. Revisá la conexión.')
+      avisarError('No se pudo crear la lista. Revisá la conexión.')
     }
   }
 
-  function unirseConLink() {
-    const id = extraerListaId(prompt('Pegá el link de la lista') ?? '')
+  async function unirseConLink() {
+    const id = extraerListaId((await pedirTexto({ titulo: 'Unirme con un link', texto: 'Pegá el link que te pasaron.', boton: 'Seguir' })) ?? '')
     if (id) {
       setMenu(false)
       setInvitacion(id)
@@ -243,8 +244,7 @@ function MenuListas(
     setAjuste('listaId', l.id)
     onCerrar()
   }
-  const accion = (p: Promise<unknown>, ok?: string) =>
-    p.then(() => ok && onAviso(ok)).catch(() => alert('No se pudo completar. Revisá la conexión.'))
+  const accion = accionConAviso(onAviso)
   // Lista sobre la que se abrió el modal de renombrar o de borrar/salir.
   const [modal, setModal] = useState<{ tipo: 'renombrar' | 'borrar'; lista: TLista } | null>(null)
   const cerrarModal = () => setModal(null)
@@ -301,15 +301,7 @@ function MenuListas(
 
         {cerradas.length > 0 && <ListasCerradas cerradas={cerradas} onElegir={elegir} />}
 
-        <div className="menu-seccion menu-pie">
-          <span className="nota">{email}</span>
-          <button className="enlace" onClick={() => cerrarSesionGoogle().then(onCerrar)}>
-            Cerrar sesión
-          </button>
-          <button className="primario" onClick={onCerrar}>
-            Listo
-          </button>
-        </div>
+        <PieMenu email={email} onCerrar={onCerrar} />
       </div>
 
       {modal?.tipo === 'renombrar' && (
@@ -448,7 +440,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
   const { arrastrando, estilo, manija } = useArrastre((desde, hasta) => {
     const it = enManual[desde]
     const nuevoOrden = ordenEntre(enManual.map(ordenDe), desde, hasta)
-    moverItem(lista.id, it.id, nuevoOrden).catch(() => onAviso('No se pudo mover el ítem'))
+    moverItem(lista.id, it.id, nuevoOrden).catch(() => avisarError('No se pudo mover el ítem'))
   })
 
   const miGasto = (it: ItemLista) => datos.movimientos.find((m) => m.listaItem?.itemId === it.id)
@@ -472,7 +464,12 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
         /* idem */
       }
       const n = items.filter((it) => !it.comprado).length
-      if (!confirm(`"${lista.nombre}" tiene compras de otro día. ¿Empezar una lista nueva${n ? ` con los ${n} pendientes` : ''}?`)) return
+      const ok = await confirmar({
+        titulo: '¿Empezar una lista nueva?',
+        texto: `"${lista.nombre}" tiene compras de otro día.${n ? ` La nueva arranca con los ${n} pendientes.` : ''}`,
+        boton: 'Empezar',
+      })
+      if (!ok) return
       await cerrarLista(lista)
       await setAjuste('listaId', await nuevaConPendientes(lista, items.filter((it) => !it.comprado), yo))
       onAviso('Lista nueva para hoy')
@@ -519,7 +516,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     if (!it || !nuevo.trim()) return
     if (grupoNuevo && grupoNuevo !== it.grupo) aprender(nuevo, grupoNuevo)
     editarItem(lista.id, it.id, { nombre: nuevo, cantidad, marca, grupo: grupoNuevo }).catch(() =>
-      onAviso('No se pudo guardar el cambio'),
+      avisarError('No se pudo guardar el cambio'),
     )
     terminarDeEditar()
     setModo(null)
@@ -531,7 +528,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     if (!nuevo.trim()) return
     if (grupoElegido !== undefined) aprender(nuevo, grupoElegido)
     const { id, item, guardado } = agregarItem(lista.id, { nombre: nuevo, cantidad, marca, grupo: grupoNuevo }, yo)
-    guardado.catch(() => onAviso('No se pudo guardar el ítem'))
+    guardado.catch(() => avisarError('No se pudo guardar el ítem'))
     marcarReciente(lista.id, id)
     setVersion((v) => v + 1)
     setNuevo('')
@@ -553,20 +550,23 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
   async function aPendiente(it: ItemLista) {
     const g = miGasto(it)
-    if (g && confirm(`¿Borrar también el gasto de ${fmt(g.totalCent, g.moneda)}?`)) return onBorrarGasto(g)
+    if (g && (await confirmar({ titulo: `¿Borrar también el gasto de ${fmt(g.totalCent, g.moneda)}?`, texto: 'Si no, el gasto queda en Movimientos.', boton: 'Borrar', peligro: true })))
+      return onBorrarGasto(g)
     if (g) await db.movimientos.update(g.id, { listaItem: undefined, modificadoEn: Date.now() })
-    volverAPendiente(lista.id, it.id).catch(() => onAviso('No se pudo actualizar el ítem'))
+    volverAPendiente(lista.id, it.id).catch(() => avisarError('No se pudo actualizar el ítem'))
   }
 
   async function cerrar() {
-    if (!confirm(`¿Cerrar "${lista.nombre}"? Queda archivada con su total y ya nadie puede editarla.`)) return
+    const ok = await confirmar({ titulo: `¿Cerrar "${lista.nombre}"?`, texto: 'Queda archivada con su total y ya nadie puede editarla.', boton: 'Cerrar' })
+    if (!ok) return
     await cerrarLista(lista)
     onAviso('Lista cerrada')
     if (todosPendientes.length) await ofrecerNueva()
   }
 
   async function ofrecerNueva() {
-    if (!confirm(`¿Abrir una lista nueva con los ${todosPendientes.length} pendientes y los mismos miembros?`)) return
+    const ok = await confirmar({ titulo: `¿Abrir una lista nueva con los ${todosPendientes.length} pendientes?`, texto: 'Con los mismos miembros.', boton: 'Abrir' })
+    if (!ok) return
     await setAjuste('listaId', await nuevaConPendientes(lista, todosPendientes, yo))
     onAviso('Lista nueva creada')
   }
@@ -577,9 +577,9 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
 
   /** Quita un ítem y ofrece deshacerlo. */
   function quitar(it: ItemLista) {
-    borrarItem(lista.id, it.id).catch(() => onAviso('No se pudo quitar'))
+    borrarItem(lista.id, it.id).catch(() => avisarError('No se pudo quitar'))
     onAviso(`Quitaste ${it.nombre}`, () => {
-      restaurarItem(lista.id, it).catch(() => onAviso('No se pudo volver a agregar'))
+      restaurarItem(lista.id, it).catch(() => avisarError('No se pudo volver a agregar'))
     })
   }
 
@@ -649,13 +649,13 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
     )
   }
 
-  const seccion = (titulo: string, lista: ItemLista[]) =>
-    lista.length > 0 && (
+  const seccion = (titulo: string, filas: ItemLista[]) =>
+    filas.length > 0 && (
       <Fragment key={titulo}>
         <div className="lista-sub grupo-tit">
           <span>{titulo}</span>
         </div>
-        <ul className={'lista' + (orden === 'grupos' ? ' en-grupo' : '')}>{lista.map((it) => filaPendiente(it))}</ul>
+        <ul className={'lista' + (orden === 'grupos' ? ' en-grupo' : '')}>{filas.map((it) => filaPendiente(it))}</ul>
       </Fragment>
     )
 
@@ -947,7 +947,7 @@ function VistaLista(props: Props & { uid: string; lista: TLista; yo: string; ord
           onElegir={(id) => {
             const it = eligiendoGrupo
             aprender(it.nombre, id || null)
-            cambiarGrupo(lista.id, it.id, id || null).catch(() => onAviso('No se pudo cambiar el grupo'))
+            cambiarGrupo(lista.id, it.id, id || null).catch(() => avisarError('No se pudo cambiar el grupo'))
           }}
           onCerrar={() => setEligiendoGrupo(null)}
         />

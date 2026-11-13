@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
-export interface FiltroActivo {
+interface FiltroActivo {
   etiqueta: string
   onQuitar: () => void
 }
