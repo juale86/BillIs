@@ -400,7 +400,7 @@ export default function App() {
         </>
       )}
 
-      {calculadora && <Calculadora onCerrar={() => setCalculadora(false)} />}
+      {calculadora && <Calculadora cotizaciones={datos.cotizaciones} onCerrar={() => setCalculadora(false)} />}
 
       {pagando && gastosPagando.length > 0 && (
         <Pagar

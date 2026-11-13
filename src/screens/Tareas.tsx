@@ -396,7 +396,6 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
   const [abierto, setAbierto] = useState(false)
   const [nuevaSub, setNuevaSub] = useState(false)
   const ref = useRef<HTMLInputElement>(null)
-  const refDetalle = useRef<HTMLDivElement>(null)
 
   const destino = actual ?? posibles.find((l) => l.id === destinoId) ?? posibles[0] ?? null
   if (!destino || (actual && !permisosDe(actual, uid).agregar)) return null
@@ -420,15 +419,11 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
     ref.current?.focus()
   }
 
-  /** Si el foco sale del formulario sin nada escrito, se cierra. */
-  function quizasCerrar() {
-    setTimeout(() => {
-      const a = document.activeElement
-      if (a !== ref.current && !refDetalle.current?.contains(a) && !ref.current?.value.trim()) setAbierto(false)
-    }, 200)
-  }
+  // Con los detalles plegados, el botón muestra un punto si hay alguno elegido.
+  const conDetalles = !!sub || !!vence || !!responsableUid
 
   return (
+    <>
     <form
       className="agregar-item agregar-tarea"
       onSubmit={(e) => {
@@ -436,21 +431,33 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
         agregar()
       }}
     >
-      <div className="campo">
-        <input
-          ref={ref}
-          value={texto}
-          placeholder={actual ? `Nueva tarea en ${actual.nombre}` : 'Nueva tarea'}
-          aria-label="Nueva tarea"
-          autoComplete="off"
-          enterKeyHint="done"
-          onChange={(e) => setTexto(e.target.value)}
-          onFocus={() => setAbierto(true)}
-          onBlur={quizasCerrar}
-        />
+      {/* Subsección, responsable y fecha límite van plegados en el botón de la derecha. */}
+      <div className="entrada-tarea">
+        <div className="campo crece">
+          <input
+            ref={ref}
+            value={texto}
+            placeholder={actual ? `Nueva tarea en ${actual.nombre}` : 'Nueva tarea'}
+            aria-label="Nueva tarea"
+            autoComplete="off"
+            enterKeyHint="done"
+            onChange={(e) => setTexto(e.target.value)}
+          />
+        </div>
+        <button
+          type="button"
+          className={'icono borde detalles-tarea' + (conDetalles && !abierto ? ' con-detalles' : '')}
+          aria-expanded={abierto}
+          aria-label={abierto ? 'Ocultar subsección y fecha límite' : 'Elegir subsección y fecha límite'}
+          onClick={() => setAbierto(!abierto)}
+        >
+          <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
       {abierto && (
-        <div className="agregar-detalle" ref={refDetalle} onBlur={quizasCerrar}>
+        <div className="agregar-detalle">
           <div className="fila">
             {!actual && posibles.length > 1 && (
               <label className="campo crece">
@@ -514,24 +521,26 @@ function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; uid: st
           </div>
         </div>
       )}
-      {nuevaSub && (
-        <Modal
-          titulo={`Nueva subsección en ${destino.nombre}`}
-          valorInicial=""
-          etiquetaConfirmar="Crear"
-          onCancelar={() => setNuevaSub(false)}
-          onConfirmar={(nombre) => {
-            setNuevaSub(false)
-            const s = { id: nuevoIdSubseccion(), nombre: nombre.slice(0, 40) }
-            guardarSubsecciones(destino, [...subs, s]).catch(() => onAviso('No se pudo crear la subsección'))
-            setSubseccion(s.id)
-            ref.current?.focus()
-          }}
-        >
-          Por ejemplo Qué hacer allá, Cosas para buscar o Comprar antes.
-        </Modal>
-      )}
     </form>
+    {/* Afuera del formulario: el Modal es otro form y anidado recargaba la página. */}
+    {nuevaSub && (
+      <Modal
+        titulo={`Nueva subsección en ${destino.nombre}`}
+        valorInicial=""
+        etiquetaConfirmar="Crear"
+        onCancelar={() => setNuevaSub(false)}
+        onConfirmar={(nombre) => {
+          setNuevaSub(false)
+          const s = { id: nuevoIdSubseccion(), nombre: nombre.slice(0, 40) }
+          guardarSubsecciones(destino, [...subs, s]).catch(() => onAviso('No se pudo crear la subsección'))
+          setSubseccion(s.id)
+          ref.current?.focus()
+        }}
+      >
+        Por ejemplo Qué hacer allá, Cosas para buscar o Comprar antes.
+      </Modal>
+    )}
+    </>
   )
 }
 

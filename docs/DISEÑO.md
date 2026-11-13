@@ -51,7 +51,8 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 3. **Saldos**: dentro de Resumen, debajo del mes (desde 1.8.1). Quién te debe / a quién le debés, botón "Saldar"; la sección no aparece si estás al día.
 4. **Ajustes**: tu nombre, métodos de pago, categorías, monedas, grupos de la lista, respaldo. Métodos, categorías y grupos se renombran, borran y agregan; renombrar y borrar muestran un aviso con **Deshacer** (borrar ya no pide confirmación) (desde 1.14).
 5. **Tareas** (desde 1.20): ver "Tareas" más abajo.
-6. **Calculadora**: botón al lado del engranaje (lo vuelve a tocar o tocar afuera la cierra), abre una hoja apoyada sobre las pestañas, sin título ni ✕, con + − × ÷ %, ( ), punto, C, ⌫ e =. Se evalúa con un parser propio (sin `eval`); los paréntesis sin cerrar se cierran solos y `200 + 10%` da 220. Debajo de la cuenta se ve el resultado parcial. Sin historial: recuerda solo la última cuenta mientras la app está abierta (desde 1.17.1). Funciona también con el teclado físico (desde 1.17).
+6. **Conversor de moneda** (desde 1.21, provisorio: se va con la calculadora): la tecla "$⇄" a la izquierda del = alterna con la calculadora. En lugar del resultado: monto + moneda (bandera y código), ≈, monto convertido + moneda. El teclado escribe en el campo marcado (admite cuentas: 500+200); tocar el otro campo pasa a escribir ahí y convierte al revés. Pesos, reales y dólares; todo pasa por el dólar con las cotizaciones de Ajustes → Cotizaciones (cuántos dólares vale 1 unidad: real 0,18, peso 0,00065; debajo se ve la cuenta al revés, 1 US$ = 1.538,46 ARS). Montos con dos decimales, o cuatro cifras si es menos de uno. Lo escrito y las monedas elegidas se recuerdan mientras la app está abierta.
+7. **Calculadora**: botón al lado del engranaje (lo vuelve a tocar o tocar afuera la cierra), abre una hoja apoyada sobre las pestañas, sin título ni ✕, con + − × ÷ %, ( ), punto, C, ⌫ e =. Se evalúa con un parser propio (sin `eval`); los paréntesis sin cerrar se cierran solos y `200 + 10%` da 220. Debajo de la cuenta se ve el resultado parcial. Sin historial: recuerda solo la última cuenta mientras la app está abierta (desde 1.17.1). Funciona también con el teclado físico (desde 1.17).
 
 ## Respaldo
 
@@ -135,6 +136,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - Arriba, **Todo** y cada **sección** como chips (con la cantidad pendiente y la insignia de pedidos para unirse). Cada sección es una lista de Firestore con `tipo: 'tareas'`: se comparte por link (`?tareas=`), se aprueba a quien pide unirse y se dan permisos igual que en las de compras ("Tildar" en vez de "Comprar"; por defecto cada miembro agrega y tilda). Sin otros miembros, la ve solo quien la creó (igual hace falta iniciar sesión con Google).
 - **Subsecciones** en el documento de la sección; las crea, renombra y borra el dueño (desde el menú ⋯ o con "+ Nueva…" al agregar). Borrar una deja sus tareas "Sin subsección".
 - Cada tarea: texto, responsable (un miembro), fecha límite (`AAAA-MM-DD`), nota, subsección, quién la agregó y quién la hizo y cuándo. Pendientes ordenadas por fecha límite y después por orden de carga; las hechas, abajo y plegadas.
+- Agregar: el campo "Nueva tarea" y, a la derecha, un botón con flecha que despliega sección (en Todo), subsección, responsable y fecha límite; plegado, un punto avisa que hay algo elegido. Enter agrega (desde 1.20.3).
 - Tocar una tarea abre su hoja para corregirla o borrarla (con Deshacer); tildarla también ofrece Deshacer.
 
 ## Búsqueda

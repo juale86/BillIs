@@ -1842,7 +1842,7 @@ button.compra-cab {
   color: var(--gasto);
 }
 .calc-tecla.igual {
-  grid-column: 1 / -1;
+  grid-column: span 3;
   background: var(--primario);
   border-color: var(--primario);
   color: var(--sobre-birome);
@@ -2185,4 +2185,125 @@ button.hechas-tit {
 }
 .respaldo text {
   font-family: var(--f-texto);
+}
+
+/* Nueva tarea: el campo y, a la derecha, el botón que despliega subsección, responsable y fecha límite. */
+.entrada-tarea {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.detalles-tarea {
+  position: relative;
+  flex: none;
+}
+.detalles-tarea svg {
+  transition: transform 0.15s ease-out;
+}
+.detalles-tarea[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+.detalles-tarea.con-detalles::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--birome);
+}
+
+/* Conversor de moneda en la calculadora: monto y moneda, ≈, monto convertido y moneda. */
+.calc-tecla.conversor-tecla {
+  display: grid;
+  place-items: center;
+  color: var(--birome);
+}
+.calc-tecla.conversor-tecla svg text {
+  font-family: var(--f-cifra);
+}
+.calc-tecla.conversor-tecla[aria-pressed='true'] {
+  background: var(--birome-suave);
+  border-color: var(--birome);
+}
+.conversor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 0 8px;
+  border-bottom: 1px solid var(--renglon);
+}
+.conv-fila {
+  display: flex;
+  gap: 6px;
+}
+.conv-monto {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  padding: 0 12px;
+  text-align: right;
+  font-family: var(--f-cifra);
+  font-size: var(--t-xl);
+  font-weight: 700;
+  color: var(--tinta);
+  background: var(--hoja);
+  border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+  caret-color: transparent;
+}
+.conv-monto:focus {
+  outline: none;
+}
+.conv-monto.activo {
+  border-color: var(--birome);
+  box-shadow: 0 0 0 3px var(--anillo);
+}
+.conv-monto::placeholder {
+  color: var(--lapiz);
+  opacity: 0.6;
+}
+.conversor select {
+  flex: none;
+  width: 108px;
+  height: 48px;
+  padding: 0 8px;
+  font-size: var(--t-m);
+  font-weight: 600;
+  color: var(--tinta);
+  background: var(--hoja);
+  border: 1px solid var(--renglon);
+  border-radius: var(--r1);
+}
+.conv-signo {
+  min-height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--lapiz);
+  text-align: center;
+}
+
+/* Cotizaciones en Ajustes: "1 BRL = [0,18] US$", con la cuenta al revés debajo. */
+.cotizacion > span:first-child {
+  display: flex;
+  flex-direction: column;
+}
+.cotizacion small {
+  font-size: var(--t-xs);
+  color: var(--lapiz);
+}
+.cotizacion .campo {
+  width: 110px;
+}
+.cotizacion input {
+  text-align: right;
+}
+.cotizacion input[aria-invalid='true'] {
+  border-color: var(--gasto);
+}
+.cotizacion-usd {
+  flex: none !important;
+  color: var(--lapiz);
 }

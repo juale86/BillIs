@@ -3,6 +3,7 @@ import { amPm } from '../lib/hora'
 import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
 import type { Datos } from '../lib/datos'
+import { CLAVE_COTIZACIONES, MONEDAS_CONVERSOR, type Cotizaciones, type MonedaConversor } from '../lib/conversor'
 import { CLAVE_GRUPOS, nuevoIdGrupo, type Grupo } from '../lib/grupos'
 import { exportarCSV, exportarJSON, importarJSON } from '../lib/respaldo'
 import { guardarTema, leerTema, type Tema } from '../lib/tema'
@@ -142,6 +143,16 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
         </label>
       </div>
 
+      <div className="tarjeta">
+        <h3>Cotizaciones</h3>
+        <p className="nota">Para el conversor de la calculadora: cuántos dólares vale cada moneda.</p>
+        <ul className="lista">
+          {MONEDAS_CONVERSOR.filter((m) => m.codigo !== 'USD').map((m) => (
+            <FilaCotizacion key={m.codigo} moneda={m} cotizaciones={datos.cotizaciones} />
+          ))}
+        </ul>
+      </div>
+
       {lista('Métodos de pago', 'metodosPago', metodos)}
       {lista('Categorías de gasto', 'categorias', categorias.filter((c) => c.tipo === 'gasto'), 'gasto')}
       {lista('Categorías de ingreso', 'categorias', categorias.filter((c) => c.tipo === 'ingreso'), 'ingreso')}
@@ -229,5 +240,39 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
         {amPm(new Date(__APP_FECHA__).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }))}
       </p>
     </section>
+  )
+}
+
+const fmtCot = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 2 })
+
+/** "🇧🇷 1 BRL = [0,18] US$", y debajo la cuenta al revés ("1 US$ = 5,56 BRL"). Se guarda al escribir un número válido. */
+function FilaCotizacion({ moneda, cotizaciones }: { moneda: MonedaConversor; cotizaciones: Cotizaciones }) {
+  const actual = cotizaciones[moneda.codigo]
+  const [texto, setTexto] = useState(() => String(actual).replace('.', ','))
+  const valor = Number(texto.trim().replace(',', '.'))
+  const valido = texto.trim() !== '' && Number.isFinite(valor) && valor > 0
+  return (
+    <li className="item-ajuste cotizacion">
+      <span>
+        {moneda.bandera} 1 {moneda.codigo} =
+        {valido && <small>1 US$ = {fmtCot(1 / valor)} {moneda.codigo}</small>}
+      </span>
+      <label className="campo">
+        <input
+          value={texto}
+          inputMode="decimal"
+          aria-label={`Cuántos dólares vale 1 ${moneda.nombre.toLowerCase()}`}
+          aria-invalid={!valido}
+          onChange={(e) => {
+            const t = e.target.value
+            setTexto(t)
+            const v = Number(t.trim().replace(',', '.'))
+            if (t.trim() && Number.isFinite(v) && v > 0 && v !== actual)
+              setAjuste(CLAVE_COTIZACIONES, { ...cotizaciones, [moneda.codigo]: v })
+          }}
+        />
+      </label>
+      <span className="cotizacion-usd">US$</span>
+    </li>
   )
 }

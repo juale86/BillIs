@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getAjuste, vivo } from '../db/db'
+import { CLAVE_COTIZACIONES, cotizacionesDesde, type Cotizaciones } from './conversor'
 import { CLAVE_GRUPOS, gruposDesde, type Grupo } from './grupos'
 import type { Categoria, MetodoPago, Movimiento, Persona } from '../db/types'
 
@@ -20,12 +21,14 @@ export interface Datos {
   grupos: Grupo[]
   /** Sección de tareas elegida ('todo' o el id de una sección). */
   tareasSeccion: string
+  /** Para el conversor de la calculadora: cuántos dólares vale cada moneda. */
+  cotizaciones: Cotizaciones
 }
 
 /** Todos los datos vivos (no borrados), reactivos. Para uso personal el volumen es chico. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos, tareasSeccion] = await Promise.all([
+    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos, tareasSeccion, cotizaciones] = await Promise.all([
       db.movimientos.toArray(),
       db.personas.toArray(),
       db.metodosPago.toArray(),
@@ -36,6 +39,7 @@ export function useDatos(): Datos | undefined {
       getAjuste<string[]>('miembrosLista', []),
       getAjuste<Grupo[] | null>(CLAVE_GRUPOS, null),
       getAjuste('tareasSeccion', 'todo'),
+      getAjuste<Cotizaciones | null>(CLAVE_COTIZACIONES, null),
     ])
     const ps = personas.filter(vivo)
     return {
@@ -50,6 +54,7 @@ export function useDatos(): Datos | undefined {
       miembrosLista,
       grupos: gruposDesde(grupos),
       tareasSeccion,
+      cotizaciones: cotizacionesDesde(cotizaciones),
     }
   })
 }

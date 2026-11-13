@@ -16,7 +16,7 @@ PWA (React 19 + TS estricto + Vite 8 + vite-plugin-pwa) para anotar gastos en An
 - `src/components/Compartir.tsx`: Login, Invitacion, BotonCompartir, Miembros (permisos) — compartido entre Listas y Tareas.
 - `src/screens/`: `Movimientos` (compras plegables, lo de otros en gris, aplica correcciones), `Lista` (lista de compras), `Tareas`, `Resumen` + `Saldos`, `Ajustes`, `SelectorMes`.
 - `src/db/`: Dexie (`movimientos`, `personas`, `metodosPago`, `categorias`, `ajustes`) y tipos (`Movimiento`, `GastoCargado`, `Historial`).
-- `src/lib/`: `datos.ts` (useDatos reactivo), `listaCompras.ts` (Firebase: auth, listas, ítems, permisos, corrección), `tareas.ts` (tareas y subsecciones), `historial.ts` (cargaDe, cambios, aplicarCorreccion), `calculos.ts` (`claveCompra`), `promo.ts`, `sesion.ts` (compra en curso, 2 h), `sugerencias.ts`, `grupos.ts`, `respaldo.ts`, `tema.ts`, `money.ts` (centavos).
+- `src/lib/`: `datos.ts` (useDatos reactivo), `listaCompras.ts` (Firebase: auth, listas, ítems, permisos, corrección), `tareas.ts` (tareas y subsecciones), `historial.ts` (cargaDe, cambios, aplicarCorreccion), `calculos.ts` (`claveCompra`), `conversor.ts` (cotizaciones contra el dólar, conversor de la calculadora), `promo.ts`, `sesion.ts` (compra en curso, 2 h), `sugerencias.ts`, `grupos.ts`, `respaldo.ts`, `tema.ts`, `money.ts` (centavos).
 - `src/index.css`: un solo archivo, tokens en `:root` (claro) y oscuro duplicado en `@media` y `[data-tema='oscuro']`.
 
 ## Modelo

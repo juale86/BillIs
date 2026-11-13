@@ -57,7 +57,7 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 
 ### Tareas
 - Pestaña **Tareas** con **secciones** (por ejemplo Viaje o Casa) y, dentro de cada una, **subsecciones** (Qué hacer allá, Cosas para buscar, Comprar antes). **Todo** muestra todas juntas.
-- Cada tarea tiene **responsable**, **fecha límite** (las vencidas en rojo, las de hoy resaltadas) y **nota**; se tilda con un toque, queda quién la hizo y se puede deshacer. Arriba, cuántas van hechas, y el chip **Mías**.
+- Cada tarea tiene **responsable**, **fecha límite** (las vencidas en rojo, las de hoy resaltadas) y **nota**; se tilda con un toque, queda quién la hizo y se puede deshacer. Subsección, responsable y fecha se eligen en un botón desplegable a la derecha del campo para agregar. Arriba, cuántas van hechas, y el chip **Mías**.
 - Cada sección se **comparte** por link como las listas (piden unirse y el dueño aprueba), o se deja solo para vos. Permisos: agregar y tildar por defecto; editar las de otros, si el dueño lo da.
 
 ### Historial de cada gasto
@@ -67,7 +67,7 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 - **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos), y muestra también lo que otros compraron de la misma lista compartida, con el total real y "Solo lo tuyo".
 - **Resumen** mensual (el ícono de barras de abajo): ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles.
-- **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, punto, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial.
+- **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, punto, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial. A la izquierda del = está el **conversor de moneda** (pesos, reales y dólares): monto y moneda arriba, ≈, y abajo el monto en la otra moneda; tocando el de abajo convierte al revés. Las cotizaciones, contra el dólar, se cargan en Ajustes.
 
 ### Datos y apariencia
 - **Respaldo** completo en JSON (exportar e importar), exportación a **CSV** compatible con Excel y aviso si pasó más de una semana sin respaldo.
