@@ -2163,11 +2163,26 @@ button.hechas-tit {
   padding: 0;
 }
 
-/* Respaldo en Ajustes: tres botones ícono (exportar, CSV, importar). */
+/* Respaldo en Ajustes: tres botones ícono (exportar, CSV, importar) a la derecha del título. */
+.respaldo-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .botones-respaldo {
-  gap: 10px;
+  display: flex;
+  gap: 8px;
 }
 .icono.borde.respaldo {
-  width: 48px;
+  width: 46px;
   height: 44px;
+}
+/* La flecha pasa por delante del borde de la caja: un trazo del color del fondo la despega. */
+.respaldo .halo {
+  stroke: var(--birome-suave);
+  stroke-width: 4.5;
+}
+.respaldo text {
+  font-family: var(--f-texto);
 }

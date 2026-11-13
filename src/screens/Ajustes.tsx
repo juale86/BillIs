@@ -168,38 +168,49 @@ export function Ajustes({ datos, onAviso }: { datos: Datos; onAviso: (t: string,
       </div>
 
       <div className="tarjeta">
-        <h3>Respaldo</h3>
+        {/* Una caja abierta: la flecha sale por la boca hacia arriba a la derecha al exportar y entra desde arriba a la izquierda al importar. */}
+        <div className="respaldo-cab">
+          <h3>Respaldo</h3>
+          <div className="botones-respaldo">
+            <button
+              className="icono borde respaldo"
+              aria-label="Exportar respaldo"
+              title="Exportar respaldo"
+              onClick={() => exportarJSON().then(() => onAviso('Respaldo exportado'))}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 11.5l9-3.5 9 3.5-9 3.5z" />
+              <path d="M3 11.5v7l9 3.5 9-3.5v-7M12 15v7" />
+              <path d="M3 11.5L1 14.5l9 3.5 2-3M21 11.5l2 3-9 3.5-2-3" />
+                <path d="M12 12.5L18.5 2.5" className="halo" />
+                <path d="M12 12.5L18.5 2.5M14 2.8l4.5-.3.5 4.4" />
+              </svg>
+            </button>
+            <button className="icono borde respaldo" aria-label="Exportar CSV" title="Exportar CSV" onClick={() => exportarCSV()}>
+              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5H11l4 4v11.5a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 3 20.5z" />
+                <path d="M11 5v4h4" />
+                <text x="4.3" y="18.6" fontSize="5.2" fontWeight="700" fill="currentColor" stroke="none">
+                  CSV
+                </text>
+                <path d="M9.5 12.5L20.5 3" className="halo" />
+                <path d="M9.5 12.5L20.5 3M15.5 3h5v5" />
+              </svg>
+            </button>
+            <button className="icono borde respaldo" aria-label="Importar respaldo" title="Importar respaldo" onClick={() => refArchivo.current?.click()}>
+              <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 11.5l9-3.5 9 3.5-9 3.5z" />
+              <path d="M3 11.5v7l9 3.5 9-3.5v-7M12 15v7" />
+              <path d="M3 11.5L1 14.5l9 3.5 2-3M21 11.5l2 3-9 3.5-2-3" />
+                <path d="M5.5 2.5L12 12.5" className="halo" />
+                <path d="M5.5 2.5L12 12.5M12.3 7.8l-.3 4.7-4.4-1" />
+              </svg>
+            </button>
+          </div>
+        </div>
         <p className="nota">
           Los datos viven solo en este teléfono. Exportá un respaldo y guardalo en Drive o donde quieras.
         </p>
-        {/* Íconos: la flecha sale hacia arriba a la derecha al exportar y entra desde arriba a la izquierda al importar. */}
-        <div className="botones botones-respaldo">
-          <button
-            className="icono borde respaldo"
-            aria-label="Exportar respaldo"
-            title="Exportar respaldo"
-            onClick={() => exportarJSON().then(() => onAviso('Respaldo exportado'))}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6" />
-              <path d="M11 13l9-9M14 4h6v6" />
-            </svg>
-          </button>
-          <button className="icono borde respaldo" aria-label="Exportar CSV" title="Exportar CSV" onClick={() => exportarCSV()}>
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
-              <text x="1" y="21.5" fontSize="8.5" fontWeight="700" fill="currentColor" fontFamily="var(--f-texto)">
-                CSV
-              </text>
-              <path d="M12 12l8.5-8.5M14.5 3.5h6v6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <button className="icono borde respaldo" aria-label="Importar respaldo" title="Importar respaldo" onClick={() => refArchivo.current?.click()}>
-            <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-6" />
-              <path d="M4 4l9 9M13 7v6H7" />
-            </svg>
-          </button>
-        </div>
         <input
           ref={refArchivo}
           type="file"

@@ -56,7 +56,7 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 ## Respaldo
 
 - Exportar / importar JSON (restaura todo).
-- En Ajustes son tres botones ícono (desde 1.20.1): exportar (caja con la flecha que sale hacia arriba a la derecha), CSV (las siglas con la misma flecha) e importar (caja con la flecha que entra desde arriba a la izquierda). El nombre lo lee el lector de pantalla y aparece al pasar el mouse.
+- En Ajustes son tres botones ícono a la derecha del título "Respaldo" (desde 1.20.2): exportar (una caja de cartón abierta con la flecha que sale por la boca hacia arriba a la derecha), CSV (una hoja con la punta doblada, las siglas y la misma flecha) e importar (la caja con la flecha que entra desde arriba a la izquierda). El nombre lo lee el lector de pantalla y aparece al pasar el mouse.
 - Exportar CSV.
 - Aviso si pasaron > 7 días sin respaldo.
 - `navigator.storage.persist()` al iniciar.
