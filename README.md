@@ -26,7 +26,7 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 
 ### Carga rápida
 - **Gasto o ingreso** con un interruptor (solo al cargar uno nuevo; al editar o comprar de la lista el tipo queda fijo); formulario compacto, sin títulos: cada campo se explica con un ejemplo.
-- **Producto, marca y cantidad** en una línea (la cantidad vacía vale 1 y al tocarla se selecciona para pisarla); el "Siguiente" del teclado salta al precio; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar).
+- **Producto, marca y cantidad** en una línea (la cantidad vacía vale 1 y al tocarla se selecciona para pisarla); el "Siguiente" del teclado salta al precio; **autocompletado** de producto y marca desde el historial, con el **último precio pagado** precargado (por producto, marca y lugar). Las sugerencias buscan desde el principio de cada palabra: "pan" sugiere "Pan lactal", no "Compañero".
 - **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se va completando mientras escribís el producto (por lo ya cargado, por el lugar o adivinándola por el nombre, como el grupo en la lista); las marcas ya compradas aparecen como chips dentro del campo Marca.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
 - **Cuotas** en pesos: cargás el total financiado o el valor de cada cuota y se reparte por mes; calcula el interés.
@@ -36,7 +36,8 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 
 ### Compras y "Pagar"
 - Cada gasto que cargás se suma a la **compra** en curso; el formulario solo pide qué compraste y cuánto salió.
-- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas, pagador y tu parte** una sola vez para toda la compra. El pagador se elige de un desplegable con vos y quienes comparten tu lista.
+- Si el gasto empieza una compra (no hay otra en curso), el botón principal es **Guardar y pagar** y abre Pagar enseguida: un gasto suelto se carga de una vez. Para varios productos, **Guardar y agregar otro** y al final **Pagar**.
+- El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas, pagador y tu parte** una sola vez para toda la compra. El pagador se elige de un desplegable con vos, las personas que ya cargaste y quienes comparten tu lista; **Otra persona…** pide un nombre nuevo (para "pagó mi pareja y le debo la mitad").
 - Los formularios se cierran sin guardar con la **X** de arriba a la derecha.
 - En Movimientos cada compra (terminada o en curso) muestra su **Total** con cómo se pagó; tocándolo se corrige el pago de toda la compra.
 
@@ -66,10 +67,10 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 - Al abrir un gasto se ve quién lo cargó y cuándo, quién hizo el último cambio y cuándo, y qué cambió (antes tachado, después). Mientras editás, debajo de cada campo cambiado aparece lo que se había cargado.
 
 ### Consulta
-- **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total; edición y borrado con deshacer. Si algo falla (sin conexión, un respaldo que no es de BillIs) lo dice el aviso de abajo, con un punto rojo, sin ventanas que frenen la pantalla; las confirmaciones y los nombres se piden en un diálogo de la app, no en las ventanitas del navegador. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos), y muestra también lo que otros compraron de la misma lista compartida, con el total real y "Solo lo tuyo".
+- **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total y su categoría en chico (si es de un solo producto, se titula con lo que compraste, "Carga SUBE", y el lugar pasa al renglón chico); edición y borrado con deshacer. Si guardás algo con fecha de otro mes, el aviso lo dice ("Gasto guardado en octubre") y su botón **Ver** te lleva a ese mes. Si algo falla (sin conexión, un respaldo que no es de BillIs) lo dice el aviso de abajo, con un punto rojo, sin ventanas que frenen la pantalla; las confirmaciones y los nombres se piden en un diálogo de la app, no en las ventanitas del navegador. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos), y muestra también lo que otros compraron de la misma lista compartida, con el total real y "Solo lo tuyo".
 - **Resumen** mensual (el ícono de barras de abajo): ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas.
 - **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles.
-- **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, punto, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial. A la izquierda del = está el **conversor de moneda** (pesos, reales y dólares): los dos montos en una línea, "500 🇦🇷 ≈ 1,81 🇧🇷", con banderas dibujadas que abren las otras monedas; tocando el de la derecha convierte al revés. Las cotizaciones, contra el dólar, se cargan en Ajustes.
+- **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, coma decimal, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial. A la izquierda del = está el **conversor de moneda** (pesos, reales y dólares): los dos montos en una línea, "500 🇦🇷 ≈ 1,81 🇧🇷", con banderas dibujadas que abren las otras monedas; tocando el de la derecha convierte al revés. Las cotizaciones se cargan en Ajustes como "1 US$ = 1.450 ARS", en números grandes.
 
 ### Datos y apariencia
 - **Respaldo** completo en JSON (exportar e importar), exportación a **CSV** compatible con Excel y aviso si pasó más de una semana sin respaldo.

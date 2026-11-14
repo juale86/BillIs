@@ -6,6 +6,9 @@ import { convertir, MONEDAS_CONVERSOR, redondear, type Cotizaciones } from '../l
 
 const TECLAS = ['(', ')', 'C', '⌫', '7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '%', '0', '.', '+', '=']
 
+/** Por dentro la cuenta usa punto; en pantalla, coma decimal como el resto de la app. */
+const conComa = (s: string) => s.replace(/\./g, ',')
+
 // Teclado físico → tecla de la calculadora.
 const DEL_TECLADO: Record<string, string> = {
   '*': '×', x: '×', '/': '÷', '-': '−', ',': '.', Enter: '=', Backspace: '⌫', Delete: 'C', c: 'C', C: 'C',
@@ -111,7 +114,7 @@ export function Calculadora({ cotizaciones, onCerrar }: { cotizaciones: Cotizaci
       <div className={'conv-grupo' + (conv.campo === c ? ' activo' : '')}>
         <input
           className="conv-monto"
-          value={texto(c)}
+          value={conComa(texto(c))}
           placeholder="0"
           readOnly
           // Escribe el teclado de la calculadora: que no aparezca el del teléfono.
@@ -158,10 +161,10 @@ export function Calculadora({ cotizaciones, onCerrar }: { cotizaciones: Cotizaci
       key={t}
       type="button"
       className={'calc-tecla' + (t === '=' ? ' igual' : /[+−×÷%()]/.test(t) ? ' op' : t === 'C' || t === '⌫' ? ' borrar' : '')}
-      aria-label={t === '⌫' ? 'Borrar uno' : t === 'C' ? 'Borrar todo' : undefined}
+      aria-label={t === '⌫' ? 'Borrar uno' : t === 'C' ? 'Borrar todo' : t === '.' ? 'Coma decimal' : undefined}
       onClick={() => pulsar(t)}
     >
-      {t}
+      {conComa(t)}
     </button>
   )
 
@@ -187,8 +190,8 @@ export function Calculadora({ cotizaciones, onCerrar }: { cotizaciones: Cotizaci
           </div>
         ) : (
           <div className="calc-pantalla" aria-live="polite">
-            <div className="calc-expr">{cuenta.expr || '0'}</div>
-            <div className="calc-previa">{error ? 'No se puede calcular' : mostrarPrevia ? '= ' + mostrar(previa) : ' '}</div>
+            <div className="calc-expr">{conComa(cuenta.expr) || '0'}</div>
+            <div className="calc-previa">{error ? 'No se puede calcular' : mostrarPrevia ? '= ' + conComa(mostrar(previa)) : ' '}</div>
           </div>
         )}
         <div className="calc-teclas">

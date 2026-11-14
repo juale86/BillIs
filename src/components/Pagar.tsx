@@ -40,6 +40,9 @@ interface Props {
   onPagado: (texto: string) => void
 }
 
+/** Valor del select que pide el nombre de alguien nuevo. */
+const OTRA = '\u0000otra'
+
 /** Caja: resumen de la compra en curso; método de pago, cuotas, pagador y tu parte se eligen una vez y se cierra la compra. */
 export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Props) {
   const [metodoId, setMetodoId] = useState<Id | ''>(() => gastos.find((g) => g.metodoPagoId)?.metodoPagoId ?? '')
@@ -66,8 +69,8 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const [contraparte, setContraparte] = useState(() => (enCurso ? '' : (nombreDe(primero?.contraparteId) ?? '')))
   const [error, setError] = useState('')
   const pagadorEsYo = normalizar(pagador.trim() || nombreYo) === normalizar(nombreYo)
-  // Pagador: vos o alguien con quien compartís la lista (y el que ya tenía la compra, si es otro).
-  const pagadores = unicos([nombreYo, ...datos.miembrosLista, pagador])
+  // Pagador: vos, las personas ya cargadas, quienes comparten la lista (y el que ya tenía la compra).
+  const pagadores = unicos([nombreYo, ...otras, pagador])
   const parte: Parte =
     parteModo === 'pct' ? { modo: 'pct', pct: Math.min(100, Math.max(0, Number(partePct) || 0)) } : { modo: parteModo }
   // Lo que te toca y lo que le toca al otro, por moneda.
@@ -160,12 +163,20 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
           )}
           <label className="campo">
             <span>Pagador</span>
-            <select value={pagador} onChange={(e) => setPagador(e.target.value)}>
+            <select
+              value={pagador}
+              onChange={async (e) => {
+                if (e.target.value !== OTRA) return setPagador(e.target.value)
+                const nombre = await pedirTexto({ titulo: '¿Quién pagó?', boton: 'Listo' })
+                if (nombre) setPagador(nombre)
+              }}
+            >
               {pagadores.map((nombre) => (
                 <option key={nombre} value={nombre}>
                   {normalizar(nombre) === normalizar(nombreYo) ? `${nombre} (vos)` : nombre}
                 </option>
               ))}
+              <option value={OTRA}>Otra persona…</option>
             </select>
           </label>
           <div className="campo">

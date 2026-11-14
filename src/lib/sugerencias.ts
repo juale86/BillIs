@@ -28,10 +28,12 @@ export function sugerirDescripciones(movs: Movimiento[], tipo: 'gasto' | 'ingres
   const q = normalizar(texto)
   if (!q) return []
   const delTipo = movs.filter((m) => m.tipo === tipo)
+  // Solo donde empieza una palabra: "pan" sugiere "Pan lactal" o "Harina para pan", no "Compañero".
+  const alInicio = new RegExp('(^|[^\\p{L}\\p{N}])' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'u')
   return ranking(delTipo, (m) => m.descripcion, 200)
     .filter((d) => {
       const n = normalizar(d)
-      return n !== q && n.includes(q)
+      return n !== q && alInicio.test(n)
     })
     .sort((a, b) => Number(!normalizar(b).startsWith(q)) - Number(!normalizar(a).startsWith(q)))
     .slice(0, 6)

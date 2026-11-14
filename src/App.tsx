@@ -262,6 +262,9 @@ export default function App() {
           }}
           onBorrar={borrar}
           onGuardadoMov={sincronizarItem}
+          mes={mes}
+          setMes={setMes}
+          onPagar={setPagando}
           onSinGasto={() => {
             const li = form.prefill?.listaItem
             setForm(null)
@@ -438,7 +441,7 @@ export default function App() {
                 cerrarAviso()
               }}
             >
-              Deshacer
+              {aviso.boton ?? 'Deshacer'}
             </button>
           )}
         </div>

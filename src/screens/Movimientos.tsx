@@ -242,7 +242,12 @@ export function Movimientos(props: Props) {
       ...ajenos.map((it) => ({ id: `otro-${it.id}`, nombre: it.nombre, marca: it.marca ?? '', t: it.modificadoEn, ajeno: it })),
     ].sort((a, b) => b.t - a.t)
     const n = renglones.length
-    const titulo = g[0].lugar || (n === 1 ? g[0].descripcion : 'Compra')
+    // Plegada y de un solo ítem, se titula con lo que se compró (el lugar pasa al renglón chico).
+    const unoPlegado = !abierto && n === 1 && g.length === 1
+    const titulo = unoPlegado ? g[0].descripcion : g[0].lugar || (n === 1 ? g[0].descripcion : 'Compra')
+    // Plegada: la categoría en chico, si toda la compra es de una sola.
+    const cats = new Set(g.map((m) => m.categoriaId))
+    const categoria = !abierto && cats.size === 1 ? categorias.find((c) => c.id === g[0].categoriaId)?.nombre : undefined
     // Lupa y orden solo tienen sentido abierta y con más de un ítem.
     const conAcciones = abierto && n > 1
     const lupa = lupas[clave]
@@ -254,7 +259,10 @@ export function Movimientos(props: Props) {
             <span>
               {titulo}{' '}
               <small>
-                {fmtHora(g.at(-1)!.fecha)}, {n} {n === 1 ? 'ítem' : 'ítems'}
+                {unoPlegado
+                  ? [g[0].lugar, fmtHora(g[0].fecha)].filter(Boolean).join(', ')
+                  : `${fmtHora(g.at(-1)!.fecha)}, ${n} ${n === 1 ? 'ítem' : 'ítems'}`}
+                {categoria && `, ${categoria}`}
                 {!abierto && `, ${pago}`}
               </small>
             </span>

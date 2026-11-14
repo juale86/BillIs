@@ -37,7 +37,6 @@ export interface Props {
   onBorrarGasto: (m: Movimiento) => void
   /** El dueño corrige, con el formulario de gasto completo, lo que compró otro miembro. */
   onCorregir: (listaId: string, item: ItemLista) => void
-  /** deshacer: muestra el botón Deshacer en el aviso. */
 }
 
 export default function Lista(props: Props) {

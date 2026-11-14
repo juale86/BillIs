@@ -2364,10 +2364,31 @@ button.hechas-tit {
   color: var(--lapiz);
 }
 
-/* Cotizaciones en Ajustes: "1 BRL = [0,18] US$", con la cuenta al revés debajo. */
-.cotizacion > span:first-child {
+/* Cotizaciones en Ajustes: "1 US$ = [1.450] ARS" en grande, con la cuenta al revés debajo. */
+.cotizacion {
+  padding: 8px 0;
+}
+.cotizacion + .cotizacion {
+  border-top: 1px solid var(--renglon);
+}
+.cotizacion-linea {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--t-xl);
+  font-weight: 600;
+}
+.cotizacion-linea .campo {
+  flex: 1;
+  min-width: 0;
+}
+.cotizacion-linea input {
+  font-size: var(--t-xl);
+  font-weight: 600;
+  text-align: right;
+}
+.cotizacion-linea input[aria-invalid='true'] {
+  border-color: var(--gasto);
 }
 .cotizacion-moneda {
   display: flex;
@@ -2375,19 +2396,8 @@ button.hechas-tit {
   gap: 6px;
 }
 .cotizacion small {
-  font-size: var(--t-xs);
-  color: var(--lapiz);
-}
-.cotizacion .campo {
-  width: 110px;
-}
-.cotizacion input {
-  text-align: right;
-}
-.cotizacion input[aria-invalid='true'] {
-  border-color: var(--gasto);
-}
-.cotizacion-usd {
-  flex: none !important;
+  display: block;
+  margin-top: 4px;
+  font-size: var(--t-m);
   color: var(--lapiz);
 }

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { CamposPromo, type TipoPromo } from './CamposPromo'
 import { avisar } from '../lib/avisos'
+import { claveMes, nombreMes } from '../lib/calculos'
 import { confirmar, pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
@@ -46,6 +47,11 @@ interface Props {
   onBorrar?: (m: Movimiento) => void
   /** Se llama con el movimiento guardado (alta o edición). */
   onGuardadoMov?: (m: Movimiento) => void
+  /** Mes que se está viendo: si lo guardado cae en otro, el aviso ofrece ir a verlo. */
+  mes?: number
+  setMes?: (mes: number) => void
+  /** "Guardar y pagar": abre Pagar para esa compra. */
+  onPagar?: (compraId: string) => void
   /** "Ya comprado, sin gasto" (solo desde la lista). */
   onSinGasto?: () => void
   correccion?: Correccion
@@ -78,6 +84,9 @@ export function FormMovimiento({
   onCerrar,
   onBorrar,
   onGuardadoMov,
+  mes,
+  setMes,
+  onPagar,
   onSinGasto,
   correccion,
 }: Props) {
@@ -369,7 +378,14 @@ export function FormMovimiento({
   }
 
   /** otro: después de guardar deja el formulario listo para otro gasto. */
-  async function guardar(otro: boolean) {
+  // Un gasto que empieza compra (no hay otra en curso, o es en otro lugar) se paga enseguida:
+  // "Guardar y pagar". Si ya hay ítems en curso, "Guardar" lo suma y se paga todo junto al final.
+  const empiezaCompra =
+    esGasto &&
+    ((!!sesion.lugar && normalizar(sesion.lugar) !== normalizar(lugar)) ||
+      !movimientos.some((m) => m.tipo === 'gasto' && m.compraId === sesion.compraId))
+
+  async function guardar(otro: boolean, pagar = false) {
     setError('')
     if (!descripcion.trim()) return setError(esGasto ? 'Falta el producto' : 'Falta el concepto')
     const sinPrecioOk = correccion?.sinMonto && !precio.trim()
@@ -434,17 +450,25 @@ export function FormMovimiento({
       if (editando) mov.historial = historialAlEditar(editando, mov, nombreYo, categorias)
       await db.movimientos.put(mov)
       onGuardadoMov?.(mov)
+      // En otro mes no se vería en la lista: el aviso lo dice y lleva a ese mes.
+      const otroMes = mes !== undefined && setMes && claveMes(fecha) !== mes ? claveMes(fecha) : null
+      const verMes = otroMes === null ? undefined : () => setMes!(otroMes)
+      const enMes = otroMes === null ? '' : ` en ${nombreMes(otroMes)}`
 
-      if (editando) return onCerrar()
+      if (editando) {
+        if (otroMes !== null && claveMes(editando.fecha) !== claveMes(fecha)) avisar(`Movido a ${nombreMes(otroMes)}`, verMes, 'Ver')
+        return onCerrar()
+      }
 
       if (enCompra && compraId) {
         const nueva = { compraId, lugar: lugar.trim(), ubicacion, fecha: fechaManual ? fecha : undefined }
         guardarSesion(nueva)
         setSesion({ ...nueva, ultimaActividad: Date.now() })
       }
-      avisar(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} guardado: ${fmt(total, moneda)}`)
+      avisar(`${tipo === 'gasto' ? 'Gasto' : 'Ingreso'} guardado${enMes}: ${fmt(total, moneda)}`, verMes, verMes && 'Ver')
       if (otro) limpiarParaOtro()
       else onCerrar()
+      if (pagar && compraId) onPagar?.(compraId)
     } finally {
       setGuardando(false)
     }
@@ -708,7 +732,7 @@ export function FormMovimiento({
               <div className="con-boton">
                 <input
                   value={lugar}
-                  placeholder={esGasto ? 'Almacén de Juan' : 'Origen, ej. Empresa'}
+                  placeholder={esGasto ? 'Dónde, ej. kiosco o Edenor' : 'Origen, ej. Empresa'}
                   aria-label={esGasto ? 'Lugar de compra' : 'Origen'}
                   autoComplete="off"
                   onChange={(e) => setLugar(e.target.value)}
@@ -777,7 +801,9 @@ export function FormMovimiento({
           <p className="nota">
             {editando
               ? 'Método de pago, cuotas, pagador y tu parte se cambian tocando el Total de la compra.'
-              : 'Método de pago, cuotas, pagador y tu parte se eligen al tocar Pagar.'}
+              : empiezaCompra && onPagar && contexto !== 'lista'
+                ? 'Método de pago, cuotas, pagador y tu parte se eligen después de "Guardar y pagar". Para cargar varios productos de la misma compra, usá "Guardar y agregar otro".'
+                : 'Método de pago, cuotas, pagador y tu parte se eligen al tocar Pagar.'}
           </p>
         )}
 
@@ -824,8 +850,8 @@ export function FormMovimiento({
             <button type="submit" className="secundario" disabled={guardando}>
               Guardar y agregar otro
             </button>
-            <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
-              Guardar
+            <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false, empiezaCompra && !!onPagar)}>
+              {empiezaCompra && onPagar ? 'Guardar y pagar' : 'Guardar'}
             </button>
           </>
         )}

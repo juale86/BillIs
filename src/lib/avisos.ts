@@ -6,7 +6,9 @@
 
 export interface Aviso {
   texto: string
+  /** Botón del aviso: "Deshacer" salvo que se diga otra cosa. */
   deshacer?: () => void
+  boton?: string
   /** Algo salió mal: se ve en rojo, dura más y se cierra tocándolo. */
   error?: boolean
 }
@@ -18,8 +20,8 @@ export function registrarAvisos(f: ((a: Aviso) => void) | null) {
   mostrar = f
 }
 
-export function avisar(texto: string, deshacer?: () => void) {
-  mostrar?.({ texto, deshacer })
+export function avisar(texto: string, deshacer?: () => void, boton?: string) {
+  mostrar?.({ texto, deshacer, boton })
 }
 
 export function avisarError(texto: string) {

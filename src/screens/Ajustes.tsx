@@ -6,7 +6,8 @@ import { amPm } from '../lib/hora'
 import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
 import type { Categoria, MetodoPago } from '../db/types'
 import type { Datos } from '../lib/datos'
-import { CLAVE_COTIZACIONES, MONEDAS_CONVERSOR, type Cotizaciones, type MonedaConversor } from '../lib/conversor'
+import { CLAVE_COTIZACIONES, MONEDAS_CONVERSOR, redondear, type Cotizaciones, type MonedaConversor } from '../lib/conversor'
+import { conMiles, parseMonto } from '../lib/money'
 import { CLAVE_GRUPOS, nuevoIdGrupo, type Grupo } from '../lib/grupos'
 import { exportarCSV, exportarJSON, importarJSON } from '../lib/respaldo'
 import { guardarTema, leerTema, type Tema } from '../lib/tema'
@@ -150,7 +151,7 @@ export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () =>
 
       <div className="tarjeta">
         <h3>Cotizaciones</h3>
-        <p className="nota">Para el conversor de la calculadora: cuántos dólares vale cada moneda.</p>
+        <p className="nota">Para el conversor de la calculadora: cuánto vale un dólar en cada moneda.</p>
         <ul className="lista">
           {MONEDAS_CONVERSOR.filter((m) => m.codigo !== 'USD').map((m) => (
             <FilaCotizacion key={m.codigo} moneda={m} cotizaciones={datos.cotizaciones} />
@@ -245,38 +246,47 @@ export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () =>
   )
 }
 
-const fmtCot = (v: number) => v.toLocaleString('es-AR', { maximumFractionDigits: 2 })
+const leer = (t: string) => (parseMonto(t) ?? 0) / 100
 
-/** "[bandera] 1 BRL = [0,18] US$", y debajo la cuenta al revés ("1 US$ = 5,56 BRL"). Se guarda al escribir un número válido. */
+const fmtCot = (v: number) => v.toLocaleString('es-AR', { maximumSignificantDigits: 4 })
+
+/**
+ * "1 US$ = [1.538,46] [bandera] ARS" en grande, como se piensa en Argentina, y debajo la cuenta
+ * al revés ("1 ARS = 0,00065 US$"). Se guarda (en dólares por unidad) al escribir un número válido.
+ */
 function FilaCotizacion({ moneda, cotizaciones }: { moneda: MonedaConversor; cotizaciones: Cotizaciones }) {
   const actual = cotizaciones[moneda.codigo]
-  const [texto, setTexto] = useState(() => String(actual).replace('.', ','))
-  const valor = Number(texto.trim().replace(',', '.'))
+  const [texto, setTexto] = useState(() => conMiles(String(redondear(1 / actual)).replace('.', ',')))
+  const valor = leer(texto)
   const valido = texto.trim() !== '' && Number.isFinite(valor) && valor > 0
   return (
-    <li className="item-ajuste cotizacion">
-      <span>
+    <li className="cotizacion">
+      <div className="cotizacion-linea">
+        <span>1 US$ =</span>
+        <label className="campo">
+          <input
+            value={texto}
+            inputMode="decimal"
+            aria-label={`Cuánto vale 1 dólar en ${moneda.codigo}`}
+            aria-invalid={!valido}
+            onChange={(e) => {
+              const t = conMiles(e.target.value)
+              setTexto(t)
+              const v = leer(t)
+              if (t.trim() && Number.isFinite(v) && v > 0 && 1 / v !== actual)
+                setAjuste(CLAVE_COTIZACIONES, { ...cotizaciones, [moneda.codigo]: 1 / v })
+            }}
+          />
+        </label>
         <span className="cotizacion-moneda">
-          <Bandera codigo={moneda.codigo} /> 1 {moneda.codigo} =
+          <Bandera codigo={moneda.codigo} /> {moneda.codigo}
         </span>
-        {valido && <small>1 US$ = {fmtCot(1 / valor)} {moneda.codigo}</small>}
-      </span>
-      <label className="campo">
-        <input
-          value={texto}
-          inputMode="decimal"
-          aria-label={`Cuántos dólares vale 1 ${moneda.nombre.toLowerCase()}`}
-          aria-invalid={!valido}
-          onChange={(e) => {
-            const t = e.target.value
-            setTexto(t)
-            const v = Number(t.trim().replace(',', '.'))
-            if (t.trim() && Number.isFinite(v) && v > 0 && v !== actual)
-              setAjuste(CLAVE_COTIZACIONES, { ...cotizaciones, [moneda.codigo]: v })
-          }}
-        />
-      </label>
-      <span className="cotizacion-usd">US$</span>
+      </div>
+      {valido && (
+        <small>
+          1 {moneda.codigo} = {fmtCot(1 / valor)} US$
+        </small>
+      )}
     </li>
   )
 }
