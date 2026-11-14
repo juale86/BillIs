@@ -683,7 +683,8 @@ export function FormMovimiento({
         )}
 
         {esGasto && (cant > 1 || promo) && precioCent !== null && (
-          <p className="calculo">
+          // Con cantidad, el precio de arriba es por unidad: el total se ve más grande.
+          <p className={'calculo' + (cant > 1 ? ' destacado' : '')}>
             Total {fmt(contado, moneda)}
             {cant > 1 && <>, {fmt(Math.round(contado / cant), moneda)} c/u</>}
             {ahorro > 0 && <>, ahorrás {fmt(ahorro, moneda)}</>}

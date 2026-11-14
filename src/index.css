@@ -338,6 +338,10 @@ button:disabled {
   color: var(--birome);
   font-weight: 600;
 }
+/* Cantidad mayor que 1: el monto es por unidad y el total importa. */
+.calculo.destacado {
+  font-size: var(--t-l);
+}
 .error {
   margin: 0;
   color: var(--gasto);
