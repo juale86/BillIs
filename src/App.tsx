@@ -8,6 +8,7 @@ import { Pagar, textoTotal, totalCompra } from './components/Pagar'
 import { db, inicializar, setAjuste } from './db/db'
 import type { Movimiento } from './db/types'
 import { claveCompra, claveMes } from './lib/calculos'
+import { fmt } from './lib/money'
 import { useDatos } from './lib/datos'
 import { cargaDe, cargaDeItem } from './lib/historial'
 import { hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from './lib/filtrosMov'
@@ -61,6 +62,8 @@ export default function App() {
   const [mes, setMes] = useState(() => claveMes(Date.now()))
   const [aviso, setAviso] = useState<Aviso | null>(null)
   const [avisoRespaldo, setAvisoRespaldo] = useState(false)
+  // Facturas cuyo aviso se descartó (hasta cerrar la app).
+  const [facturasVistas, setFacturasVistas] = useState<string[]>([])
   // Compra cuyo pago se está viendo (clave de compra), o null.
   const [pagando, setPagando] = useState<string | null>(null)
   const [verAlertas, setVerAlertas] = useState(false)
@@ -203,16 +206,43 @@ export default function App() {
       : null
 
   // Alertas: se avisan con un botón al lado del mes y se leen debajo de él.
-  const alertas = avisoRespaldo
-    ? [
-        {
-          id: 'respaldo',
-          texto: 'Hace más de una semana que no hacés un respaldo.',
-          accion: { etiqueta: 'Ir a respaldo', onClick: () => setPestana('ajustes') },
-          descartar: () => setAvisoRespaldo(false),
+  // Facturas por pagar que vencen en los próximos 3 días o ya vencieron.
+  const hoy = new Date().setHours(0, 0, 0, 0)
+  const DIA = 24 * 60 * 60 * 1000
+  const facturasAlerta = datos.movimientos
+    .filter((m) => m.porPagar && m.fecha < hoy + 4 * DIA && !facturasVistas.includes(m.id))
+    .sort((a, b) => a.fecha - b.fecha)
+  const cuandoVence = (t: number) => {
+    const dias = Math.floor((t - hoy) / DIA)
+    if (dias < 0) return 'venció el ' + new Date(t).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })
+    if (dias === 0) return 'vence hoy'
+    if (dias === 1) return 'vence mañana'
+    return 'vence el ' + new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric' })
+  }
+  const alertas = [
+    ...facturasAlerta.map((m) => ({
+      id: 'factura-' + m.id,
+      texto: `${m.descripcion} ${cuandoVence(m.fecha)}: ${fmt(m.totalCent, m.moneda)}.`,
+      accion: {
+        etiqueta: 'Pagar',
+        onClick: () => {
+          setVerAlertas(false)
+          setPagando(claveCompra(m))
         },
-      ]
-    : []
+      },
+      descartar: () => setFacturasVistas((v) => [...v, m.id]),
+    })),
+    ...(avisoRespaldo
+      ? [
+          {
+            id: 'respaldo',
+            texto: 'Hace más de una semana que no hacés un respaldo.',
+            accion: { etiqueta: 'Ir a respaldo', onClick: () => setPestana('ajustes') },
+            descartar: () => setAvisoRespaldo(false),
+          },
+        ]
+      : []),
+  ]
   const botonAlertas = alertas.length > 0 && (
     <button
       className="icono borde alertas"

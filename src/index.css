@@ -338,6 +338,24 @@ button:disabled {
   color: var(--birome);
   font-weight: 600;
 }
+/* Formulario: "[x] Factura por pagar [3] cuotas" en un renglón; el vencimiento con su rótulo. */
+.factura {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.factura .campo.cant {
+  width: 64px;
+  flex: none;
+}
+.vence {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-s);
+  color: var(--lapiz);
+}
+
 /* Cantidad mayor que 1: el monto es por unidad y el total importa. */
 .calculo.destacado {
   font-size: var(--t-l);
@@ -1469,6 +1487,15 @@ main {
 .compra-pie.en-curso small:first-child {
   color: var(--gasto);
   font-weight: 600;
+}
+/* Facturas: "Por pagar" en azul; vencidas, en rojo (también plegadas). */
+.compra.por-pagar .compra-pie small:first-child {
+  color: var(--birome);
+  font-weight: 600;
+}
+.compra.vencida .compra-pie small:first-child,
+.compra.vencida .compra-cab small {
+  color: var(--gasto);
 }
 .compra-pie-fila.solo-tuyo > span {
   font-weight: 400;

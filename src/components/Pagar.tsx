@@ -54,6 +54,9 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const n = Math.max(1, Math.round(Number(cuotas) || 1))
   const totalPesos = enPesos.reduce((t, g) => t + g.totalCent, 0)
   const nombreYo = datos.yo?.nombre ?? 'Yo'
+  // Una factura por pagar se paga como una compra en curso: el botón confirma y deja de estar por pagar.
+  const porPagar = gastos.some((g) => g.porPagar)
+  const pagando = enCurso || porPagar
   // Para "Compartido con": las personas ya cargadas y con quienes compartís la lista.
   const otras = unicos([...datos.personas.filter((p) => !p.esYo).map((p) => p.nombre), ...datos.miembrosLista]).filter(
     (nombre) => normalizar(nombre) !== normalizar(nombreYo),
@@ -100,6 +103,7 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
           parte,
           miParteCent: miParte(g.totalCent, parte),
           modificadoEn: ahora,
+          porPagar: undefined,
           // Se reparte cada producto en las mismas cuotas, sin interés.
           ...(g.moneda === 'ARS' && { cuotas: n > 1 ? (g.cuotas?.cantidad === n ? g.cuotas : { cantidad: n }) : undefined }),
         },
@@ -107,6 +111,7 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
     )
     if (enCurso) cerrarSesion()
     const metodo = datos.metodos.find((m) => m.id === metodoId)?.nombre
+    if (porPagar) return onPagado(`Factura pagada: ${total}${metodo ? ` con ${metodo}` : ''}${n > 1 ? ` en ${n} cuotas` : ''}`)
     if (!enCurso) return onPagado('Pago actualizado')
     onPagado(`${esYo ? 'Pagado' : `Pagó ${nombrePagador}`} ${total}${metodo ? ` con ${metodo}` : ''}${n > 1 ? ` en ${n} cuotas` : ''}`)
   }
@@ -125,7 +130,7 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
         <div className="menu-seccion">
           <div className="hoja-cab">
             <h3>
-              {enCurso ? 'Pagar' : 'Pago'}
+              {pagando ? 'Pagar' : 'Pago'}
               {lugar ? ` en ${lugar}` : ''}
             </h3>
             <BotonCerrar onClick={onCerrar} />
@@ -232,7 +237,7 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
         </div>
         <div className="acciones">
           <button type="button" className="primario" disabled={ocupado} onClick={confirmar}>
-            {enCurso ? 'Confirmar pago' : 'Guardar cambios'}
+            {pagando ? 'Confirmar pago' : 'Guardar cambios'}
           </button>
         </div>
       </div>

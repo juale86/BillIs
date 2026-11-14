@@ -6,6 +6,16 @@ export const claveMes = (t: number) => {
   return d.getFullYear() * 12 + d.getMonth()
 }
 
+/** El mismo día y hora n meses después; si ese mes es más corto, el último día (31/1 + 1 → 28/2). */
+export function sumarMeses(t: number, n: number): number {
+  const d = new Date(t)
+  const dia = d.getDate()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + n)
+  d.setDate(Math.min(dia, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()))
+  return d.getTime()
+}
+
 export const nombreMes = (clave: number) =>
   new Date(Math.floor(clave / 12), clave % 12, 1).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })
 

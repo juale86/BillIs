@@ -41,6 +41,11 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 - Los formularios se cierran sin guardar con la **X** de arriba a la derecha.
 - En Movimientos cada compra (terminada o en curso) muestra su **Total** con cómo se pagó; tocándolo se corrige el pago de toda la compra.
 
+### Facturas por pagar
+- En un gasto nuevo, el interruptor **Factura por pagar** pide el **vencimiento** y la cantidad de **cuotas**: carga una por mes, por pagar (ideal para un plan de pagos, el alquiler del contrato o una factura que llega antes de pagarla).
+- En Movimientos dicen "vence 16/11" y "Por pagar, cuota 1 de 3" (en rojo si vencieron); tocando el Total se pagan con el mismo formulario de Pagar.
+- La **campanita** avisa las que vencen en los próximos 3 días o ya vencieron, con un botón **Pagar**. Resumen muestra cuánto queda por pagar en el mes.
+
 ### Deudas compartidas
 - Campo **pagador** y **mi parte** (todo, mitad, nada o %): si pagó otra persona, le debés tu parte; si pagaste vos y compartís, te deben la diferencia.
 - **Saldos con personas** dentro de Resumen (solo aparece si hay deudas), por moneda, con registro de pagos para saldar.

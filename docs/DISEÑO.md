@@ -79,6 +79,18 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - ~~Un gasto sin lugar (Netflix, nafta) se guarda directo~~: reemplazado en 1.8.3, también pasa por Pagar.
 - Formulario nuevo: Guardar y agregar otro / Guardar (o Guardar y pagar, si empieza una compra; desde 1.23). Editando: Guardar cambios. Desde la lista: Guardar (+ "Ya comprado, sin gasto" y, en chiquito al final, quién agregó el ítem). En todos, la X de arriba cierra sin guardar.
 
+## Facturas por pagar (desde 1.24)
+
+- En el formulario de un gasto nuevo (no desde la lista ni corrigiendo) hay un interruptor **"Factura por pagar"** con la cantidad de **cuotas** al lado (1 a 60). Encendido:
+  - la fecha pasa a ser **Vence** (solo día, sin "Ahora");
+  - la nota dice qué se va a cargar: "Se carga una por mes, del 16/11/2026 al 16/1/2027, cada una de $20.000";
+  - el único botón es **Guardar factura** (no entra en la compra en curso ni ofrece "agregar otro").
+- Se guarda **un gasto por cuota**, uno por mes con el mismo día de vencimiento (si el mes es más corto, el último día: `sumarMeses` en `lib/calculos.ts`). Cada uno es su propia compra, con `porPagar: true` y `factura: { serieId, cuota, de }`; `fecha` es el vencimiento. Pagador: vos; tu parte: todo.
+- Cuentan en Gastos y en Resumen en el mes en que vencen, pagadas o no. Resumen agrega "Facturas por pagar este mes: $X".
+- En Movimientos van en el día del vencimiento: en lugar de la hora dicen "vence 16/11" (o "venció 10/11" si pasó sin pagar), y al pie **"Por pagar, cuota 1 de 3"**, en azul; vencidas, en rojo. Tocar el Total abre **Pagar** (método, cuotas de tarjeta, pagador, tu parte) con "Confirmar pago"; al confirmar deja de estar por pagar ("Factura pagada: $41.000 con Débito"). Pagada, el pie muestra el método y "cuota 1 de 3".
+- **Campanita**: avisa cada factura por pagar que venció o vence en los próximos 3 días ("Plan AFIP vence el lunes 16: $20.000. **Pagar**"). Pagar abre la hoja de pago; la ✕ la descarta hasta cerrar la app.
+- Editar una cuota cambia solo esa (la nota del formulario dice "Factura, cuota 2 de 3, por pagar"); borrarla también. Para cambiar todas hay que editarlas de a una.
+
 ## Listas de compras compartidas
 
 - Pestaña **Listas**. Firestore (proyecto `billis-juale86`, `southamerica-east1`) + inicio de sesión con **Google** (solo para las listas; los gastos siguen locales).
@@ -157,7 +169,7 @@ Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guar
 
 ## Fuera de v1 (el modelo lo admite)
 
-Facturas y gastos recurrentes (vencimiento, nº de factura), día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.
+Gastos recurrentes sin fin (las facturas de 1.24 tienen una cantidad fija de cuotas), nº de factura, editar todas las cuotas juntas, día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.
 
 ## Pendientes para charlar
 

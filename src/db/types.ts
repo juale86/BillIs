@@ -77,6 +77,10 @@ export interface Movimiento extends Base {
   listaItem?: { listaId: string; itemId: string; corregidoEn?: number }
   /** Lo que se cargó primero y el último cambio, para mostrarlo al editar. */
   historial?: Historial
+  /** Factura (gasto): una de las `de` cuotas mensuales que se cargaron juntas; `fecha` es su vencimiento. */
+  factura?: { serieId: Id; cuota: number; de: number }
+  /** Factura todavía sin pagar: Pagar la marca como pagada. */
+  porPagar?: boolean
 }
 
 /**

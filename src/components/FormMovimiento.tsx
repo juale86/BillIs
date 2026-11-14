@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { CamposPromo, type TipoPromo } from './CamposPromo'
 import { avisar } from '../lib/avisos'
-import { claveMes, nombreMes } from '../lib/calculos'
+import { claveMes, nombreMes, sumarMeses } from '../lib/calculos'
 import { confirmar, pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
@@ -70,6 +70,8 @@ const seleccionarTodo = (e: FocusEvent<HTMLInputElement>) => {
   setTimeout(() => el.setSelectionRange(0, el.value.length), 0)
 }
 
+const fmtDia = (t: number) => new Date(t).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric' })
+
 const num = (s: string, def: number) => {
   const n = Number(s.replace(',', '.'))
   return Number.isFinite(n) && s.trim() !== '' ? n : def
@@ -135,6 +137,9 @@ export function FormMovimiento({
     return c > 1 ? String(c) : ''
   })
   const [verPromo, setVerPromo] = useState(!!ini?.promo)
+  // Factura: se carga por pagar, una por mes durante las cuotas que se indiquen; la fecha es el vencimiento.
+  const [esFactura, setEsFactura] = useState(false)
+  const [cuotasFactura, setCuotasFactura] = useState('1')
   const [promoTipo, setPromoTipo] = useState<TipoPromo>(ini?.promo?.tipo ?? '')
   const [promoA, setPromoA] = useState(() => {
     const p = ini?.promo
@@ -377,7 +382,6 @@ export function FormMovimiento({
     refDesc.current?.focus()
   }
 
-  /** otro: después de guardar deja el formulario listo para otro gasto. */
   // Un gasto que empieza compra (no hay otra en curso, o es en otro lugar) se paga enseguida:
   // "Guardar y pagar". Si ya hay ítems en curso, "Guardar" lo suma y se paga todo junto al final.
   const empiezaCompra =
@@ -385,6 +389,12 @@ export function FormMovimiento({
     ((!!sesion.lugar && normalizar(sesion.lugar) !== normalizar(lugar)) ||
       !movimientos.some((m) => m.tipo === 'gasto' && m.compraId === sesion.compraId))
 
+  // La factura es solo para un gasto nuevo cargado a mano (no desde la lista ni corrigiendo).
+  const puedeFactura = esGasto && !editando && !correccion && contexto !== 'lista'
+  const factura = puedeFactura && esFactura
+  const nFactura = Math.min(60, Math.max(1, Math.round(num(cuotasFactura, 1))))
+
+  /** otro: después de guardar deja el formulario listo para otro gasto. */
   async function guardar(otro: boolean, pagar = false) {
     setError('')
     if (!descripcion.trim()) return setError(esGasto ? 'Falta el producto' : 'Falta el concepto')
@@ -445,6 +455,34 @@ export function FormMovimiento({
         cuotas: esGasto ? cuotas : undefined,
         compraId,
         listaItem: editando?.listaItem ?? prefill?.listaItem,
+        factura: editando?.factura,
+        porPagar: editando?.porPagar,
+      }
+      // Factura: una por mes, cada una su propia "compra" por pagar, fuera de la compra en curso.
+      if (factura) {
+        const serieId = uuid()
+        await db.movimientos.bulkPut(
+          Array.from({ length: nFactura }, (_, i) => ({
+            ...mov,
+            ...nuevoBase(),
+            fecha: sumarMeses(fecha, i),
+            compraId: uuid(),
+            metodoPagoId: undefined,
+            pagadorId: yo?.id ?? pagadorId,
+            porPagar: true,
+            factura: { serieId, cuota: i + 1, de: nFactura },
+          })),
+        )
+        const mesFactura = claveMes(fecha)
+        const ver = mes !== undefined && setMes && mesFactura !== mes ? () => setMes(mesFactura) : undefined
+        avisar(
+          nFactura > 1
+            ? `Factura guardada: ${nFactura} cuotas de ${fmt(total, moneda)}, por pagar`
+            : `Factura guardada por pagar: ${fmt(total, moneda)}`,
+          ver,
+          ver && 'Ver',
+        )
+        return onCerrar()
       }
       // Editando: se guarda lo primero que se cargó y quién hizo el último cambio.
       if (editando) mov.historial = historialAlEditar(editando, mov, nombreYo, categorias)
@@ -644,7 +682,7 @@ export function FormMovimiento({
             </label>
           )}
           <div className="campo fecha">
-            {fechaManual && !editando && !correccion && (
+            {fechaManual && !editando && !correccion && !factura && (
               <button
                 type="button"
                 className="enlace mini ahora"
@@ -656,18 +694,36 @@ export function FormMovimiento({
                 Ahora
               </button>
             )}
-            <input
-              type="datetime-local"
-              aria-label="Fecha"
-              value={aInputFecha(fecha)}
-              onChange={(e) => {
-                const t = new Date(e.target.value).getTime()
-                if (Number.isFinite(t)) {
-                  setFecha(t)
-                  setFechaManual(true)
-                }
-              }}
-            />
+            {factura ? (
+              <label className="vence">
+                <span>Vence</span>
+                <input
+                  type="date"
+                  aria-label="Vence"
+                  value={aInputFecha(fecha).slice(0, 10)}
+                  onChange={(e) => {
+                    const t = new Date(`${e.target.value}T12:00`).getTime()
+                    if (Number.isFinite(t)) {
+                      setFecha(t)
+                      setFechaManual(true)
+                    }
+                  }}
+                />
+              </label>
+            ) : (
+              <input
+                type="datetime-local"
+                aria-label="Fecha"
+                value={aInputFecha(fecha)}
+                onChange={(e) => {
+                  const t = new Date(e.target.value).getTime()
+                  if (Number.isFinite(t)) {
+                    setFecha(t)
+                    setFechaManual(true)
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
         {antes('precioUnitCent', 'moneda', 'fecha')}
@@ -691,6 +747,43 @@ export function FormMovimiento({
           </p>
         )}
         {antes('promo', 'totalCent')}
+
+        {puedeFactura && (
+          <div className="factura">
+            <label className="interruptor">
+              <input type="checkbox" checked={esFactura} onChange={(e) => setEsFactura(e.target.checked)} />
+              <span>Factura por pagar</span>
+            </label>
+            {esFactura && (
+              <>
+                <label className="campo cant">
+                  <input
+                    value={cuotasFactura}
+                    inputMode="numeric"
+                    aria-label="Cuotas de la factura"
+                    onChange={(e) => setCuotasFactura(e.target.value)}
+                    onFocus={seleccionarTodo}
+                  />
+                </label>
+                <span>{nFactura === 1 ? 'cuota' : 'cuotas'}</span>
+              </>
+            )}
+          </div>
+        )}
+        {factura && (
+          <p className="nota">
+            {nFactura > 1
+              ? `Se carga una por mes, del ${fmtDia(fecha)} al ${fmtDia(sumarMeses(fecha, nFactura - 1))}, cada una de ${fmt(contado, moneda)}. `
+              : ''}
+            Queda por pagar: la pagás desde Movimientos, y antes del vencimiento te avisa la campanita.
+          </p>
+        )}
+        {editando?.factura && (
+          <p className="nota">
+            Factura, cuota {editando.factura.cuota} de {editando.factura.de}, {editando.porPagar ? 'por pagar' : 'pagada'}. La fecha es el
+            vencimiento.
+          </p>
+        )}
 
         <div className="fila">
           <label className="campo crece">
@@ -798,7 +891,7 @@ export function FormMovimiento({
           />
         </div>
         {antes('lugar')}
-        {esGasto && !correccion && (
+        {esGasto && !correccion && !factura && (
           <p className="nota">
             {editando
               ? 'Método de pago, cuotas, pagador y tu parte se cambian tocando el Total de la compra.'
@@ -841,6 +934,10 @@ export function FormMovimiento({
         ) : editando ? (
           <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
             Guardar cambios
+          </button>
+        ) : factura ? (
+          <button type="button" className="primario" disabled={guardando} onClick={() => guardar(false)}>
+            Guardar factura
           </button>
         ) : contexto === 'lista' ? (
           <button type="submit" className="primario" disabled={guardando}>

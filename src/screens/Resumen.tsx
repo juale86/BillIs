@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from 'react'
 import type { Moneda } from '../db/types'
-import { resumenMes } from '../lib/calculos'
+import { claveMes, parteDe, resumenMes } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
 import { Saldos } from './Saldos'
@@ -32,6 +32,10 @@ export function Resumen({ datos, mes, setMes, acciones, panel }: Props) {
         const balance = r.ingresos - r.gastos
         const cats = [...r.porCategoria.entries()].sort((a, b) => b[1] - a[1])
         const max = cats[0]?.[1] ?? 1
+        // Facturas de este mes que todavía no se pagaron (ya cuentan en Gastos).
+        const porPagar = movimientos
+          .filter((m) => m.porPagar && m.moneda === moneda && claveMes(m.fecha) === mes)
+          .reduce((t, m) => t + parteDe(m), 0)
         return (
           <div key={moneda} className="tarjeta">
             {monedas.length > 1 && <h3>{moneda}</h3>}
@@ -62,6 +66,7 @@ export function Resumen({ datos, mes, setMes, acciones, panel }: Props) {
                 ))}
               </ul>
             )}
+            {porPagar > 0 && <p className="nota">Facturas por pagar este mes: {fmt(porPagar, moneda)}</p>}
             {r.cuotasPendientes > 0 && (
               <p className="nota">Cuotas pendientes después de este mes: {fmt(r.cuotasPendientes, moneda)}</p>
             )}

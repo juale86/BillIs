@@ -56,6 +56,11 @@ interface Renglon {
 
 const fmtDia = (t: number) =>
   new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+/** Una factura vencida: antes de hoy y sin pagar. */
+const vencida = (m: Movimiento) => !!m.porPagar && m.fecha < new Date().setHours(0, 0, 0, 0)
+/** "vence 16/11" o, si ya pasó sin pagar, "venció 10/11". */
+const fmtVence = (m: Movimiento) =>
+  (vencida(m) ? 'venció ' : 'vence ') + new Date(m.fecha).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })
 const fmtHora = (t: number) => amPm(new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }))
 
 export function Movimientos(props: Props) {
@@ -221,13 +226,17 @@ export function Movimientos(props: Props) {
     // Con lo de otros miembros, el pie dice "Total" (el real) y aparte "Solo lo tuyo", sin nombres.
     const conOtros = ajenos.length > 0 ? 'Total' : null
     const p = g[0]
+    const cuota = p.factura && p.factura.de > 1 ? `cuota ${p.factura.cuota} de ${p.factura.de}` : null
     const pago = enCurso
       ? 'En curso: tocá para pagar'
-      : [
+      : p.porPagar
+        ? ['Por pagar', cuota].filter(Boolean).join(', ')
+        : [
           metodos.find((x) => x.id === p.metodoPagoId)?.nombre ?? 'Sin método',
           p.cuotas && `${p.cuotas.cantidad} cuotas`,
           p.pagadorId && p.pagadorId !== yo?.id && `pagó ${nombre(p.pagadorId)}`,
           p.contraparteId && p.parte?.modo !== 'todo' && `con ${nombre(p.contraparteId)}`,
+          cuota,
         ]
           .filter(Boolean)
           .join(', ')
@@ -253,15 +262,15 @@ export function Movimientos(props: Props) {
     const lupa = lupas[clave]
     const secciones = conAcciones ? itemsDe(clave, renglones) : [{ titulo: null, items: renglones }]
     return (
-      <div key={clave} className={'compra' + (abierto ? '' : ' plegada')}>
+      <div key={clave} className={'compra' + (abierto ? '' : ' plegada') + (g[0].porPagar ? ' por-pagar' : '') + (vencida(g[0]) ? ' vencida' : '')}>
         <div className="compra-cab-fila">
           <button className="compra-cab" aria-expanded={abierto} onClick={() => alternar(clave)}>
             <span>
               {titulo}{' '}
               <small>
                 {unoPlegado
-                  ? [g[0].lugar, fmtHora(g[0].fecha)].filter(Boolean).join(', ')
-                  : `${fmtHora(g.at(-1)!.fecha)}, ${n} ${n === 1 ? 'ítem' : 'ítems'}`}
+                  ? [g[0].lugar, g[0].factura ? fmtVence(g[0]) : fmtHora(g[0].fecha)].filter(Boolean).join(', ')
+                  : `${g[0].factura ? fmtVence(g[0]) : fmtHora(g.at(-1)!.fecha)}, ${n} ${n === 1 ? 'ítem' : 'ítems'}`}
                 {categoria && `, ${categoria}`}
                 {!abierto && `, ${pago}`}
               </small>
