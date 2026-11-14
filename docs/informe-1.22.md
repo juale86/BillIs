@@ -176,10 +176,30 @@ App se registra una vez con `registrarAvisos`. Se sacó la prop `onAviso` de Lis
 - `knip.json`.
 - `docs/informe-1.22.md`: este informe.
 
+## 10. 1.22.2: archivos más chicos y sin duplicados
+
+Se movieron bloques enteros tal cual, sin reescribirlos, y los imports de más se sacaron según lo que marcó el compilador.
+
+| Antes | Ahora |
+|---|---|
+| `screens/Tareas.tsx` (~830 líneas) | `Tareas.tsx` (262) + `tareas/AgregarTarea.tsx` (167), `tareas/HojaTarea.tsx` (150), `tareas/MenuSeccion.tsx` (145), `tareas/Bloque.tsx` (113, con `FilaTarea`) |
+| `screens/Lista.tsx` (~950) | `Lista.tsx` (178) + `lista/VistaLista.tsx` (656, con `HojaOpciones`), `lista/MenuListas.tsx` (~130, con `ListasCerradas`), `lista/fecha.ts` |
+| `components/FormMovimiento.tsx` (~930) | `FormMovimiento.tsx` (812) + `HistorialMov.tsx` (70) + `CamposPromo.tsx` (59) |
+
+Duplicados:
+- **Lápiz**: las 5 copias del dibujo, en dos tamaños, ahora son `<IconoLapiz />` / `<IconoLapiz tam={19} />`.
+- **Promos**: 3x2 y N-ésima usan los mismos dos campos y cambian solo las etiquetas.
+- `jscpd` informa **0 duplicados**, y `knip@5` nada sin usar.
+
+Cómo se probó:
+- `tsc`, `lint` (los 11 avisos de siempre), `build` y `knip@5` pasan.
+- Todas las pruebas con los emuladores: diálogos, listas (crear, renombrar, borrar, sacar miembro), volver a pendiente (incluido el gasto borrado con el diálogo abierto), Tareas completa y corrección de compras.
+- Avisos del formulario y del respaldo.
+- Promos: las etiquetas de cada tipo, 20 % sobre 3 × $3.000 = $7.200 y 3x2 = $6.000.
+
 ## Lo que queda
 
-- **Partir los archivos largos:** `Lista.tsx` (~950 líneas), `FormMovimiento.tsx` (~930) y `Tareas.tsx` (~830), de a uno y probando cada uno.
-- Menor: unir los campos de las promos 3x2 / N-ésima y el ícono del lápiz repetido (los 2 duplicados que quedan).
+- `lista/VistaLista.tsx` (656) y `FormMovimiento.tsx` (812) siguen siendo un solo componente grande cada uno. Para achicarlos más habría que separar su estado (por ejemplo, un hook para el formulario), que ya es un cambio de diseño y no solo de mover código. No hace falta por ahora.
 
 ## Cómo seguir buscando code smells
 

@@ -1,28 +1,23 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
+import { CamposPromo, type TipoPromo } from './CamposPromo'
 import { avisar } from '../lib/avisos'
 import { pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
 import type { Datos } from '../lib/datos'
-import { cambios, cargaDe, ETIQUETA_CAMPO, fmtFechaHora, historialAlEditar, textoCampo, type CampoCarga } from '../lib/historial'
+import { cambios, ETIQUETA_CAMPO, historialAlEditar, textoCampo, type CampoCarga } from '../lib/historial'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 import { cantidadSugerida, miParte, totalConPromo } from '../lib/promo'
 import { guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
-import {
-  sugerirCategoria,
-  sugerirDescripciones,
-  sugerirLugares,
-  sugerirMarcas,
-  ultimoPrecio,
-} from '../lib/sugerencias'
+import { sugerirCategoria, sugerirDescripciones, sugerirLugares, sugerirMarcas, ultimoPrecio } from '../lib/sugerencias'
 import { linkMapa, lugarCercano, obtenerUbicacion } from '../lib/ubicacion'
 import { BotonCerrar } from './BotonCerrar'
 import { Chips } from './Chips'
 import { MetodoCuotas } from './MetodoCuotas'
+import { HistorialMov } from './HistorialMov'
 
 type TipoForm = 'gasto' | 'ingreso'
-type TipoPromo = '' | Promo['tipo']
 
 /** El dueño de una lista corrige lo que compró otro miembro: el mismo formulario, pero se guarda en la lista. */
 export interface Correccion {
@@ -638,56 +633,7 @@ export function FormMovimiento({
         )}
 
         {esGasto && verPromo && (
-          <fieldset className="grupo">
-            <div className="fila">
-              <label className="campo crece">
-                <span>Promo</span>
-                <select value={promoTipo} onChange={(e) => elegirPromo(e.target.value as TipoPromo)}>
-                  <option value="">Sin promo</option>
-                  <option value="nxm">Lleva N, paga M (3x2)</option>
-                  <option value="nesima">N-ésima unidad con descuento</option>
-                  <option value="pct">% de descuento</option>
-                  <option value="manual">Otra (escribo el total)</option>
-                </select>
-              </label>
-            </div>
-            {promoTipo === 'nxm' && (
-              <div className="fila">
-                <label className="campo chico">
-                  <span>Lleva</span>
-                  <input value={promoA} inputMode="numeric" onChange={(e) => setPromoA(e.target.value)} />
-                </label>
-                <label className="campo chico">
-                  <span>Paga</span>
-                  <input value={promoB} inputMode="numeric" onChange={(e) => setPromoB(e.target.value)} />
-                </label>
-              </div>
-            )}
-            {promoTipo === 'nesima' && (
-              <div className="fila">
-                <label className="campo chico">
-                  <span>Unidad nº</span>
-                  <input value={promoA} inputMode="numeric" onChange={(e) => setPromoA(e.target.value)} />
-                </label>
-                <label className="campo chico">
-                  <span>% off</span>
-                  <input value={promoB} inputMode="numeric" onChange={(e) => setPromoB(e.target.value)} />
-                </label>
-              </div>
-            )}
-            {promoTipo === 'pct' && (
-              <label className="campo chico">
-                <span>% off</span>
-                <input value={promoA} inputMode="numeric" onChange={(e) => setPromoA(e.target.value)} />
-              </label>
-            )}
-            {promoTipo === 'manual' && (
-              <label className="campo">
-                <span>Total que pagaste</span>
-                <input value={promoA} inputMode="decimal" onChange={(e) => setPromoA(e.target.value)} />
-              </label>
-            )}
-          </fieldset>
+          <CamposPromo tipo={promoTipo} a={promoA} b={promoB} onTipo={elegirPromo} onA={setPromoA} onB={setPromoB} />
         )}
 
         {esGasto && (cant > 1 || promo) && precioCent !== null && (
@@ -862,70 +808,5 @@ export function FormMovimiento({
         )}
       </footer>
     </form>
-  )
-}
-
-/**
- * Quién lo cargó y cuándo, quién hizo el último cambio y cuándo, y qué cambió desde lo que se cargó primero.
- * Muestra lo guardado, no lo que se está escribiendo (eso aparece debajo de cada campo).
- */
-function HistorialMov({
-  editando,
-  correccion,
-  yo,
-  categorias,
-}: {
-  editando?: Movimiento
-  correccion?: Correccion
-  yo: string
-  categorias: Datos['categorias']
-}) {
-  const quien = (n: string) => (normalizar(n) === normalizar(yo) ? 'vos' : n)
-  let cargo: string
-  let cargadoEn: number
-  let edicion: { por: string; en: number } | null = null
-  let lista: CampoCarga[] = []
-  let original: GastoCargado | undefined
-  let actual: GastoCargado | undefined
-  if (correccion) {
-    cargo = correccion.quien
-    cargadoEn = correccion.original.cargadoEn
-    if (correccion.corregidoPor && correccion.corregidoEn) edicion = { por: correccion.corregidoPor, en: correccion.corregidoEn }
-    original = correccion.original
-    actual = correccion.actual
-  } else {
-    const m = editando!
-    cargo = yo
-    cargadoEn = m.creadoEn
-    if (m.historial) {
-      edicion = { por: m.historial.editadoPor, en: m.historial.editadoEn }
-      original = m.historial.original
-      actual = cargaDe(m, categorias)
-    }
-  }
-  if (original && actual) lista = cambios(original, actual)
-  const cargoQuien = quien(cargo)
-  return (
-    <div className="historial">
-      <p>
-        {cargoQuien === 'vos' ? 'Lo cargaste vos' : `Lo cargó ${cargoQuien}`} el {fmtFechaHora(cargadoEn)}.
-      </p>
-      {edicion && (
-        <p>
-          {quien(edicion.por) === 'vos' ? (correccion ? 'Lo corregiste vos' : 'Lo modificaste vos') : `Lo corrigió ${edicion.por}`} el{' '}
-          {fmtFechaHora(edicion.en)}
-          {lista.length ? ':' : ', sin cambios respecto de lo que se cargó.'}
-        </p>
-      )}
-      {edicion && lista.length > 0 && original && actual && (
-        <ul>
-          {lista.map((c) => (
-            <li key={c}>
-              {ETIQUETA_CAMPO[c]}: <s>{textoCampo(c, original)}</s> {textoCampo(c, actual)}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
   )
 }
