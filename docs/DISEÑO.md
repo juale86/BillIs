@@ -19,23 +19,23 @@ Un interruptor arriba alterna Gasto / Ingreso (cambian los campos). Al editar, o
 |---|---|
 | Descripción* | El "Siguiente" del teclado salta al precio (desde 1.10). Autocompleta del historial. Al elegir precarga el último precio (busca por producto+marca+lugar → producto+marca → producto). Se guarda normalizada para agrupar. |
 | Marca | Opcional. Las marcas ya compradas de ese producto (hasta 3, las que coinciden con lo escrito) aparecen como chips **dentro del campo**: un toque elige y las otras se van; si no está, se escribe al lado ("Otra"). Con chips, Marca y Cant bajan a su propio renglón (desde 1.18). |
-| Precio* | Unitario. Precargado y seleccionado para pisar. |
+| Precio* | Unitario. Precargado y seleccionado para pisar. Desde 1.22.3 se escribe con **puntos de miles** (1.250.000; la coma es el decimal y un punto al final cuenta como coma) y la letra se achica cuando el número no entra, para verlo entero antes de guardar. |
 | Cantidad | Vacía con placeholder "Cant" en letra chica; vacío = 1. Al tocarla se selecciona todo para escribir encima (desde 1.10). |
 | Promo | NxM, N-ésima unidad al X % off, % de descuento, Otra/manual (escribís el total). Extensible: unión discriminada por `tipo`. |
 | Categoría | Una por movimiento, lista editable. Se completa **mientras se escribe** el producto, hasta que se elige a mano: mismo producto ya cargado → producto que empieza igual (desde 3 letras) → lugar → el grupo que adivina el diccionario de la lista, llevado a una categoría que exista (Almacén/Frescos/… → Súper, Herramientas → Ferretería u Hogar) (desde 1.18). No se muestra debajo de cada movimiento. |
 | Lugar | Se mantiene durante la compra; se borra al "Guardar y cerrar" o tras ~2 h sin cargar. Chips con los más usados. |
 | Fecha | Default ahora. Si se cambia a mano, se mantiene durante la compra. |
 | Método de pago | Lista editable (pocos y fijos). Se mantiene durante la compra. |
-| Cuotas | Solo ARS. Cargás total financiado o valor de cuota y se calcula el otro. La 1ª cuota cae en el mes de compra. (`diaCierre` previsto en métodos de pago, sin uso todavía.) |
+| Cuotas | Solo ARS. Cargás total financiado o valor de cuota y se calcula el otro. La 1ª cuota cae en el mes de compra. Todas iguales y los centavos de redondeo en la **última** (como la tarjeta), así el Resumen coincide con "6 cuotas de $14.999,83" de Pagar (desde 1.22.3; antes iban a la primera). (`diaCierre` previsto en métodos de pago, sin uso todavía.) |
 | Moneda | ARS por defecto; USD si se activa "Usar otras monedas". Sin conversión. |
 | Pagador | Se elige en Pagar con un **desplegable**: vos y quienes comparten la lista actual (sus nombres quedan en el teléfono al abrir Listas). Se mantiene el último usado (desde 1.12). |
 | Mi parte | Todo / Mitad / Nada / %. Si pagaste vos y tu parte < total, se elige con quién se comparte. Genera saldos por persona. |
 
-Botones: **Guardar y agregar otro** y **Guardar**. Para salir sin guardar, una **X arriba a la derecha** del título (desde 1.12, en lugar de Cancelar al pie; igual en Pagar).
+Botones: **Guardar y agregar otro** y **Guardar**. Para salir sin guardar, una **X arriba a la derecha** del título (desde 1.12, en lugar de Cancelar al pie; igual en Pagar). Desde 1.22.3, si escribiste algo (producto, marca, precio, cantidad, promo o comentario) la X pregunta "¿Descartar este gasto?" antes de perderlo; vacío cierra directo.
 
 ## Ingreso
 
-Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moneda. Sin persona.
+Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moneda. Sin persona. El medio de cobro no ofrece Crédito ni Débito (con tarjeta se paga, no se cobra), salvo que el ingreso ya tenga uno (desde 1.22.3).
 
 ## Saldos
 
@@ -45,6 +45,8 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 - Saldos por persona y por moneda.
 
 ## Pantallas
+
+La barra de abajo marca una sola pestaña: con la calculadora abierta, solo ella (desde 1.22.3). El final de cada pantalla deja lugar para los botones flotantes (+ y Pagar), así no tapan el último monto.
 
 1. **Movimientos**: por día y compra, filtro de mes. Las flechas del mes saltan solo entre meses con movimientos y el actual (desde 1.12). Editar / borrar con deshacer. Cada compra abierta con más de un ítem tiene, a la derecha del título, **su propia lupa** (busca en descripción y marca de esa compra) y **su botón de orden**: manual (como se cargó), A..Z o por grupos (el grupo se adivina como en la lista). Duran mientras la app está abierta (desde 1.15). El botón de plegar/desplegar (flecha) es un botón propio, siempre a la derecha; al desplegar, la lupa y el orden aparecen a su izquierda (desde 1.18). Si la compra tiene ítems de una lista compartida, también muestra **lo que otros miembros compraron de esa lista**, en gris y con "compró Ana": se ven, se buscan y se ordenan, pero solo quien lo compró lo cambia. Se une por el **id de la lista** (que ya guardan los gastos comprados desde ella, en `listaItem`); si usaste la lista en más de una compra, cada ítem va a la más cercana en el tiempo. El pie muestra **"Total"** (el real, con lo de todos; sin nombres, porque la lista puede tener muchos miembros, desde 1.18.3) y **"Solo lo tuyo"**; Resumen y Saldos siguen contando solo lo tuyo, porque lo de Ana ya está en su teléfono (desde 1.16).
 2. **Resumen del mes** (ícono de barras en la barra de abajo, desde 1.20): ingresos, gastos (solo tu parte; cuotas repartidas por mes), balance, por categoría, cuotas pendientes. Por moneda.
@@ -59,7 +61,7 @@ Descripción, monto, categoría de ingreso, origen, medio de cobro, fecha, moned
 - Exportar / importar JSON (restaura todo).
 - En Ajustes son tres botones ícono a la derecha del título "Respaldo" (desde 1.20.2): exportar (una caja de cartón abierta con la flecha que sale por la boca hacia arriba a la derecha), CSV (una hoja con la punta doblada, las siglas y la misma flecha) e importar (la caja con la flecha que entra desde arriba a la izquierda). El nombre lo lee el lector de pantalla y aparece al pasar el mouse.
 - Exportar CSV.
-- Aviso si pasaron > 7 días sin respaldo.
+- Aviso si pasaron > 7 días sin respaldo. Si nunca hubo uno, se cuenta desde el primer movimiento cargado (desde 1.22.3; antes avisaba a los minutos de empezar).
 - `navigator.storage.persist()` al iniciar.
 
 ## Montos

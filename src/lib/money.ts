@@ -35,3 +35,18 @@ export function montoAInput(cent: number): string {
   const dec = Math.abs(cent % 100)
   return dec === 0 ? String(entero) : `${entero},${String(dec).padStart(2, '0')}`
 }
+
+/**
+ * Un monto mientras se escribe, con puntos de miles: "1250000" → "1.250.000", "1250000,5" → "1.250.000,5".
+ * La coma es el decimal (hasta dos cifras). Un punto escrito al final también cuenta como coma,
+ * porque los puntos de miles los pone esta función. Lo devuelto lo sigue entendiendo parseMonto.
+ */
+export function conMiles(texto: string): string {
+  let s = texto.replace(/[^\d.,]/g, '')
+  if (s.endsWith('.') && !s.includes(',')) s = s.slice(0, -1) + ','
+  const coma = s.indexOf(',')
+  const entero = (coma < 0 ? s : s.slice(0, coma)).replace(/\D/g, '').replace(/^0+(?=\d)/, '')
+  const miles = entero.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  if (coma < 0) return miles
+  return (miles || '0') + ',' + s.slice(coma + 1).replace(/\D/g, '').slice(0, 2)
+}

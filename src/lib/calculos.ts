@@ -12,11 +12,14 @@ export const nombreMes = (clave: number) =>
 /** Lo que te corresponde de un gasto (tu parte, o el total si no hay parte). */
 export const parteDe = (m: Movimiento) => m.miParteCent ?? m.totalCent
 
-/** Reparte un monto en n cuotas; el redondeo va a la primera. */
+/**
+ * Reparte un monto en n cuotas iguales (redondeadas, como las muestra Pagar: "6 cuotas de $14.999,83");
+ * los centavos que sobran o faltan van a la última, como en el resumen de la tarjeta.
+ */
 function repartir(cent: number, n: number): number[] {
-  const base = Math.trunc(cent / n)
+  const base = Math.round(cent / n)
   const cuotas = Array<number>(n).fill(base)
-  cuotas[0] += cent - base * n
+  cuotas[n - 1] = cent - base * (n - 1)
   return cuotas
 }
 

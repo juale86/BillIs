@@ -103,6 +103,7 @@ export default function App() {
   }, [])
 
   const yo = datos?.yo?.nombre ?? 'Yo'
+  const marcada = (p: Pestana) => !calculadora && pestana === p
   const fallaLista = () => mostrarAviso({ texto: 'No se pudo actualizar la lista de compras', error: true })
 
   /** Mantiene el ítem de la lista sincronizado con su gasto. */
@@ -352,17 +353,18 @@ export default function App() {
             </div>
           )}
 
+          {/* Con la calculadora abierta se marca solo ella, no también la pestaña de atrás. */}
           <nav
             className="tabs"
             // Tocar otra pestaña cierra la calculadora (su propio botón la alterna).
             onClickCapture={(e) => !(e.target as Element).closest('.boton-calc') && setCalculadora(false)}
           >
             {(['movimientos', 'lista', 'tareas'] as Pestana[]).map((p) => (
-              <button key={p} aria-current={pestana === p} onClick={() => setPestana(p)}>
+              <button key={p} aria-current={marcada(p)} onClick={() => setPestana(p)}>
                 {TITULOS[p]}
               </button>
             ))}
-            <button className="ajustes" aria-label="Resumen" aria-current={pestana === 'resumen'} onClick={() => setPestana('resumen')}>
+            <button className="ajustes" aria-label="Resumen" aria-current={marcada('resumen')} onClick={() => setPestana('resumen')}>
               <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 20h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                 <rect x="5" y="11" width="3.6" height="7" rx="0.8" fill="currentColor" />
@@ -388,7 +390,7 @@ export default function App() {
             <button
               className="ajustes"
               aria-label="Ajustes"
-              aria-current={pestana === 'ajustes'}
+              aria-current={marcada('ajustes')}
               onClick={() => setPestana(pestana === 'ajustes' ? 'movimientos' : 'ajustes')}
             >
               <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">

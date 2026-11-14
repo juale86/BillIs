@@ -295,7 +295,8 @@ button:disabled {
   color: var(--ingreso);
 }
 .campo .monto-fila input.monto {
-  height: auto;
+  /* Alto fijo: al achicar la letra de un monto largo, el renglón no salta. */
+  height: calc(var(--t-cifra) * 1.1 + 4px);
   border: 0;
   background: none;
   padding: 2px 0;
@@ -444,7 +445,12 @@ button:disabled {
 /* ---------- Pantallas ---------- */
 main {
   padding-top: max(4px, env(safe-area-inset-top));
-  padding-bottom: 120px;
+  /* Lo último de la pantalla queda por encima de los botones flotantes (+ y Pagar, 56 px a 64 px del borde). */
+  padding-bottom: calc(64px + 56px + 16px + env(safe-area-inset-bottom));
+}
+/* En Listas los flotantes van más arriba, sobre el Total fijo. */
+.app:has(.flotantes.sobre-total) main {
+  padding-bottom: calc(var(--alto-tabs) + 64px + 56px + 16px + env(safe-area-inset-bottom));
 }
 .pantalla {
   padding: 0 16px;
@@ -770,8 +776,7 @@ main {
   justify-content: space-between;
   align-items: center;
   font-size: var(--t-s);
-  /* Encima de las hojas y menús (20), para que un error se vea y se pueda tocar; debajo de los diálogos (30). */
-  z-index: 25;
+  z-index: 10;
 }
 .app:has(.form) .toast {
   bottom: calc(68px + env(safe-area-inset-bottom));
@@ -781,6 +786,9 @@ main {
 }
 /* Errores (en lugar de alert): mismo aviso con un punto rojo adelante; se cierra tocándolo. */
 .toast.toast-error {
+  /* Encima de las hojas y menús (20), para que un error se vea y se pueda tocar; debajo de los diálogos (30).
+     Los avisos comunes quedan debajo de las hojas: no tapan lo que se está completando. */
+  z-index: 25;
   justify-content: flex-start;
   gap: 10px;
   cursor: pointer;

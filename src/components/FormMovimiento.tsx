@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { CamposPromo, type TipoPromo } from './CamposPromo'
 import { avisar } from '../lib/avisos'
-import { pedirTexto } from '../lib/dialogos'
+import { confirmar, pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
 import { MONEDAS } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { cambios, ETIQUETA_CAMPO, historialAlEditar, textoCampo, type CampoCarga } from '../lib/historial'
-import { fmt, montoAInput, parseMonto } from '../lib/money'
+import { conMiles, fmt, montoAInput, parseMonto } from '../lib/money'
 import { cantidadSugerida, miParte, totalConPromo } from '../lib/promo'
 import { guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
 import { sugerirCategoria, sugerirDescripciones, sugerirLugares, sugerirMarcas, ultimoPrecio } from '../lib/sugerencias'
@@ -160,6 +160,10 @@ export function FormMovimiento({
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
 
+  // Lo que se escribió: si cambió desde que se abrió (o desde "Guardar y agregar otro"), cerrar pregunta.
+  const escrito = JSON.stringify([descripcion, marca, comentario, precio, cantidad, promoTipo, promoTipo && promoA, promoTipo && promoB])
+  const [escritoAlAbrir, setEscritoAlAbrir] = useState(escrito)
+
   const refDesc = useRef<HTMLInputElement>(null)
   const refPrecio = useRef<HTMLInputElement>(null)
 
@@ -175,6 +179,7 @@ export function FormMovimiento({
 
   // ---- Cálculos en vivo ----
   const precioCent = parseMonto(precio)
+  const precioVisible = conMiles(precio)
   const cant = Math.max(1, Math.round(num(cantidad, 1)))
   const promo: Promo | undefined = useMemo(() => {
     switch (promoTipo) {
@@ -332,7 +337,22 @@ export function FormMovimiento({
     }
   }
 
+  /** La X: si hay algo escrito sin guardar, pregunta antes de perderlo. */
+  async function cerrar() {
+    if (escrito !== escritoAlAbrir) {
+      const ok = await confirmar({
+        titulo: editando ? '¿Descartar los cambios?' : `¿Descartar este ${esGasto ? 'gasto' : 'ingreso'}?`,
+        texto: 'Lo que escribiste no se guarda.',
+        boton: 'Descartar',
+        peligro: true,
+      })
+      if (!ok) return
+    }
+    onCerrar()
+  }
+
   function limpiarParaOtro() {
+    setEscritoAlAbrir(JSON.stringify(['', '', '', '', '', '', '', '']))
     setDescripcion('')
     setMarca('')
     setComentario('')
@@ -463,7 +483,7 @@ export function FormMovimiento({
             <span className="tipo-texto">Nuevo {esGasto ? 'gasto' : 'ingreso'}</span>
           </button>
         )}
-        <BotonCerrar onClick={onCerrar} />
+        <BotonCerrar onClick={cerrar} />
       </header>
 
       <div className="campos">
@@ -570,12 +590,14 @@ export function FormMovimiento({
                 ref={refPrecio}
                 className="monto"
                 aria-label={esGasto ? (cant > 1 ? 'Precio unitario' : 'Precio') : 'Monto'}
-                value={precio}
+                value={precioVisible}
+                // Los montos grandes achican la letra para que se vean enteros (entran ~7 cifras).
+                style={precioVisible.length > 7 ? { fontSize: `calc(var(--t-cifra) * ${7 / precioVisible.length})` } : undefined}
                 inputMode="decimal"
                 placeholder="0"
                 autoComplete="off"
                 onChange={(e) => {
-                  setPrecio(e.target.value)
+                  setPrecio(conMiles(e.target.value))
                   setPrecioTocado(true)
                 }}
               />
@@ -670,7 +692,8 @@ export function FormMovimiento({
               etiqueta="Medio de cobro"
               sinEtiqueta
               vacio="Medio de cobro"
-              metodos={metodos}
+              // Con tarjeta se paga, no se cobra: Crédito y Débito no se ofrecen (salvo que ya lo tenga).
+              metodos={metodos.filter((m) => !/^(credito|debito)\b/.test(normalizar(m.nombre)) || m.id === metodoPagoId)}
               metodoId={metodoPagoId}
               onMetodo={setMetodoPagoId}
               onNuevoMetodo={() => void agregarOpcion('metodo')}

@@ -81,8 +81,16 @@ export async function exportarCSV() {
 
 export async function necesitaRespaldo(): Promise<boolean> {
   if ((await db.movimientos.count()) === 0) return false
-  const ultimo = await getAjuste<number>(CLAVE_ULTIMO, 0)
-  return Date.now() - ultimo > DIAS_AVISO * 24 * 60 * 60 * 1000
+  // Sin ningún respaldo todavía, se cuenta desde el primer movimiento cargado (no desde siempre):
+  // así no avisa a los minutos de empezar a usar la app.
+  let desde = await getAjuste<number>(CLAVE_ULTIMO, 0)
+  if (!desde) {
+    desde = Infinity
+    await db.movimientos.each((m) => {
+      if (m.creadoEn < desde) desde = m.creadoEn
+    })
+  }
+  return Date.now() - desde > DIAS_AVISO * 24 * 60 * 60 * 1000
 }
 
 export async function pedirPersistencia() {

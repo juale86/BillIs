@@ -30,6 +30,8 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 - **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se va completando mientras escribís el producto (por lo ya cargado, por el lugar o adivinándola por el nombre, como el grupo en la lista); las marcas ya compradas aparecen como chips dentro del campo Marca.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
 - **Cuotas** en pesos: cargás el total financiado o el valor de cada cuota y se reparte por mes; calcula el interés.
+- **Montos con puntos de miles** mientras escribís (1.250.000), y la letra se achica para que el número entre entero.
+- Si cerrás el formulario con algo escrito, pregunta antes de descartarlo.
 - **Pesos y dólares** (opcional), con totales separados por moneda.
 
 ### Compras y "Pagar"
