@@ -21,13 +21,15 @@ interface Props {
   onLimpiar: () => void
   /** false: el campo de texto lo dibuja quien lo usa (siempre visible), acá solo van los chips. */
   conCampo?: boolean
+  /** Debajo del campo, con la lupa abierta (ej. el período en Movimientos). */
+  extra?: ReactNode
 }
 
 /**
  * Lupa: campo de búsqueda + chips de filtros.
  * Los filtros aplicados quedan a la izquierda de la fila de chips, con ✕; se ven aunque se cierre la lupa.
  */
-export function Buscador({ abierto, texto, setTexto, placeholder, opciones, activos, resumen, onLimpiar, conCampo = true }: Props) {
+export function Buscador({ abierto, texto, setTexto, placeholder, opciones, activos, resumen, onLimpiar, conCampo = true, extra }: Props) {
   const ref = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (abierto && conCampo) ref.current?.focus()
@@ -55,6 +57,7 @@ export function Buscador({ abierto, texto, setTexto, placeholder, opciones, acti
           />
         </div>
       )}
+      {abierto && extra}
       {(todos.length > 0 || (abierto && opciones.length > 0)) && (
         <div className="chips" aria-label="Filtros">
           {/* Los aplicados van primero, a la izquierda, con ✕ para quitarlos. */}

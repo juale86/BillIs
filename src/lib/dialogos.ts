@@ -15,6 +15,9 @@ interface PedidoDialogo {
   /** Solo al pedir texto: lo que ya viene escrito y el teclado del teléfono. */
   valor?: string
   inputMode?: 'text' | 'decimal'
+  placeholder?: string
+  /** Se puede aceptar con el texto vacío (ej. para quitar un presupuesto). */
+  vacioOk?: boolean
 }
 
 export interface Dialogo extends PedidoDialogo {

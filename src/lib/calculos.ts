@@ -46,13 +46,18 @@ interface Resumen {
   gastos: number
   porCategoria: Map<Id | '', number>
   cuotasPendientes: number
+  /** Cambios de moneda del mes: lo que entró en esta moneda menos lo que salió. */
+  cambios: number
 }
 
 export function resumenMes(movs: Movimiento[], mes: number, moneda: Moneda): Resumen {
-  const r: Resumen = { ingresos: 0, gastos: 0, porCategoria: new Map(), cuotasPendientes: 0 }
+  const r: Resumen = { ingresos: 0, gastos: 0, porCategoria: new Map(), cuotasPendientes: 0, cambios: 0 }
   for (const m of movs) {
+    if (m.tipo === 'cambio' && m.cambio?.moneda === moneda && claveMes(m.fecha) === mes) r.cambios += m.cambio.totalCent
     if (m.moneda !== moneda) continue
-    if (m.tipo === 'ingreso') {
+    if (m.tipo === 'cambio') {
+      if (claveMes(m.fecha) === mes) r.cambios -= m.totalCent
+    } else if (m.tipo === 'ingreso') {
       if (claveMes(m.fecha) === mes) r.ingresos += m.totalCent
     } else if (m.tipo === 'gasto') {
       for (const [mm, monto] of imputaciones(m)) {

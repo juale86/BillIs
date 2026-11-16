@@ -10,7 +10,8 @@ rules_version = '2';
 // - Una lista cerrada: solo el dueño corrige nombre, cantidad, marca y grupo de los ítems (y puede borrarla).
 // - Lo comprado por otro miembro: el dueño lo corrige (producto, marca, cantidad, monto y el gasto cargado),
 //   abierta o cerrada la lista; se guarda lo que había cargado quien lo compró ("original").
-// - Tareas: "comprar" es "tildar" y por defecto también lo tiene cada miembro.
+// - Tareas: "comprar" es "tildar" y por defecto también lo tiene cada miembro. Al tildarla se puede
+//   dejar una conclusión, que después corrige quien la hizo (o quien puede editarla).
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -149,12 +150,13 @@ service cloud.firestore {
       match /tareas/{tarea} {
         function deTareas() { return datosLista().get('tipo', 'compras') == 'tareas'; }
         function tareaValida(d) {
-          return d.keys().hasOnly(['texto', 'hecha', 'hechaPorUid', 'hechaPor', 'hechaEn', 'agregadoPorUid', 'agregadoPor', 'responsableUid', 'responsable', 'vence', 'nota', 'subseccion', 'creadoEn', 'modificadoEn'])
+          return d.keys().hasOnly(['texto', 'hecha', 'hechaPorUid', 'hechaPor', 'hechaEn', 'conclusion', 'agregadoPorUid', 'agregadoPor', 'responsableUid', 'responsable', 'vence', 'nota', 'subseccion', 'creadoEn', 'modificadoEn'])
             && d.texto is string && d.texto.size() > 0 && d.texto.size() <= 200
             && d.hecha is bool
             && (d.hechaPorUid == null || d.hechaPorUid is string)
             && textoOpcional(d.hechaPor, 60)
             && (d.hechaEn == null || d.hechaEn is number)
+            && textoOpcional(d.get('conclusion', null), 1000)
             && d.agregadoPorUid is string
             && d.agregadoPor is string && d.agregadoPor.size() <= 60
             && (d.responsableUid == null || d.responsableUid is string)
@@ -175,8 +177,10 @@ service cloud.firestore {
           && request.resource.data.creadoEn == resource.data.creadoEn
           && (
             // Tildar o destildar: con el permiso "tildar"; queda quién la hizo.
-            (cambiaSolo(['hecha', 'hechaPorUid', 'hechaPor', 'hechaEn', 'modificadoEn']) && puede('comprar')
+            (cambiaSolo(['hecha', 'hechaPorUid', 'hechaPor', 'hechaEn', 'conclusion', 'modificadoEn']) && puede('comprar')
               && (request.resource.data.hecha == false || request.resource.data.hechaPorUid == uid()))
+            // Quien la hizo corrige su conclusión.
+            || (cambiaSolo(['conclusion', 'modificadoEn']) && resource.data.hecha == true && resource.data.hechaPorUid == uid())
             // Corregirla: "editar", o "agregar" si es tuya.
             || puede('editar') || (esSuyo() && puede('agregar'))
           );

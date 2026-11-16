@@ -10,10 +10,14 @@ export function MenuSeccion(props: {
   lista: Lista
   uid: string
   email: string
+  /** Su lugar en la barra de secciones (desde 0) y cuántas hay, para correrla. */
+  lugar: number
+  total: number
+  onMover: (paso: -1 | 1) => void
   onCerrar: () => void
   onSalio: () => void
 }) {
-  const { lista, uid, email, onCerrar, onSalio } = props
+  const { lista, uid, email, lugar, total, onMover, onCerrar, onSalio } = props
   const dueno = esDueno(lista, uid)
   const subs = lista.subsecciones ?? []
 
@@ -79,6 +83,16 @@ export function MenuSeccion(props: {
                 <IconoLapiz />
               </button>
             )}
+            {total > 1 && (
+              <>
+                <button className="icono chico-icono" aria-label="Mover a la izquierda en la barra" disabled={lugar <= 0} onClick={() => onMover(-1)}>
+                  <Flecha d="M15 5l-7 7 7 7" />
+                </button>
+                <button className="icono chico-icono" aria-label="Mover a la derecha en la barra" disabled={lugar >= total - 1} onClick={() => onMover(1)}>
+                  <Flecha d="M9 5l7 7-7 7" />
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -132,3 +146,9 @@ export function MenuSeccion(props: {
     </div>
   )
 }
+
+const Flecha = ({ d }: { d: string }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+    <path d={d} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)

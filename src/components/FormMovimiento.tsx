@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { CamposPromo, type TipoPromo } from './CamposPromo'
 import { avisar } from '../lib/avisos'
 import { claveMes, nombreMes, sumarMeses } from '../lib/calculos'
+import { aInputFecha } from '../lib/fecha'
 import { confirmar, pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
 import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
@@ -52,16 +53,13 @@ interface Props {
   setMes?: (mes: number) => void
   /** "Guardar y pagar": abre Pagar para esa compra. */
   onPagar?: (compraId: string) => void
+  /** Abre el cambio de moneda (solo con "Usar otras monedas"). */
+  onCambio?: () => void
   /** "Ya comprado, sin gasto" (solo desde la lista). */
   onSinGasto?: () => void
   correccion?: Correccion
 }
 
-const aInputFecha = (t: number) => {
-  const d = new Date(t)
-  const p = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
-}
 
 /** Al tocar el campo se selecciona todo, para escribir encima (como con doble clic). */
 const seleccionarTodo = (e: FocusEvent<HTMLInputElement>) => {
@@ -89,6 +87,7 @@ export function FormMovimiento({
   mes,
   setMes,
   onPagar,
+  onCambio,
   onSinGasto,
   correccion,
 }: Props) {
@@ -549,6 +548,11 @@ export function FormMovimiento({
       </header>
 
       <div className="campos">
+        {multimoneda && onCambio && !editando && !correccion && contexto !== 'lista' && (
+          <button type="button" className="enlace" onClick={onCambio}>
+            ¿Vendiste o compraste dólares? Cargá un cambio de moneda
+          </button>
+        )}
         {contexto === 'lista' && onSinGasto && (
           <button type="button" className="enlace" onClick={onSinGasto}>
             Ya comprado, sin gasto

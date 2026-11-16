@@ -180,6 +180,25 @@ export function useUsuario(): { usuario: User | null; cargando: boolean } {
   return estado
 }
 
+/**
+ * Cuenta las veces que la app volvió a primer plano después de un rato en el fondo. Android congela
+ * la pestaña y la conexión en vivo de Firestore puede quedar muda sin avisar: las suscripciones
+ * lo usan para volver a abrirse y traer lo que cambiaron los demás.
+ */
+export function useAlVolver(): number {
+  const [vuelta, setVuelta] = useState(0)
+  useEffect(() => {
+    let oculta = 0
+    const cambio = () => {
+      if (document.visibilityState === 'hidden') oculta = Date.now()
+      else if (oculta && Date.now() - oculta > 20_000) setVuelta((v) => v + 1)
+    }
+    document.addEventListener('visibilitychange', cambio)
+    return () => document.removeEventListener('visibilitychange', cambio)
+  }, [])
+  return vuelta
+}
+
 export async function iniciarSesion() {
   const proveedor = new GoogleAuthProvider()
   proveedor.setCustomParameters({ prompt: 'select_account' })
@@ -211,6 +230,7 @@ export function useMisListas(uid: string | null): { listas: Lista[]; cargando: b
     cargando: true,
     error: null,
   })
+  const vuelta = useAlVolver()
   useEffect(() => {
     if (!uid) return
     return onSnapshot(
@@ -223,7 +243,7 @@ export function useMisListas(uid: string | null): { listas: Lista[]; cargando: b
         }),
       (e) => setEstado({ listas: [], cargando: false, error: e.message }),
     )
-  }, [uid])
+  }, [uid, vuelta])
   return estado
 }
 
@@ -482,6 +502,7 @@ export function useItems(listaId: string | null): EstadoItems {
   // Reintento: una lista recién creada (o recién aprobada) puede no estar aún en el servidor
   // cuando se abre, y Firestore corta la suscripción ante el primer rechazo.
   const [intento, setIntento] = useState(0)
+  const vuelta = useAlVolver()
   useEffect(() => {
     if (!listaId) return
     let timer: number | undefined
@@ -504,7 +525,7 @@ export function useItems(listaId: string | null): EstadoItems {
       off()
       clearTimeout(timer)
     }
-  }, [listaId, intento])
+  }, [listaId, intento, vuelta])
   return estado
 }
 

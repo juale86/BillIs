@@ -4,6 +4,7 @@ import { registrarAvisos, type Aviso } from './lib/avisos'
 import { BotonLupa } from './components/Buscador'
 import { Calculadora } from './components/Calculadora'
 import { FormMovimiento, type Correccion } from './components/FormMovimiento'
+import { HojaCambio } from './components/HojaCambio'
 import { Pagar, textoTotal, totalCompra } from './components/Pagar'
 import { db, inicializar, setAjuste } from './db/db'
 import type { Movimiento } from './db/types'
@@ -66,6 +67,8 @@ export default function App() {
   const [facturasVistas, setFacturasVistas] = useState<string[]>([])
   // Compra cuyo pago se está viendo (clave de compra), o null.
   const [pagando, setPagando] = useState<string | null>(null)
+  // Cambio de moneda abierto: uno nuevo o el que se corrige.
+  const [cambio, setCambio] = useState<Movimiento | 'nuevo' | null>(null)
   const [verAlertas, setVerAlertas] = useState(false)
   const [calculadora, setCalculadora] = useState(false)
   const [, setVersionSesion] = useState(0)
@@ -295,6 +298,10 @@ export default function App() {
           mes={mes}
           setMes={setMes}
           onPagar={setPagando}
+          onCambio={() => {
+            setForm(null)
+            setCambio('nuevo')
+          }}
           onSinGasto={() => {
             const li = form.prefill?.listaItem
             setForm(null)
@@ -312,7 +319,7 @@ export default function App() {
                 datos={datos}
                 mes={mes}
                 setMes={setMes}
-                onEditar={(m) => setForm({ tipo: m.tipo === 'ingreso' ? 'ingreso' : 'gasto', editando: m })}
+                onEditar={(m) => (m.tipo === 'cambio' ? setCambio(m) : setForm({ tipo: m.tipo === 'ingreso' ? 'ingreso' : 'gasto', editando: m }))}
                 onBorrar={borrar}
                 onPagar={setPagando}
                 compraEnCurso={compraEnCurso}
@@ -437,6 +444,15 @@ export default function App() {
       )}
 
       {calculadora && <Calculadora cotizaciones={datos.cotizaciones} onCerrar={() => setCalculadora(false)} />}
+
+      {cambio && (
+        <HojaCambio
+          datos={datos}
+          editando={cambio === 'nuevo' ? undefined : cambio}
+          onBorrar={borrar}
+          onCerrar={() => setCambio(null)}
+        />
+      )}
 
       {pagando && gastosPagando.length > 0 && (
         <Pagar

@@ -39,7 +39,7 @@ export interface Ubicacion {
   precision: number
 }
 
-export type TipoMovimiento = 'gasto' | 'ingreso' | 'pagoDeuda'
+export type TipoMovimiento = 'gasto' | 'ingreso' | 'pagoDeuda' | 'cambio'
 
 export interface Movimiento extends Base {
   tipo: TipoMovimiento
@@ -79,6 +79,8 @@ export interface Movimiento extends Base {
   historial?: Historial
   /** Factura (gasto): una de las `de` cuotas mensuales que se cargaron juntas; `fecha` es su vencimiento. */
   factura?: { serieId: Id; cuota: number; de: number }
+  /** Cambio de moneda: lo que entró. `moneda` y `totalCent` son lo que salió (ej. vendiste US$ 500 → recibiste $ 725.000). */
+  cambio?: { moneda: Moneda; totalCent: number }
   /** Factura todavía sin pagar: Pagar la marca como pagada. */
   porPagar?: boolean
 }

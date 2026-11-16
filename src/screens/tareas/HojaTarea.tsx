@@ -3,7 +3,7 @@ import { avisar, avisarError } from '../../lib/avisos'
 import { BotonCerrar } from '../../components/BotonCerrar'
 import { fmtFechaHora } from '../../lib/historial'
 import { permisosDe, type Lista } from '../../lib/listaCompras'
-import { borrarTarea, editarTarea, restaurarTarea, type DatosTarea, type Tarea } from '../../lib/tareas'
+import { borrarTarea, editarTarea, guardarConclusion, restaurarTarea, type DatosTarea, type Tarea } from '../../lib/tareas'
 
 /** Hoja de una tarea: corregirla, elegir responsable, fecha y nota, o borrarla. */
 export function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCerrar: () => void }) {
@@ -17,9 +17,15 @@ export function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCe
   const [responsableUid, setResponsableUid] = useState(tarea.responsableUid)
   const [vence, setVence] = useState(tarea.vence ?? '')
   const [nota, setNota] = useState(tarea.nota ?? '')
+  // La conclusión la corrige quien la hizo o quien puede editar la tarea.
+  const conConclusion = tarea.hecha && (editable || tarea.hechaPorUid === uid)
+  const [conclusion, setConclusion] = useState(tarea.conclusion ?? '')
+  const cambioConclusion = conConclusion && conclusion.trim() !== (tarea.conclusion ?? '')
 
   function guardar() {
     if (!texto.trim()) return
+    if (cambioConclusion) guardarConclusion(lista.id, tarea.id, conclusion).catch(() => avisarError('No se pudo guardar la conclusión'))
+    if (!editable) return onCerrar()
     const resp = miembros.find(([u]) => u === responsableUid)
     const d: DatosTarea = {
       texto,
@@ -107,6 +113,19 @@ export function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCe
             onChange={(e) => setNota(e.target.value)}
           />
         </label>
+        {tarea.hecha && (conConclusion || tarea.conclusion) && (
+          <label className="campo">
+            <span>Conclusión</span>
+            <textarea
+              value={conclusion}
+              rows={2}
+              placeholder="Cómo terminó, ej. reservado para el 20/12"
+              aria-label="Conclusión"
+              disabled={!conConclusion}
+              onChange={(e) => setConclusion(e.target.value)}
+            />
+          </label>
+        )}
         <div className="historial">
           <p>
             La agregó {tarea.agregadoPorUid === uid ? 'vos' : tarea.agregadoPor} el {fmtFechaHora(tarea.creadoEn)}.
@@ -116,7 +135,11 @@ export function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCe
               La hizo {tarea.hechaPorUid === uid ? 'vos' : (tarea.hechaPor ?? 'otro')} el {fmtFechaHora(tarea.hechaEn)}.
             </p>
           )}
-          {!editable && <p>Para cambiarla hace falta el permiso Editar, que da {lista.duenoNombre}.</p>}
+          {!editable && (
+            <p>
+              Para cambiar {conConclusion ? 'el resto' : 'la tarea'} hace falta el permiso Editar, que da {lista.duenoNombre}.
+            </p>
+          )}
         </div>
         {editable && (
           <button type="button" className="peligro" onClick={borrar}>
@@ -127,7 +150,7 @@ export function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCe
           <button type="button" className="secundario" onClick={onCerrar}>
             Cancelar
           </button>
-          {editable && (
+          {(editable || conConclusion) && (
             <button type="submit" className="primario" disabled={!texto.trim()}>
               Guardar
             </button>

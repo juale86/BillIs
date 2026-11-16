@@ -52,7 +52,12 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const { datos, uid, email, invitacion, setInvitacion } = props
   const yo = datos.yo?.nombre ?? 'Yo'
   const { listas, cargando, error } = useMisListas(uid)
-  const secciones = useMemo(() => listas.filter(esDeTareas), [listas])
+  // En el orden que eligió cada uno (queda en el teléfono); las nuevas, al final.
+  const orden = datos.ordenSecciones
+  const secciones = useMemo(() => {
+    const lugar = (l: Lista) => (orden.includes(l.id) ? orden.indexOf(l.id) : orden.length)
+    return listas.filter(esDeTareas).sort((a, b) => lugar(a) - lugar(b))
+  }, [listas, orden])
   const ids = useMemo(() => secciones.map((l) => l.id), [secciones])
   const { porLista, cargando: cargandoTareas } = useTareas(ids)
 
@@ -92,6 +97,16 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
     }
   }
 
+  /** Corre la sección elegida un lugar a la izquierda (-1) o a la derecha (1) en la barra. */
+  function mover(l: Lista, paso: -1 | 1) {
+    const ids = secciones.map((x) => x.id)
+    const i = ids.indexOf(l.id)
+    const j = i + paso
+    if (i < 0 || j < 0 || j >= ids.length) return
+    ;[ids[i], ids[j]] = [ids[j], ids[i]]
+    setAjuste('ordenSecciones', ids)
+  }
+
   if (secciones.length === 0)
     return (
       <section className="pantalla">
@@ -119,8 +134,21 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
   const pedidosActual = actual && esDueno(actual, uid) ? Object.keys(actual.pendientes ?? {}).length : 0
   const otrosMiembros = actual ? Object.entries(actual.miembros ?? {}).filter(([u]) => u !== uid).map(([, n]) => n) : []
 
-  function tildar(l: Lista, t: Tarea) {
-    tildarTarea(l.id, t, !t.hecha, yo).catch(() => avisarError('No se pudo actualizar la tarea'))
+  /** Al cerrarla se pide la conclusión (puede quedar vacía); cancelar la deja pendiente. */
+  async function tildar(l: Lista, t: Tarea) {
+    let conclusion: string | null = null
+    if (!t.hecha) {
+      conclusion = await pedirTexto({
+        titulo: `Hecha: ${t.texto}`,
+        texto: 'Si querés, anotá cómo terminó. Se puede dejar vacío.',
+        placeholder: 'Conclusión, ej. reservado para el 20/12',
+        valor: t.conclusion ?? '',
+        boton: 'Marcar hecha',
+        vacioOk: true,
+      })
+      if (conclusion === null) return
+    }
+    tildarTarea(l.id, t, !t.hecha, yo, conclusion).catch(() => avisarError('No se pudo actualizar la tarea'))
     if (!t.hecha) avisar(`Hecha: ${t.texto}`, () => tildarTarea(l.id, t, false, yo).catch(() => {}))
   }
 
@@ -241,6 +269,9 @@ function ConUsuario(props: Props & { uid: string; email: string }) {
           lista={actual}
           uid={uid}
           email={email}
+          lugar={secciones.findIndex((l) => l.id === actual.id)}
+          total={secciones.length}
+          onMover={(paso) => mover(actual, paso)}
           onCerrar={() => setMenu(false)}
           onSalio={() => {
             setMenu(false)

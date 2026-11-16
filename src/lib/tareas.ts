@@ -1,6 +1,6 @@
 import { deleteDoc, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import { coleccionTareas, desdeDoc, refLista, uidActual, type Lista, type Subseccion } from './listaCompras'
+import { coleccionTareas, desdeDoc, refLista, uidActual, useAlVolver, type Lista, type Subseccion } from './listaCompras'
 
 /**
  * Tareas compartidas. Cada sección (ej. "Viaje") es una lista con tipo 'tareas': se comparte, se aprueba
@@ -9,7 +9,7 @@ import { coleccionTareas, desdeDoc, refLista, uidActual, type Lista, type Subsec
  *
  * listas/{listaId}.subsecciones: [{ id, nombre }]  ← en orden; las corrige el dueño
  * listas/{listaId}/tareas/{tareaId}
- *   texto, hecha, hechaPorUid, hechaPor, hechaEn, agregadoPorUid, agregadoPor,
+ *   texto, hecha, hechaPorUid, hechaPor, hechaEn, conclusion, agregadoPorUid, agregadoPor,
  *   responsableUid, responsable, vence ('AAAA-MM-DD'), nota, subseccion, creadoEn, modificadoEn
  */
 export interface Tarea {
@@ -19,6 +19,8 @@ export interface Tarea {
   hechaPorUid: string | null
   hechaPor: string | null
   hechaEn: number | null
+  /** Cómo terminó: se escribe al tildarla. Ausente en las tareas viejas. */
+  conclusion?: string | null
   agregadoPorUid: string
   agregadoPor: string
   /** Quién se encarga (un miembro). */
@@ -68,14 +70,22 @@ export function agregarTarea(listaId: string, d: DatosTarea, quien: string): Pro
   return setDoc(doc(coleccionTareas(listaId)), t)
 }
 
-export const tildarTarea = (listaId: string, t: Tarea, hecha: boolean, quien: string) =>
+const limpiarConclusion = (c: string | null | undefined) => c?.trim().slice(0, 1000) || null
+
+/** Al tildarla se guarda la conclusión; al destildarla se conserva, por si se vuelve a tildar. */
+export const tildarTarea = (listaId: string, t: Tarea, hecha: boolean, quien: string, conclusion?: string | null) =>
   updateDoc(doc(coleccionTareas(listaId), t.id), {
     hecha,
     hechaPorUid: hecha ? uidActual() : null,
     hechaPor: hecha ? quien.slice(0, 60) : null,
     hechaEn: hecha ? Date.now() : null,
+    ...(hecha ? { conclusion: limpiarConclusion(conclusion) } : {}),
     modificadoEn: Date.now(),
   })
+
+/** Corrige la conclusión de una tarea hecha (quien la hizo, o con permiso de editarla). */
+export const guardarConclusion = (listaId: string, id: string, conclusion: string) =>
+  updateDoc(doc(coleccionTareas(listaId), id), { conclusion: limpiarConclusion(conclusion), modificadoEn: Date.now() })
 
 export const editarTarea = (listaId: string, id: string, d: DatosTarea) =>
   updateDoc(doc(coleccionTareas(listaId), id), { ...limpiar(d), modificadoEn: Date.now() })
@@ -98,8 +108,12 @@ export function useTareas(listaIds: string[]): { porLista: Record<string, Tarea[
   const [porLista, setPorLista] = useState<Record<string, Tarea[]>>({})
   // Reintento: una sección recién creada (o recién aprobada) puede no estar aún en el servidor
   // cuando se abre, y Firestore corta la suscripción ante el primer rechazo.
-  const [intento, setIntento] = useState(0)
+  // Se cuenta por cada conjunto de secciones y cada vuelta del fondo: al cambiar, vuelve a probar.
+  const vuelta = useAlVolver()
   const clave = listaIds.join(',')
+  const [reintento, setReintento] = useState({ de: '', n: 0 })
+  const de = `${clave}|${vuelta}`
+  const intento = reintento.de === de ? reintento.n : 0
   useEffect(() => {
     if (!clave) return
     let timer: number | undefined
@@ -109,7 +123,7 @@ export function useTareas(listaIds: string[]): { porLista: Record<string, Tarea[
         (s) => setPorLista((prev) => ({ ...prev, [id]: s.docs.map((d) => desdeDoc<Tarea>(d.id, d.data())) })),
         () => {
           setPorLista((prev) => (id in prev ? prev : { ...prev, [id]: [] }))
-          if (intento < 6 && timer === undefined) timer = window.setTimeout(() => setIntento((i) => i + 1), 800 * (intento + 1))
+          if (intento < 6 && timer === undefined) timer = window.setTimeout(() => setReintento({ de, n: intento + 1 }), 800 * (intento + 1))
         },
       ),
     )
@@ -117,7 +131,7 @@ export function useTareas(listaIds: string[]): { porLista: Record<string, Tarea[
       offs.forEach((off) => off())
       clearTimeout(timer)
     }
-  }, [clave, intento])
+  }, [clave, intento, de])
   const cargando = listaIds.some((id) => !(id in porLista))
   return { porLista, cargando }
 }
@@ -138,5 +152,5 @@ export function fmtVence(iso: string): string {
   return `${dia} ${d}/${m}`
 }
 
-/** Primero las que tienen fecha (la más próxima arriba), después en el orden en que se agregaron. */
-export const porVence = (a: Tarea, b: Tarea) => (a.vence ?? '9999').localeCompare(b.vence ?? '9999') || a.creadoEn - b.creadoEn
+/** La última que se agregó, arriba. */
+export const masNuevaPrimero = (a: Tarea, b: Tarea) => b.creadoEn - a.creadoEn

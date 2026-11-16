@@ -7,12 +7,12 @@ PWA (React 19 + TS estricto + Vite 8 + vite-plugin-pwa) para anotar gastos en An
 - Actualizar `README.md` y `docs/DISEÑO.md` con cada función nueva.
 - Commit y push solo cuando el usuario lo pide. Si cambió `firestore.rules`, antes del push: `npx firebase-tools deploy --only firestore:rules --project billis-juale86`.
 - Cambios visuales grandes: mostrar capturas antes/después y esperar el OK.
-- Verificar con `npx tsc -b`, `npm run lint` (hay 11 warnings conocidos: purity/Date.now, only-export-components, immutability en tareas.ts) y `npm run build`. Opcionales: `npx knip@5` (código sin usar, configurado en `knip.json`) y `npx jscpd src --min-lines 6 --min-tokens 60` (duplicados).
+- Verificar con `npx tsc -b`, `npm run lint` (hay 13 warnings conocidos: purity/Date.now, only-export-components, immutability en tareas.ts) y `npm run build`. Opcionales: `npx knip@5` (código sin usar, configurado en `knip.json`) y `npx jscpd src --min-lines 6 --min-tokens 60` (duplicados).
 
 ## Mapa del código
 - `src/App.tsx`: pestañas (Movimientos, Listas, Tareas + íconos Resumen, Calculadora, Ajustes), formulario abierto (`Form`: nuevo, editando, prefill de lista, corrección), Pagar, registro de avisos con Deshacer, invitaciones `?lista=` / `?tareas=`, sincronización gasto → ítem (`sincronizarItem`).
 - `src/components/FormMovimiento.tsx`: alta/edición de gasto o ingreso; modo `correccion` (el dueño corrige lo que compró otro); líneas `.antes`; `HistorialMov.tsx` al pie y `CamposPromo.tsx` (tipo de promo y sus números) aparte. Íconos y hooks chicos: `IconoLapiz.tsx`, `useUltimo.ts` (ref con la última versión de una función).
-- `src/components/Pagar.tsx`: método, cuotas, pagador y "mi parte" para toda una compra.
+- `src/components/Pagar.tsx`: método, cuotas, pagador y "mi parte" para toda una compra (también paga facturas por pagar). `HojaCambio.tsx`: cambio de moneda (`tipo: 'cambio'`).
 - `src/components/Compartir.tsx`: Login, Invitacion, BotonCompartir, Miembros (permisos) — compartido entre Listas y Tareas.
 - `src/screens/`: `Movimientos` (compras plegables, lo de otros en gris, aplica correcciones), `Lista` (lista de compras: login, invitación y elegir lista; `lista/VistaLista.tsx` la lista en sí, `lista/MenuListas.tsx` el menú), `Tareas` (secciones y vista; en `tareas/`: `AgregarTarea`, `Bloque` + `FilaTarea`, `HojaTarea`, `MenuSeccion`), `Resumen` + `Saldos`, `Ajustes`, `SelectorMes`.
 - `src/db/`: Dexie (`movimientos`, `personas`, `metodosPago`, `categorias`, `ajustes`) y tipos (`Movimiento`, `GastoCargado`, `Historial`).

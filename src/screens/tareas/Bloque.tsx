@@ -1,6 +1,6 @@
 import { Fragment, type ReactNode } from 'react'
 import { permisosDe, type Lista, type Subseccion } from '../../lib/listaCompras'
-import { fmtVence, hoyISO, porVence, type Tarea } from '../../lib/tareas'
+import { fmtVence, hoyISO, masNuevaPrimero, type Tarea } from '../../lib/tareas'
 
 /** Las tareas pendientes de una sección, por subsección. */
 export function Bloque(props: {
@@ -15,7 +15,7 @@ export function Bloque(props: {
   const { lista, tareas, conTitulo, uid, onElegir, onTildar, onAbrir } = props
   const subs = lista.subsecciones ?? []
   const puedeTildar = permisosDe(lista, uid).comprar
-  const ordenadas = [...tareas].sort(porVence)
+  const ordenadas = [...tareas].sort(masNuevaPrimero)
   const grupos: { sub: Subseccion | null; ts: Tarea[] }[] = [
     ...subs.map((sub) => ({ sub, ts: ordenadas.filter((t) => t.subseccion === sub.id) })),
     { sub: null, ts: ordenadas.filter((t) => !subs.some((x) => x.id === t.subseccion)) },
@@ -97,6 +97,7 @@ export function FilaTarea(props: { t: Tarea; uid: string; puedeTildar: boolean; 
             ))}
           </span>
         )}
+        {t.hecha && t.conclusion && <span className="tarea-conclusion">{t.conclusion}</span>}
       </button>
     </li>
   )

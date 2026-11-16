@@ -11,7 +11,7 @@ import type { Movimiento } from '../db/types'
 import { claveCompra, claveMes, parteDe } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
-import { filtrarMovs, hayFiltrosMov, SIN_FILTROS_MOV, type FiltrosMov } from '../lib/filtrosMov'
+import { enPeriodo, filtrarMovs, hayFiltrosMov, PERIODOS, SIN_FILTROS_MOV, type FiltrosMov } from '../lib/filtrosMov'
 import { sugerirGrupo } from '../lib/grupos'
 import type { OrdenLista } from '../lib/orden'
 import { firebaseConfig } from '../lib/firebase-config'
@@ -54,8 +54,14 @@ interface Renglon {
   ajeno?: ItemLista
 }
 
+// Con el año solo si no es el actual (la búsqueda puede traer meses de antes).
 const fmtDia = (t: number) =>
-  new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })
+  new Date(t).toLocaleDateString('es-AR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...(new Date(t).getFullYear() !== new Date().getFullYear() && { year: 'numeric' }),
+  })
 /** Una factura vencida: antes de hoy y sin pagar. */
 const vencida = (m: Movimiento) => !!m.porPagar && m.fecha < new Date().setHours(0, 0, 0, 0)
 /** "vence 16/11" o, si ya pasó sin pagar, "venció 10/11". */
@@ -71,8 +77,11 @@ export function Movimientos(props: Props) {
 
   /** Días → grupos (una compra o un movimiento suelto) → movimientos. */
   const dias = useMemo(() => {
+    // Sin filtros se ve el mes; buscando, todo el período elegido (por defecto, el último año).
+    const filtrando = hayFiltrosMov(filtros)
+    const hoy = claveMes(Date.now())
     const delMes = filtrarMovs(movimientos, filtros, yo?.id)
-      .filter((m) => claveMes(m.fecha) === mes)
+      .filter((m) => (filtrando ? enPeriodo(claveMes(m.fecha), filtros.periodo, mes, hoy) : claveMes(m.fecha) === mes))
       .sort((a, b) => b.fecha - a.fecha)
     const res: { dia: string; grupos: Movimiento[][] }[] = []
     for (const m of delMes) {
@@ -106,10 +115,11 @@ export function Movimientos(props: Props) {
   }, [dias])
   const resumen = useMemo(() => {
     const { cantidad, gastos, ingresos } = totales
-    const partes = [`${cantidad} ${cantidad === 1 ? 'resultado' : 'resultados'}`, `gastaste ${gastos} (tu parte)`]
+    const enDonde = PERIODOS.find((p) => p.id === filtros.periodo)?.texto ?? ''
+    const partes = [`${cantidad} ${cantidad === 1 ? 'resultado' : 'resultados'} ${enDonde}`, `gastaste ${gastos} (tu parte)`]
     if (ingresos) partes.push(`cobraste ${ingresos}`)
     return partes.join(', ')
-  }, [totales])
+  }, [totales, filtros.periodo])
 
   // Solo la última compra (y la que está en curso) se ven abiertas; el resto se pliega.
   // Con filtros se abren todas para ver qué coincidió. Tocar la cabecera invierte.
@@ -365,6 +375,12 @@ export function Movimientos(props: Props) {
     if (m.promo) partes.push(describirPromo(m.promo))
     if (m.cuotas) partes.push(`${m.cuotas.cantidad} cuotas`)
     if (m.tipo === 'gasto' && m.pagadorId && m.pagadorId !== yo?.id) partes.push(`pagó ${nombre(m.pagadorId)}`)
+    if (m.tipo === 'cambio' && m.cambio) {
+      const usd = m.moneda === 'USD' ? m.totalCent : m.cambio.totalCent
+      const ars = m.moneda === 'USD' ? m.cambio.totalCent : m.totalCent
+      partes.push(`1 US$ = ${fmt(Math.round((ars / usd) * 100))}`)
+      if (m.lugar) partes.push(m.lugar)
+    }
     if (m.tipo === 'pagoDeuda')
       partes.push(m.pagadorId === yo?.id ? `a ${nombre(m.contraparteId)}` : `de ${nombre(m.pagadorId)}`)
     // Lo corrigió el dueño de la lista (tus propios cambios no se marcan).
@@ -416,6 +432,7 @@ export function Movimientos(props: Props) {
         <span className={'mov-monto ' + m.tipo}>
           {m.tipo === 'ingreso' ? '+' : m.tipo === 'gasto' ? '−' : ''}
           {fmt(m.totalCent, m.moneda)}
+          {m.cambio && <small>→ {fmt(m.cambio.totalCent, m.cambio.moneda)}</small>}
           {m.tipo === 'gasto' && m.miParteCent !== undefined && m.miParteCent !== m.totalCent && (
             <small>tu parte {fmt(m.miParteCent, m.moneda)}</small>
           )}
@@ -437,7 +454,22 @@ export function Movimientos(props: Props) {
         abierto={buscando}
         texto={filtros.texto}
         setTexto={(texto) => setFiltros({ ...filtros, texto })}
-        placeholder="Buscar en el mes"
+        placeholder="Buscar"
+        extra={
+          <div className="segmentos periodo" role="group" aria-label="Buscar en">
+            {PERIODOS.map((p) => (
+              <button
+                type="button"
+                key={p.id}
+                aria-pressed={filtros.periodo === p.id}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setFiltros({ ...filtros, periodo: p.id })}
+              >
+                {p.etiqueta}
+              </button>
+            ))}
+          </div>
+        }
         opciones={[
           ...(filtros.tipo
             ? []
@@ -470,7 +502,9 @@ export function Movimientos(props: Props) {
         onLimpiar={() => setFiltros(SIN_FILTROS_MOV)}
       />
       {dias.length === 0 && (
-        <p className="vacio">{hayFiltrosMov(filtros) ? 'Nada coincide con los filtros en este mes.' : 'No hay movimientos este mes.'}</p>
+        <p className="vacio">{hayFiltrosMov(filtros)
+            ? `Nada coincide con los filtros ${PERIODOS.find((p) => p.id === filtros.periodo)?.texto ?? ''}.`
+            : 'No hay movimientos este mes.'}</p>
       )}
       {dias.map((d) => (
         <div key={d.dia} className="dia">

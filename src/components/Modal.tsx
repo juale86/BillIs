@@ -11,12 +11,15 @@ interface Props {
   peligro?: boolean
   /** Teclado del teléfono para el texto. */
   inputMode?: 'text' | 'decimal'
+  placeholder?: string
+  /** Se puede aceptar con el texto vacío. */
+  vacioOk?: boolean
   onConfirmar: (valor: string) => void
   onCancelar: () => void
 }
 
 /** Diálogo centrado para confirmar una acción o pedir un texto. */
-export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, peligro, inputMode, onConfirmar, onCancelar }: Props) {
+export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, peligro, inputMode, placeholder, vacioOk, onConfirmar, onCancelar }: Props) {
   const [valor, setValor] = useState(valorInicial ?? '')
   const ref = useRef<HTMLInputElement>(null)
   const conTexto = valorInicial !== undefined
@@ -47,21 +50,21 @@ export function Modal({ titulo, children, valorInicial, etiquetaConfirmar, pelig
         onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => {
           e.preventDefault()
-          if (!conTexto || valor.trim()) onConfirmar(valor.trim())
+          if (!conTexto || vacioOk || valor.trim()) onConfirmar(valor.trim())
         }}
       >
         <h3>{titulo}</h3>
         {children && <div className="modal-texto">{children}</div>}
         {conTexto && (
           <div className="campo">
-            <input ref={ref} value={valor} aria-label={titulo} inputMode={inputMode} onChange={(e) => setValor(e.target.value)} />
+            <input ref={ref} value={valor} aria-label={titulo} inputMode={inputMode} placeholder={placeholder} onChange={(e) => setValor(e.target.value)} />
           </div>
         )}
         <div className="modal-botones">
           <button type="button" className="cancelar" onClick={onCancelar}>
             Cancelar
           </button>
-          <button type="submit" className={'primario' + (peligro ? ' boton-peligro' : '')} disabled={conTexto && !valor.trim()}>
+          <button type="submit" className={'primario' + (peligro ? ' boton-peligro' : '')} disabled={conTexto && !vacioOk && !valor.trim()}>
             {etiquetaConfirmar}
           </button>
         </div>

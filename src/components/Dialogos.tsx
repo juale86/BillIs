@@ -16,7 +16,9 @@ export function Dialogos() {
       key={d.id}
       titulo={d.titulo}
       valorInicial={d.valor}
+      vacioOk={d.vacioOk}
       inputMode={d.inputMode}
+      placeholder={d.placeholder}
       etiquetaConfirmar={d.boton ?? 'Aceptar'}
       peligro={d.peligro}
       onConfirmar={(v) => d.responder(v)}
