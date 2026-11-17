@@ -102,7 +102,7 @@ service cloud.firestore {
             && (d.compradoPorUid == null || d.compradoPorUid is string)
             && textoOpcional(d.compradoPor, 60)
             && (d.montoCent == null || (d.montoCent is int && d.montoCent >= 0))
-            && (d.moneda == null || d.moneda in ['ARS', 'USD'])
+            && (d.moneda == null || d.moneda in ['ARS', 'USD', 'BRL'])
             && d.creadoEn is number && d.modificadoEn is number
             && d.get('orden', 0) is number
             && textoOpcional(d.get('grupo', null), 30)

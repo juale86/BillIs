@@ -50,22 +50,24 @@ interface Resumen {
   cambios: number
 }
 
-export function resumenMes(movs: Movimiento[], mes: number, moneda: Moneda): Resumen {
+/** Ingresos, gastos (tu parte, con las cuotas por mes) y cambios de un mes; con `mes` null, de todo (ej. una etiqueta). */
+export function resumenMes(movs: Movimiento[], mes: number | null, moneda: Moneda): Resumen {
   const r: Resumen = { ingresos: 0, gastos: 0, porCategoria: new Map(), cuotasPendientes: 0, cambios: 0 }
+  const enMes = (mm: number) => mes === null || mm === mes
   for (const m of movs) {
-    if (m.tipo === 'cambio' && m.cambio?.moneda === moneda && claveMes(m.fecha) === mes) r.cambios += m.cambio.totalCent
+    if (m.tipo === 'cambio' && m.cambio?.moneda === moneda && enMes(claveMes(m.fecha))) r.cambios += m.cambio.totalCent
     if (m.moneda !== moneda) continue
     if (m.tipo === 'cambio') {
-      if (claveMes(m.fecha) === mes) r.cambios -= m.totalCent
+      if (enMes(claveMes(m.fecha))) r.cambios -= m.totalCent
     } else if (m.tipo === 'ingreso') {
-      if (claveMes(m.fecha) === mes) r.ingresos += m.totalCent
+      if (enMes(claveMes(m.fecha))) r.ingresos += m.totalCent
     } else if (m.tipo === 'gasto') {
       for (const [mm, monto] of imputaciones(m)) {
-        if (mm === mes) {
+        if (enMes(mm)) {
           r.gastos += monto
           const k = m.categoriaId ?? ''
           r.porCategoria.set(k, (r.porCategoria.get(k) ?? 0) + monto)
-        } else if (mm > mes && claveMes(m.fecha) <= mes) {
+        } else if (mes !== null && mm > mes && claveMes(m.fecha) <= mes) {
           r.cuotasPendientes += monto
         }
       }

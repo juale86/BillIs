@@ -2,7 +2,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, getAjuste, vivo } from '../db/db'
 import { CLAVE_COTIZACIONES, cotizacionesDesde, type Cotizaciones } from './conversor'
 import { CLAVE_GRUPOS, gruposDesde, type Grupo } from './grupos'
-import type { Categoria, MetodoPago, Movimiento, Persona } from '../db/types'
+import { CLAVE_ETIQUETAS, CLAVE_FIJA, todasEtiquetas } from './etiquetas'
+import { porTipo } from './metodos'
+import type { Categoria, MetodoPago, Moneda, Movimiento, Persona } from '../db/types'
 
 export interface Datos {
   movimientos: Movimiento[]
@@ -11,6 +13,12 @@ export interface Datos {
   categorias: Categoria[]
   yo: Persona | undefined
   multimoneda: boolean
+  /** Las monedas para cargar: pesos y, con "Usar otras monedas", las elegidas en Ajustes. */
+  monedas: Moneda[]
+  /** Todas las etiquetas (creadas en Ajustes o usadas), en orden alfabético. */
+  etiquetas: string[]
+  /** La que se pone sola en cada gasto nuevo (ej. durante un viaje). */
+  etiquetaFija: string | null
   /** Lista de compras compartida a la que está unido este teléfono. */
   listaId: string | null
   /** Grupo elegido a mano para cada producto de la lista (nombre normalizado → grupo). */
@@ -32,7 +40,7 @@ export interface Datos {
 /** Todos los datos vivos (no borrados), reactivos. Para uso personal el volumen es chico. */
 export function useDatos(): Datos | undefined {
   return useLiveQuery(async () => {
-    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos, tareasSeccion, ordenSecciones, cotizaciones, presupuestos] = await Promise.all([
+    const [movimientos, personas, metodos, categorias, multimoneda, listaId, gruposAprendidos, miembrosLista, grupos, tareasSeccion, ordenSecciones, cotizaciones, presupuestos, otrasMonedas, etiquetasGuardadas, etiquetaFija] = await Promise.all([
       db.movimientos.toArray(),
       db.personas.toArray(),
       db.metodosPago.toArray(),
@@ -46,15 +54,22 @@ export function useDatos(): Datos | undefined {
       getAjuste<string[]>('ordenSecciones', []),
       getAjuste<Cotizaciones | null>(CLAVE_COTIZACIONES, null),
       getAjuste<Record<string, number>>('presupuestos', {}),
+      getAjuste<Moneda[]>('monedas', ['USD']),
+      getAjuste<string[]>(CLAVE_ETIQUETAS, []),
+      getAjuste<string | null>(CLAVE_FIJA, null),
     ])
+    const vivos = movimientos.filter(vivo)
     const ps = personas.filter(vivo)
     return {
-      movimientos: movimientos.filter(vivo),
+      movimientos: vivos,
       personas: ps,
-      metodos: metodos.filter(vivo).sort((a, b) => a.creadoEn - b.creadoEn),
+      metodos: metodos.filter(vivo).sort(porTipo),
       categorias: categorias.filter(vivo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
       yo: ps.find((p) => p.esYo),
       multimoneda,
+      monedas: ['ARS', ...(multimoneda ? otrasMonedas.filter((m) => m !== 'ARS') : [])],
+      etiquetas: todasEtiquetas(vivos, etiquetasGuardadas),
+      etiquetaFija,
       listaId,
       gruposAprendidos,
       miembrosLista,

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { Moneda } from '../db/types'
 import { claveMes, parteDe, resumenMes } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
@@ -8,6 +8,7 @@ import { pedirTexto } from '../lib/dialogos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 import { Saldos } from './Saldos'
 import { SelectorMes } from './SelectorMes'
+import { ResumenEtiqueta } from './ResumenEtiqueta'
 
 interface Props {
   datos: Datos
@@ -19,7 +20,10 @@ interface Props {
 }
 
 export function Resumen({ datos, mes, setMes, acciones, panel }: Props) {
-  const { movimientos, categorias, presupuestos } = datos
+  const { movimientos, categorias, presupuestos, etiquetas } = datos
+  // Por mes, o todo lo de una etiqueta (ej. un viaje).
+  const [elegida, setElegida] = useState<string | null>(null)
+  const etiqueta = elegida && etiquetas.includes(elegida) ? elegida : null
   const fechaAnterior = new Date(Math.floor((mes - 1) / 12), (mes - 1) % 12, 1)
   const mesAnterior = fechaAnterior.toLocaleDateString('es-AR', { month: 'long' })
   // En las categorías, abreviado ("oct."), para que entre en el renglón.
@@ -51,9 +55,32 @@ export function Resumen({ datos, mes, setMes, acciones, panel }: Props) {
     avisar(cent && cent > 0 ? `Presupuesto de ${nombre}: ${fmt(cent)} por mes` : `Sin presupuesto para ${nombre}`)
   }
 
+  const vistas = etiquetas.length > 0 && (
+    <div className="chips vistas-resumen" role="tablist" aria-label="Qué ver">
+      <button role="tab" className="chip" aria-selected={!etiqueta} onClick={() => setElegida(null)}>
+        Por mes
+      </button>
+      {etiquetas.map((e) => (
+        <button key={e} role="tab" className="chip" aria-selected={etiqueta === e} onClick={() => setElegida(e)}>
+          #{e}
+        </button>
+      ))}
+    </div>
+  )
+
+  if (etiqueta)
+    return (
+      <section className="pantalla">
+        {vistas}
+        {panel}
+        <ResumenEtiqueta datos={datos} etiqueta={etiqueta} />
+      </section>
+    )
+
   return (
     <section className="pantalla">
       <SelectorMes mes={mes} setMes={setMes} extra={acciones} />
+      {vistas}
       {panel}
       {monedas.map((moneda) => {
         const r = resumenMes(movimientos, mes, moneda)

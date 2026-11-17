@@ -82,6 +82,17 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 - ~~Un gasto sin lugar (Netflix, nafta) se guarda directo~~: reemplazado en 1.8.3, también pasa por Pagar.
 - Formulario nuevo: Guardar y agregar otro / Guardar (o Guardar y pagar, si empieza una compra; desde 1.23). Editando: Guardar cambios. Desde la lista: Guardar (+ "Ya comprado, sin gasto" y, en chiquito al final, quién agregó el ítem). En todos, la X de arriba cierra sin guardar.
 
+## Medios de pago, monedas y etiquetas (desde 1.27)
+
+- **Medios de pago con tipo** (`MetodoPago.tipo`: efectivo, billetera, débito, crédito, transferencia) y, las tarjetas, **titular** (`titularId`, una persona; sin dato, vos). Los métodos viejos sin tipo lo deducen del nombre (`tipoDe` en `lib/metodos.ts`). Se editan en Ajustes > Medios de pago con una hoja (`HojaMetodo.tsx`: nombre, tipo, "De quién es la tarjeta" con Otra persona…), que también abre "+ Nuevo…" en Pagar. Se ordenan por tipo.
+- Las instalaciones nuevas arrancan con Efectivo, Mercado Pago, Personal Pay, Arq, Débito, Crédito y Transferencia; a las que ya existían se les suman las billeteras una sola vez (`sumarBilleteras`, ajuste `billeteras`).
+- **Pagar**: las cuotas aparecen solo con tarjeta de crédito (o si la compra ya las tenía sin método). Al elegir la tarjeta de otra persona, el pagador pasa a ser esa persona ("Le debés…"); al cambiar a otro método vuelve a vos. En la lista el método se ve "Visa Galicia (Ana)" y, si pagó el titular, no se repite "pagó Ana".
+- **Monedas**: `Moneda` suma `BRL`. "Usar otras monedas" muestra chips Dólares / Reales (ajuste `monedas`; el peso siempre está) y el formulario ofrece solo las activas (`datos.monedas`) con una **bandera chica dentro del monto**, como en el conversor de la calculadora (`MenuMoneda.tsx`, compartido): tocándola se abren las otras monedas. Un gasto nuevo arranca en la moneda del último cargado, si sigue activa. `simbolo()` da $, US$, R$; el real se formatea con símbolo corto. Las reglas de las listas aceptan BRL. El cambio de moneda elige Dólares / Reales y dice "Venta de reales", "1 R$ = $ 276,92".
+- **Etiquetas** (`Movimiento.etiquetas`, texto libre, sin distinguir mayúsculas ni acentos): campo con chips debajo de la categoría (`CampoEtiquetas.tsx`; Enter o coma agrega, sugiere las existentes con el foco). Las creadas sin usar se guardan en el ajuste `etiquetas`; renombrar o borrar en Ajustes cambia todos los movimientos (`cambiarEtiqueta`). La **fija** (ajuste `etiquetaFija`, chinche en Ajustes o en el Resumen de la etiqueta) entra sola en cada gasto nuevo; arriba de Movimientos un aviso "Brasil se pone en cada gasto nuevo ✕". Se ven como chips chicos en cada renglón, se buscan por texto y por chip "#Brasil", y van al CSV.
+- Las etiquetas van en el mismo renglón que la categoría (en un ingreso, que ya lleva el medio de cobro, abajo).
+- **Fechas DD/MM/AA en toda la app** (`fmtFecha`, `fmtDiaSemana` y `fmtHora` en `lib/fecha.ts`): "vence 18/11/26", "vie 20/11/26", el CSV y la versión en Ajustes. Los campos de fecha son propios (`CampoFecha.tsx`): el texto "17/11/26 1:08am" pegado al ícono del calendario y, encima, el input del teléfono invisible que abre el selector (el del sistema muestra el formato que quiere). Los títulos de cada día siguen escritos ("Martes, 17 de noviembre").
+- **Resumen por etiqueta** (`ResumenEtiqueta.tsx`): chips Por mes / #etiqueta. Todo lo que la lleva, sin importar el mes: cantidad y fechas, gastos (tu parte, cuotas enteras) por moneda y categoría, total en pesos con las cotizaciones y saldos solo de esos gastos (el pago que se anota desde ahí lleva la etiqueta). Siguen contando en el resumen de cada mes.
+
 ## Cambio de moneda (desde 1.25)
 
 - Con **Usar otras monedas** encendido, el formulario de un gasto o ingreso nuevo muestra arriba el enlace "¿Vendiste o compraste dólares? Cargá un cambio de moneda", que abre una hoja (`HojaCambio.tsx`).
@@ -168,7 +179,7 @@ Enteros en centavos. Se muestran con `Intl` `es-AR` ($ 1.234,56).
 
 ## Búsqueda
 
-- Lupa en Movimientos: texto en descripción, marca, comentario y lugar; chips Gastos / Ingresos / Categoría / Pagó otro; resumen "N resultados en el último año, gastaste $X (tu parte)". Desde 1.25 no busca solo en el mes visible: debajo del campo hay un selector **Este mes / 3 meses / Un año / Todo**, por defecto **Un año** (los últimos 12 meses contando el actual, más lo que venga, como las facturas futuras). "Este mes" es el mes que se está viendo. Sin texto ni chips la pantalla sigue mostrando solo el mes; el período no cuenta como filtro y "Quitar todos" lo vuelve a Un año. Los días de otros años muestran el año (`enPeriodo` y `PERIODOS` en `lib/filtrosMov.ts`).
+- Lupa en Movimientos: texto en descripción, marca, comentario, lugar y etiquetas; chips Gastos / Ingresos / Pagó otro / #etiqueta / Categoría; resumen "N resultados en el último año, gastaste $X (tu parte)". Desde 1.25 no busca solo en el mes visible: debajo del campo hay un selector **Este mes / 3 meses / Un año / Todo**, por defecto **Un año** (los últimos 12 meses contando el actual, más lo que venga, como las facturas futuras). "Este mes" es el mes que se está viendo. Sin texto ni chips la pantalla sigue mostrando solo el mes; el período no cuenta como filtro y "Quitar todos" lo vuelve a Un año. Los días de otros años muestran el año (`enPeriodo` y `PERIODOS` en `lib/filtrosMov.ts`).
 - **Testigo**: los filtros siguen aplicados al cerrar la lupa; la lupa muestra un punto y los chips "Filtrando … ✕" quedan visibles.
 - En la lista no hay lupa (desde 1.10): el campo **Buscar y filtrar** está siempre a la vista y busca **solo en los pendientes**, porque sirve para encontrar en el súper lo que falta comprar; con la búsqueda activa los comprados no se muestran. Chips **"Agregado por …"** para cada miembro de la lista (filtra por uid). Al comprar un ítem y volver, el texto de búsqueda queda vacío (desde 1.12). Sin contador "N de M pendientes"; si nada coincide dice "No hay coincidencias en la lista" (desde 1.18.3).
 
@@ -182,7 +193,7 @@ Ajustes → Apariencia: Automático (sigue al sistema) / Claro / Oscuro. Se guar
 
 ## Fuera de v1 (el modelo lo admite)
 
-Gastos recurrentes sin fin (las facturas de 1.24 tienen una cantidad fija de cuotas), nº de factura, editar todas las cuotas juntas, día de cierre de tarjeta, conversión de monedas, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.
+Gastos recurrentes sin fin (las facturas de 1.24 tienen una cantidad fija de cuotas), nº de factura, editar todas las cuotas juntas, día de cierre de tarjeta (`MetodoPago.diaCierre`), cuotas en dólares, gráficos, búsqueda en movimientos, historial de precios, sincronización de gastos.
 
 ## Pendientes para charlar
 

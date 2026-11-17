@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Ajuste, Base, Categoria, MetodoPago, Movimiento, Persona } from './types'
+import type { Ajuste, Base, Categoria, MetodoPago, Movimiento, Persona, TipoMetodo } from './types'
 
 export const db = new Dexie('billis') as Dexie & {
   movimientos: EntityTable<Movimiento, 'id'>
@@ -43,7 +43,15 @@ export const normalizar = (s: string) =>
 
 const CATEGORIAS_GASTO = ['Súper', 'Almacén', 'Servicios', 'Transporte', 'Salud', 'Hogar', 'Salidas', 'Ropa', 'Otros']
 const CATEGORIAS_INGRESO = ['Sueldo', 'Ventas', 'Reintegros', 'Otros']
-const METODOS = ['Efectivo', 'Débito', 'Crédito', 'Transferencia']
+const METODOS: [string, TipoMetodo][] = [
+  ['Efectivo', 'efectivo'],
+  ['Mercado Pago', 'billetera'],
+  ['Personal Pay', 'billetera'],
+  ['Arq', 'billetera'],
+  ['Débito', 'debito'],
+  ['Crédito', 'credito'],
+  ['Transferencia', 'transferencia'],
+]
 
 /** Primera apertura: crea "yo", categorías y métodos por defecto. */
 export async function inicializar(nombre: string) {
@@ -56,8 +64,19 @@ export async function inicializar(nombre: string) {
       ])
     }
     if ((await db.metodosPago.count()) === 0) {
-      await db.metodosPago.bulkAdd(METODOS.map((n) => ({ ...nuevoBase(), nombre: n })))
+      await db.metodosPago.bulkAdd(METODOS.map(([nombre, tipo]) => ({ ...nuevoBase(), nombre, tipo })))
     }
+  })
+}
+
+/** Una vez por teléfono (desde 1.27): suma las billeteras que falten a los métodos que ya había. */
+export async function sumarBilleteras() {
+  if (await getAjuste('billeteras', false)) return
+  await db.transaction('rw', db.metodosPago, db.ajustes, async () => {
+    const hay = new Set((await db.metodosPago.toArray()).filter(vivo).map((m) => normalizar(m.nombre)))
+    const faltan = METODOS.filter(([n, t]) => t === 'billetera' && !hay.has(normalizar(n)))
+    if (hay.size > 0 && faltan.length) await db.metodosPago.bulkAdd(faltan.map(([nombre, tipo]) => ({ ...nuevoBase(), nombre, tipo })))
+    await setAjuste('billeteras', true)
   })
 }
 

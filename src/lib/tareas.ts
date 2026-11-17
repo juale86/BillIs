@@ -1,4 +1,5 @@
 import { deleteDoc, doc, onSnapshot, setDoc, updateDoc } from 'firebase/firestore'
+import { desdeInput, fmtDiaSemana } from './fecha'
 import { useEffect, useState } from 'react'
 import { coleccionTareas, desdeDoc, refLista, uidActual, useAlVolver, type Lista, type Subseccion } from './listaCompras'
 
@@ -145,11 +146,10 @@ export function hoyISO(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
-/** '2026-11-20' → "vie 20/11" */
-export function fmtVence(iso: string): string {
-  const [a, m, d] = iso.split('-').map(Number)
-  const dia = new Date(a, m - 1, d).toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '')
-  return `${dia} ${d}/${m}`
+/** '2026-11-20' → "vie 20/11/26" */
+export const fmtVence = (iso: string) => {
+  const d = desdeInput(iso)
+  return d ? fmtDiaSemana(d) : iso
 }
 
 /** La última que se agregó, arriba. */

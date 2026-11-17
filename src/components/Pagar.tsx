@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { pedirTexto } from '../lib/dialogos'
-import { db, normalizar, nuevoBase, personaPorNombre } from '../db/db'
+import { db, normalizar, personaPorNombre } from '../db/db'
 import type { Id, ModoParte, Moneda, Movimiento, Parte } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { fmt } from '../lib/money'
@@ -8,7 +8,9 @@ import { miParte } from '../lib/promo'
 import { cerrarSesion, guardarPagador, ultimoPagador } from '../lib/sesion'
 import { BotonCerrar } from './BotonCerrar'
 import { Chips } from './Chips'
+import { HojaMetodo } from './HojaMetodo'
 import { MetodoCuotas } from './MetodoCuotas'
+import { aceptaCuotas, nombreMetodo, titularOtro } from '../lib/metodos'
 
 /** Sin repetidos (sin distinguir mayúsculas ni acentos), conservando el primero. */
 function unicos(nombres: string[]): string[] {
@@ -48,10 +50,16 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const [metodoId, setMetodoId] = useState<Id | ''>(() => gastos.find((g) => g.metodoPagoId)?.metodoPagoId ?? '')
   const [ocupado, setOcupado] = useState(false)
   const total = textoTotal(totalCompra(gastos))
-  // Las cuotas aplican a los gastos en pesos (en dólares no se usan cuotas).
+  const [nuevoMetodo, setNuevoMetodo] = useState(false)
+  // Las cuotas aplican a los gastos en pesos (en otras monedas no se usan) y solo con tarjeta de crédito
+  // (o si la compra ya las tenía sin método, como las cargadas antes de 1.27).
   const enPesos = gastos.filter((g) => g.moneda === 'ARS')
   const [cuotas, setCuotas] = useState(() => String(enPesos.find((g) => g.cuotas)?.cuotas?.cantidad ?? 1))
-  const n = Math.max(1, Math.round(Number(cuotas) || 1))
+  const [teniaCuotas] = useState(() => enPesos.some((g) => g.cuotas))
+  const metodo = datos.metodos.find((m) => m.id === metodoId)
+  const conCuotas = enPesos.length > 0 && (aceptaCuotas(metodo) || (!metodoId && teniaCuotas))
+  const n = conCuotas ? Math.max(1, Math.round(Number(cuotas) || 1)) : 1
+  const nombreDeMetodo = (m: (typeof datos.metodos)[number]) => nombreMetodo(m, datos.personas, datos.yo?.id)
   const totalPesos = enPesos.reduce((t, g) => t + g.totalCent, 0)
   const nombreYo = datos.yo?.nombre ?? 'Yo'
   // Una factura por pagar se paga como una compra en curso: el botón confirma y deja de estar por pagar.
@@ -72,6 +80,19 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
   const [contraparte, setContraparte] = useState(() => (enCurso ? '' : (nombreDe(primero?.contraparteId) ?? '')))
   const [error, setError] = useState('')
   const pagadorEsYo = normalizar(pagador.trim() || nombreYo) === normalizar(nombreYo)
+  // Con la tarjeta de otra persona, esa persona pagó; al cambiar de método se vuelve a vos.
+  const pagadorPorTarjeta = useRef<string | null>(null)
+  function elegirMetodo(id: Id | '') {
+    setMetodoId(id)
+    const titular = titularOtro(datos.metodos.find((m) => m.id === id), datos.personas, datos.yo?.id)
+    if (titular) {
+      setPagador(titular.nombre)
+      pagadorPorTarjeta.current = titular.nombre
+    } else if (pagadorPorTarjeta.current && pagador === pagadorPorTarjeta.current) {
+      setPagador(nombreYo)
+      pagadorPorTarjeta.current = null
+    }
+  }
   // Pagador: vos, las personas ya cargadas, quienes comparten la lista (y el que ya tenía la compra).
   const pagadores = unicos([nombreYo, ...otras, pagador])
   const parte: Parte =
@@ -110,137 +131,133 @@ export function Pagar({ datos, lugar, enCurso, gastos, onCerrar, onPagado }: Pro
       })),
     )
     if (enCurso) cerrarSesion()
-    const metodo = datos.metodos.find((m) => m.id === metodoId)?.nombre
-    if (porPagar) return onPagado(`Factura pagada: ${total}${metodo ? ` con ${metodo}` : ''}${n > 1 ? ` en ${n} cuotas` : ''}`)
+    const con = metodo ? ` con ${metodo.nombre}` : ''
+    if (porPagar) return onPagado(`Factura pagada: ${total}${con}${n > 1 ? ` en ${n} cuotas` : ''}`)
     if (!enCurso) return onPagado('Pago actualizado')
-    onPagado(`${esYo ? 'Pagado' : `Pagó ${nombrePagador}`} ${total}${metodo ? ` con ${metodo}` : ''}${n > 1 ? ` en ${n} cuotas` : ''}`)
-  }
-
-  async function nuevoMetodo() {
-    const nombre = await pedirTexto({ titulo: 'Nuevo método de pago', boton: 'Agregar' })
-    if (!nombre) return
-    const base = nuevoBase()
-    await db.metodosPago.add({ ...base, nombre })
-    setMetodoId(base.id)
+    onPagado(`${esYo ? 'Pagado' : `Pagó ${nombrePagador}`} ${total}${con}${n > 1 ? ` en ${n} cuotas` : ''}`)
   }
 
   return (
-    <div className="hoja-fondo" onClick={onCerrar}>
-      <div className="hoja" role="dialog" aria-label="Pagar compra" onClick={(e) => e.stopPropagation()}>
-        <div className="menu-seccion">
-          <div className="hoja-cab">
-            <h3>
-              {pagando ? 'Pagar' : 'Pago'}
-              {lugar ? ` en ${lugar}` : ''}
-            </h3>
-            <BotonCerrar onClick={onCerrar} />
-          </div>
-          <ul className="lista">
-            {gastos.map((g) => (
-              <li key={g.id} className="item-ajuste">
-                <span>
-                  {g.descripcion}
-                  {g.cantidad > 1 && <small> ×{g.cantidad}</small>}
-                </span>
-                <span className="mov-monto">{fmt(g.totalCent, g.moneda)}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="total-pagar">
-            Total <strong>{total}</strong>
-          </p>
-          <div className="fila">
-            <MetodoCuotas
-              etiqueta="Método de pago"
-              vacio="Sin especificar"
-              metodos={datos.metodos}
-              metodoId={metodoId}
-              onMetodo={setMetodoId}
-              onNuevoMetodo={() => void nuevoMetodo()}
-              cuotas={enPesos.length ? cuotas : undefined}
-              onCuotas={setCuotas}
-            />
-          </div>
-          {n > 1 && totalPesos > 0 && (
-            <p className="calculo">
-              {n} cuotas de {fmt(Math.round(totalPesos / n))}
-            </p>
-          )}
-          <label className="campo">
-            <span>Pagador</span>
-            <select
-              value={pagador}
-              onChange={async (e) => {
-                if (e.target.value !== OTRA) return setPagador(e.target.value)
-                const nombre = await pedirTexto({ titulo: '¿Quién pagó?', boton: 'Listo' })
-                if (nombre) setPagador(nombre)
-              }}
-            >
-              {pagadores.map((nombre) => (
-                <option key={nombre} value={nombre}>
-                  {normalizar(nombre) === normalizar(nombreYo) ? `${nombre} (vos)` : nombre}
-                </option>
-              ))}
-              <option value={OTRA}>Otra persona…</option>
-            </select>
-          </label>
-          <div className="campo">
-            <span>Mi parte</span>
-            <div className="segmentos">
-              {(['todo', 'mitad', 'nada', 'pct'] as ModoParte[]).map((m) => (
-                <button type="button" key={m} aria-pressed={parteModo === m} onClick={() => setParteModo(m)}>
-                  {{ todo: 'Todo', mitad: 'Mitad', nada: 'Nada', pct: '%' }[m]}
-                </button>
-              ))}
+    <>
+      <div className="hoja-fondo" onClick={onCerrar}>
+        <div className="hoja" role="dialog" aria-label="Pagar compra" onClick={(e) => e.stopPropagation()}>
+          <div className="menu-seccion">
+            <div className="hoja-cab">
+              <h3>
+                {pagando ? 'Pagar' : 'Pago'}
+                {lugar ? ` en ${lugar}` : ''}
+              </h3>
+              <BotonCerrar onClick={onCerrar} />
             </div>
-            {parteModo === 'pct' && (
-              <input
-                className="chico"
-                value={partePct}
-                inputMode="numeric"
-                aria-label="Porcentaje que te toca"
-                onChange={(e) => setPartePct(e.target.value)}
-              />
-            )}
-          </div>
-          {pagadorEsYo && parteModo !== 'todo' && (
-            <label className="campo">
-              <span>Compartido con *</span>
-              <input
-                value={contraparte}
-                autoComplete="off"
-                onChange={(e) => {
-                  setContraparte(e.target.value)
-                  setError('')
-                }}
-              />
-              <Chips
-                opciones={otras}
-                activo={contraparte}
-                onElegir={(c) => {
-                  setContraparte(c)
-                  setError('')
-                }}
-              />
-            </label>
-          )}
-          {(parteModo !== 'todo' || !pagadorEsYo) && (
-            <p className="calculo">
-              {pagadorEsYo
-                ? `${contraparte || 'La otra persona'} te debe ${conMonto(delOtro)}`
-                : mio.some(([, c]) => c > 0)
-                  ? `Le debés ${conMonto(mio)} a ${pagador}`
-                  : 'Solo registro: no debés nada'}
+            <ul className="lista">
+              {gastos.map((g) => (
+                <li key={g.id} className="item-ajuste">
+                  <span>
+                    {g.descripcion}
+                    {g.cantidad > 1 && <small> ×{g.cantidad}</small>}
+                  </span>
+                  <span className="mov-monto">{fmt(g.totalCent, g.moneda)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="total-pagar">
+              Total <strong>{total}</strong>
             </p>
-          )}
-          {error && <p className="error">{error}</p>}
-        </div>
-        <div className="acciones">
-          <button type="button" className="primario" disabled={ocupado} onClick={confirmar}>
-            {pagando ? 'Confirmar pago' : 'Guardar cambios'}
-          </button>
+            <div className="fila">
+              <MetodoCuotas
+                etiqueta="Método de pago"
+                vacio="Sin especificar"
+                metodos={datos.metodos}
+                nombre={nombreDeMetodo}
+                metodoId={metodoId}
+                onMetodo={elegirMetodo}
+                onNuevoMetodo={() => setNuevoMetodo(true)}
+                cuotas={conCuotas ? cuotas : undefined}
+                onCuotas={setCuotas}
+              />
+            </div>
+            {n > 1 && totalPesos > 0 && (
+              <p className="calculo">
+                {n} cuotas de {fmt(Math.round(totalPesos / n))}
+              </p>
+            )}
+            <label className="campo">
+              <span>Pagador</span>
+              <select
+                value={pagador}
+                onChange={async (e) => {
+                  if (e.target.value !== OTRA) return setPagador(e.target.value)
+                  const nombre = await pedirTexto({ titulo: '¿Quién pagó?', boton: 'Listo' })
+                  if (nombre) setPagador(nombre)
+                }}
+              >
+                {pagadores.map((nombre) => (
+                  <option key={nombre} value={nombre}>
+                    {normalizar(nombre) === normalizar(nombreYo) ? `${nombre} (vos)` : nombre}
+                  </option>
+                ))}
+                <option value={OTRA}>Otra persona…</option>
+              </select>
+            </label>
+            <div className="campo">
+              <span>Mi parte</span>
+              <div className="segmentos">
+                {(['todo', 'mitad', 'nada', 'pct'] as ModoParte[]).map((m) => (
+                  <button type="button" key={m} aria-pressed={parteModo === m} onClick={() => setParteModo(m)}>
+                    {{ todo: 'Todo', mitad: 'Mitad', nada: 'Nada', pct: '%' }[m]}
+                  </button>
+                ))}
+              </div>
+              {parteModo === 'pct' && (
+                <input
+                  className="chico"
+                  value={partePct}
+                  inputMode="numeric"
+                  aria-label="Porcentaje que te toca"
+                  onChange={(e) => setPartePct(e.target.value)}
+                />
+              )}
+            </div>
+            {pagadorEsYo && parteModo !== 'todo' && (
+              <label className="campo">
+                <span>Compartido con *</span>
+                <input
+                  value={contraparte}
+                  autoComplete="off"
+                  onChange={(e) => {
+                    setContraparte(e.target.value)
+                    setError('')
+                  }}
+                />
+                <Chips
+                  opciones={otras}
+                  activo={contraparte}
+                  onElegir={(c) => {
+                    setContraparte(c)
+                    setError('')
+                  }}
+                />
+              </label>
+            )}
+            {(parteModo !== 'todo' || !pagadorEsYo) && (
+              <p className="calculo">
+                {pagadorEsYo
+                  ? `${contraparte || 'La otra persona'} te debe ${conMonto(delOtro)}`
+                  : mio.some(([, c]) => c > 0)
+                    ? `Le debés ${conMonto(mio)} a ${pagador}`
+                    : 'Solo registro: no debés nada'}
+              </p>
+            )}
+            {error && <p className="error">{error}</p>}
+          </div>
+          <div className="acciones">
+            <button type="button" className="primario" disabled={ocupado} onClick={confirmar}>
+              {pagando ? 'Confirmar pago' : 'Guardar cambios'}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+      {nuevoMetodo && <HojaMetodo datos={datos} onCerrar={() => setNuevoMetodo(false)} onGuardado={setMetodoId} />}
+    </>
   )
 }

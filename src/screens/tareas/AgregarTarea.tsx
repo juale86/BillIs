@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { CampoFecha } from '../../components/CampoFecha'
 import { avisarError } from '../../lib/avisos'
 import { pedirTexto } from '../../lib/dialogos'
 import { esDueno, permisosDe, type Lista } from '../../lib/listaCompras'
@@ -140,10 +141,9 @@ export function AgregarTarea(props: { secciones: Lista[]; actual: Lista | null; 
                 </select>
               </label>
             )}
-            <label className="campo crece fecha-limite">
-              <input type="date" aria-label="Fecha límite" value={vence} onChange={(e) => setVence(e.target.value)} />
-              {!vence && <span className="placeholder-fecha">Fecha límite</span>}
-            </label>
+            <div className="campo crece">
+              <CampoFecha tipo="date" etiqueta="Fecha límite" placeholder="Fecha límite" valor={vence} onCambio={setVence} />
+            </div>
           </div>
           <div className="fila botones-agregar">
             <button type="submit" className="primario" disabled={!texto.trim()}>

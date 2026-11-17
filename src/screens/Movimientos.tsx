@@ -1,16 +1,19 @@
 import { Fragment, lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { fmtFecha, fmtHora } from '../lib/fecha'
 import { confirmar } from '../lib/dialogos'
-import { amPm } from '../lib/hora'
 import { NombreItem } from '../components/NombreItem'
 import { textoCantidad } from '../lib/cantidad'
 import { BotonOrden } from '../components/BotonOrden'
 import type { Otros } from '../components/CompradosDeOtros'
 import { BotonLupa, Buscador } from '../components/Buscador'
-import { normalizar } from '../db/db'
+import { normalizar, setAjuste } from '../db/db'
 import type { Movimiento } from '../db/types'
 import { claveCompra, claveMes, parteDe } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
-import { fmt } from '../lib/money'
+import { fmt, simbolo } from '../lib/money'
+import { nombreMetodo } from '../lib/metodos'
+import { CLAVE_FIJA } from '../lib/etiquetas'
+import { IconoPin } from '../components/IconoPin'
 import { enPeriodo, filtrarMovs, hayFiltrosMov, PERIODOS, SIN_FILTROS_MOV, type FiltrosMov } from '../lib/filtrosMov'
 import { sugerirGrupo } from '../lib/grupos'
 import type { OrdenLista } from '../lib/orden'
@@ -66,14 +69,18 @@ const fmtDia = (t: number) =>
 const vencida = (m: Movimiento) => !!m.porPagar && m.fecha < new Date().setHours(0, 0, 0, 0)
 /** "vence 16/11" o, si ya pasó sin pagar, "venció 10/11". */
 const fmtVence = (m: Movimiento) =>
-  (vencida(m) ? 'venció ' : 'vence ') + new Date(m.fecha).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })
-const fmtHora = (t: number) => amPm(new Date(t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }))
+  (vencida(m) ? 'venció ' : 'vence ') + fmtFecha(m.fecha)
 
 export function Movimientos(props: Props) {
   const { datos, mes, setMes, onEditar, onBorrar, onPagar, compraEnCurso, buscando, acciones, panel, filtros, setFiltros, onCorregir } =
     props
   const { movimientos, personas, categorias, metodos, yo } = datos
   const nombre = (id?: string) => personas.find((p) => p.id === id)?.nombre ?? ''
+  /** El método de un gasto, con el titular si la tarjeta es de otra persona ("Visa (Ana)"). */
+  const metodoDe = (m: Movimiento) => {
+    const x = metodos.find((y) => y.id === m.metodoPagoId)
+    return x && nombreMetodo(x, personas, yo?.id)
+  }
 
   /** Días → grupos (una compra o un movimiento suelto) → movimientos. */
   const dias = useMemo(() => {
@@ -242,9 +249,10 @@ export function Movimientos(props: Props) {
       : p.porPagar
         ? ['Por pagar', cuota].filter(Boolean).join(', ')
         : [
-          metodos.find((x) => x.id === p.metodoPagoId)?.nombre ?? 'Sin método',
+          (metodoDe(p) ?? 'Sin método'),
           p.cuotas && `${p.cuotas.cantidad} cuotas`,
-          p.pagadorId && p.pagadorId !== yo?.id && `pagó ${nombre(p.pagadorId)}`,
+          // Con la tarjeta de quien pagó, el método ya lo dice ("Visa (Ana)").
+          p.pagadorId && p.pagadorId !== yo?.id && metodos.find((x) => x.id === p.metodoPagoId)?.titularId !== p.pagadorId && `pagó ${nombre(p.pagadorId)}`,
           p.contraparteId && p.parte?.modo !== 'todo' && `con ${nombre(p.contraparteId)}`,
           cuota,
         ]
@@ -376,9 +384,11 @@ export function Movimientos(props: Props) {
     if (m.cuotas) partes.push(`${m.cuotas.cantidad} cuotas`)
     if (m.tipo === 'gasto' && m.pagadorId && m.pagadorId !== yo?.id) partes.push(`pagó ${nombre(m.pagadorId)}`)
     if (m.tipo === 'cambio' && m.cambio) {
-      const usd = m.moneda === 'USD' ? m.totalCent : m.cambio.totalCent
-      const ars = m.moneda === 'USD' ? m.cambio.totalCent : m.totalCent
-      partes.push(`1 US$ = ${fmt(Math.round((ars / usd) * 100))}`)
+      // La cotización, contra el peso: "1 US$ = $ 1.450".
+      const vendi = m.moneda !== 'ARS'
+      const ext = vendi ? m.totalCent : m.cambio.totalCent
+      const ars = vendi ? m.cambio.totalCent : m.totalCent
+      partes.push(`1 ${simbolo(vendi ? m.moneda : m.cambio.moneda)} = ${fmt(Math.round((ars / ext) * 100))}`)
       if (m.lugar) partes.push(m.lugar)
     }
     if (m.tipo === 'pagoDeuda')
@@ -428,6 +438,15 @@ export function Movimientos(props: Props) {
             <NombreItem nombre={m.descripcion} marca={m.marca} cantidad={m.cantidad > 1 ? textoCantidad(m.cantidad) : ''} />
           )}
           {detalle(m) && <span className="mov-det">{detalle(m)}</span>}
+          {!!m.etiquetas?.length && (
+            <span className="mov-etiquetas">
+              {m.etiquetas.map((e) => (
+                <span key={e} className="etiqueta chica">
+                  {e}
+                </span>
+              ))}
+            </span>
+          )}
         </span>
         <span className={'mov-monto ' + m.tipo}>
           {m.tipo === 'ingreso' ? '+' : m.tipo === 'gasto' ? '−' : ''}
@@ -450,6 +469,17 @@ export function Movimientos(props: Props) {
         </Suspense>
       )}
       {panel}
+      {datos.etiquetaFija && (
+        <div className="etiqueta-fija">
+          <IconoPin />
+          <span>
+            <strong>{datos.etiquetaFija}</strong> se pone en cada gasto nuevo
+          </span>
+          <button className="icono chico-icono" aria-label={`Dejar de fijar ${datos.etiquetaFija}`} onClick={() => setAjuste(CLAVE_FIJA, null)}>
+            ✕
+          </button>
+        </div>
+      )}
       <Buscador
         abierto={buscando}
         texto={filtros.texto}
@@ -478,6 +508,7 @@ export function Movimientos(props: Props) {
                 { etiqueta: 'Ingresos', onElegir: () => setFiltros({ ...filtros, tipo: 'ingreso' }) },
               ]),
           ...(filtros.pagoOtro ? [] : [{ etiqueta: 'Pagó otro', onElegir: () => setFiltros({ ...filtros, pagoOtro: true }) }]),
+          ...(filtros.etiqueta ? [] : datos.etiquetas.map((e) => ({ etiqueta: `#${e}`, onElegir: () => setFiltros({ ...filtros, etiqueta: e }) }))),
           ...(filtros.categoriaId
             ? []
             : categorias
@@ -489,6 +520,7 @@ export function Movimientos(props: Props) {
             ? [{ etiqueta: filtros.tipo === 'gasto' ? 'Gastos' : 'Ingresos', onQuitar: () => setFiltros({ ...filtros, tipo: null }) }]
             : []),
           ...(filtros.pagoOtro ? [{ etiqueta: 'Pagó otro', onQuitar: () => setFiltros({ ...filtros, pagoOtro: false }) }] : []),
+          ...(filtros.etiqueta ? [{ etiqueta: `#${filtros.etiqueta}`, onQuitar: () => setFiltros({ ...filtros, etiqueta: null }) }] : []),
           ...(filtros.categoriaId
             ? [
                 {

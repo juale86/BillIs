@@ -2,10 +2,19 @@ import type { Moneda } from '../db/types'
 
 const formatos = new Map<Moneda, Intl.NumberFormat>()
 
+/** El signo que va delante del monto: $, US$, R$. */
+export const simbolo = (m: Moneda) => ({ ARS: '$', USD: 'US$', BRL: 'R$' })[m]
+
 export function fmt(cent: number, moneda: Moneda = 'ARS'): string {
   let f = formatos.get(moneda)
   if (!f) {
-    f = new Intl.NumberFormat('es-AR', { style: 'currency', currency: moneda, minimumFractionDigits: 2 })
+    // El real con símbolo corto (R$); en algunos teléfonos sale "BRL" si no.
+    f = new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: moneda,
+      minimumFractionDigits: 2,
+      ...(moneda === 'BRL' && { currencyDisplay: 'narrowSymbol' as const }),
+    })
     formatos.set(moneda, f)
   }
   return f.format(cent / 100)

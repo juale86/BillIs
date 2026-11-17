@@ -13,10 +13,13 @@ interface Props {
   vacio?: string
   /** Sin título arriba (la opción vacía dice qué es). */
   sinEtiqueta?: boolean
+  /** Cómo se llama cada método en la lista (ej. con el titular de la tarjeta). */
+  nombre?: (m: MetodoPago) => string
 }
 
 /** Método de pago con las cuotas dentro del mismo campo: [Crédito ▾ | 3 cuotas]. */
-export function MetodoCuotas({ etiqueta, metodos, metodoId, onMetodo, onNuevoMetodo, cuotas, onCuotas, vacio = '—', sinEtiqueta }: Props) {
+export function MetodoCuotas(props: Props) {
+  const { etiqueta, metodos, metodoId, onMetodo, onNuevoMetodo, cuotas, onCuotas, vacio = '—', sinEtiqueta, nombre = (m) => m.nombre } = props
   return (
     <div className="campo crece metodo">
       {!sinEtiqueta && <span>{etiqueta}</span>}
@@ -29,7 +32,7 @@ export function MetodoCuotas({ etiqueta, metodos, metodoId, onMetodo, onNuevoMet
           <option value="">{vacio}</option>
           {metodos.map((m) => (
             <option key={m.id} value={m.id}>
-              {m.nombre}
+              {nombre(m)}
             </option>
           ))}
           <option value="+">+ Nuevo…</option>

@@ -2,22 +2,63 @@ import { useRef, useState } from 'react'
 import { confirmar, pedirTexto } from '../lib/dialogos'
 import { avisar, avisarError } from '../lib/avisos'
 import { Bandera } from '../components/Bandera'
-import { amPm } from '../lib/hora'
-import { db, getAjuste, nuevoBase, setAjuste } from '../db/db'
-import type { Categoria, MetodoPago } from '../db/types'
+import { HojaMetodo } from '../components/HojaMetodo'
+import { IconoPin } from '../components/IconoPin'
+import { fmtFecha, fmtHora } from '../lib/fecha'
+import { db, getAjuste, normalizar, nuevoBase, setAjuste } from '../db/db'
+import { MONEDAS, NOMBRE_MONEDA, type Categoria, type MetodoPago, type Moneda } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { CLAVE_COTIZACIONES, MONEDAS_CONVERSOR, redondear, type Cotizaciones, type MonedaConversor } from '../lib/conversor'
 import { conMiles, parseMonto } from '../lib/money'
 import { CLAVE_GRUPOS, nuevoIdGrupo, type Grupo } from '../lib/grupos'
+import { CLAVE_ETIQUETAS, CLAVE_FIJA, cambiarEtiqueta, limpiarEtiqueta, mismaEtiqueta, sinRepetidas, tieneEtiqueta } from '../lib/etiquetas'
+import { titularOtro, tipoDe, TIPOS_METODO } from '../lib/metodos'
 import { exportarCSV, exportarJSON, importarJSON } from '../lib/respaldo'
 import { guardarTema, leerTema, type Tema } from '../lib/tema'
 
 type Tabla = 'metodosPago' | 'categorias'
 
 export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () => void }) {
-  const { yo, metodos, categorias, multimoneda, grupos } = datos
+  const { yo, metodos, categorias, multimoneda, grupos, monedas, etiquetas, etiquetaFija, personas, movimientos } = datos
   const refArchivo = useRef<HTMLInputElement>(null)
   const [tema, setTema] = useState<Tema>(leerTema)
+  // Medio de pago abierto: uno nuevo o el que se corrige.
+  const [metodo, setMetodo] = useState<MetodoPago | 'nuevo' | null>(null)
+
+  /** Activa o desactiva una de las otras monedas (el peso está siempre). */
+  const alternarMoneda = (m: Moneda) =>
+    setAjuste(
+      'monedas',
+      monedas.includes(m) ? monedas.filter((x) => x !== m && x !== 'ARS') : [...monedas.filter((x) => x !== 'ARS'), m],
+    )
+
+  async function nuevaEtiqueta() {
+    const e = limpiarEtiqueta(
+      (await pedirTexto({ titulo: 'Nueva etiqueta', texto: 'Por ejemplo Brasil, para un viaje, u Obra.', boton: 'Crear' })) ?? '',
+    )
+    if (!e) return
+    await setAjuste(CLAVE_ETIQUETAS, sinRepetidas([...(await getAjuste<string[]>(CLAVE_ETIQUETAS, [])), e]))
+  }
+
+  async function renombrarEtiqueta(e: string) {
+    const n = limpiarEtiqueta((await pedirTexto({ titulo: `Renombrar "${e}"`, valor: e, boton: 'Renombrar' })) ?? '')
+    if (!n || n === e) return
+    await cambiarEtiqueta(e, n)
+    avisar(`Renombraste "${e}" a "${n}"`)
+  }
+
+  async function borrarEtiqueta(e: string) {
+    const n = movimientos.filter((m) => tieneEtiqueta(m, e)).length
+    const ok = await confirmar({
+      titulo: `¿Borrar la etiqueta "${e}"?`,
+      texto: n ? `Se saca de ${n} ${n === 1 ? 'movimiento' : 'movimientos'}; los movimientos quedan.` : undefined,
+      boton: 'Borrar',
+      peligro: true,
+    })
+    if (!ok) return
+    await cambiarEtiqueta(e, null)
+    avisar(`Borraste la etiqueta "${e}"`)
+  }
 
   async function renombrar(tabla: Tabla, item: MetodoPago | Categoria) {
     const nombre = await pedirTexto({ titulo: `Renombrar "${item.nombre}"`, valor: item.nombre, boton: 'Renombrar' })
@@ -145,8 +186,17 @@ export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () =>
       <div className="tarjeta">
         <label className="interruptor">
           <input type="checkbox" checked={multimoneda} onChange={(e) => setAjuste('multimoneda', e.target.checked)} />
-          <span>Usar otras monedas (USD)</span>
+          <span>Usar otras monedas</span>
         </label>
+        {multimoneda && (
+          <div className="chips monedas-chips" role="group" aria-label="Otras monedas">
+            {MONEDAS.filter((m) => m !== 'ARS').map((m) => (
+              <button key={m} type="button" className="chip" aria-pressed={monedas.includes(m)} onClick={() => alternarMoneda(m)}>
+                <Bandera codigo={m} /> {NOMBRE_MONEDA[m]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="tarjeta">
@@ -159,9 +209,66 @@ export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () =>
         </ul>
       </div>
 
-      {lista('Métodos de pago', 'metodosPago', metodos)}
+      <div className="tarjeta">
+        <h3>Medios de pago</h3>
+        <ul className="lista">
+          {metodos.map((m) => {
+            const titular = titularOtro(m, personas, yo?.id)
+            const tipo = TIPOS_METODO.find((t) => t.id === tipoDe(m))?.nombre
+            return (
+              <FilaEditable
+                key={m.id}
+                nombre={m.nombre}
+                // El tipo, salvo que el nombre ya lo diga ("Efectivo").
+                detalle={titular ? `${tipo} de ${titular.nombre}` : tipo && normalizar(tipo) !== normalizar(m.nombre) ? tipo : undefined}
+                accion="Editar"
+                onRenombrar={() => setMetodo(m)}
+                onBorrar={() => borrar('metodosPago', m)}
+              />
+            )
+          })}
+        </ul>
+        <button className="enlace" onClick={() => setMetodo('nuevo')}>
+          + Agregar
+        </button>
+      </div>
+      {metodo && <HojaMetodo datos={datos} metodo={metodo === 'nuevo' ? undefined : metodo} onCerrar={() => setMetodo(null)} />}
       {lista('Categorías de gasto', 'categorias', categorias.filter((c) => c.tipo === 'gasto'), 'gasto')}
       {lista('Categorías de ingreso', 'categorias', categorias.filter((c) => c.tipo === 'ingreso'), 'ingreso')}
+
+      <div className="tarjeta">
+        <h3>Etiquetas</h3>
+        <p className="nota">
+          Para juntar gastos, por ejemplo los de un viaje. La fija se pone sola en cada gasto nuevo hasta que la sacás.
+        </p>
+        <ul className="lista">
+          {etiquetas.map((e) => {
+            const fija = !!etiquetaFija && mismaEtiqueta(etiquetaFija, e)
+            return (
+              <li key={e} className="item-ajuste">
+                <span>{e}</span>
+                <button
+                  className="icono chico-icono fijar"
+                  aria-label={fija ? `Dejar de fijar ${e}` : `Fijar ${e} en cada gasto nuevo`}
+                  aria-pressed={fija}
+                  onClick={() => setAjuste(CLAVE_FIJA, fija ? null : e)}
+                >
+                  <IconoPin />
+                </button>
+                <button className="enlace" onClick={() => renombrarEtiqueta(e)}>
+                  Renombrar
+                </button>
+                <button className="enlace peligro" onClick={() => borrarEtiqueta(e)}>
+                  Borrar
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+        <button className="enlace" onClick={nuevaEtiqueta}>
+          + Agregar
+        </button>
+      </div>
 
       <div className="tarjeta">
         <h3>Grupos de la lista de compras</h3>
@@ -240,7 +347,7 @@ export function Ajustes({ datos, onRespaldo }: { datos: Datos; onRespaldo: () =>
 
       <p className="nota version">
         BillIs {__APP_VERSION__}, publicada el{' '}
-        {amPm(new Date(__APP_FECHA__).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' }))}
+        {fmtFecha(new Date(__APP_FECHA__))} {fmtHora(new Date(__APP_FECHA__))}
       </p>
     </section>
   )
@@ -291,13 +398,17 @@ function FilaCotizacion({ moneda, cotizaciones }: { moneda: MonedaConversor; cot
   )
 }
 
-/** Un método, categoría o grupo con Renombrar y Borrar. */
-function FilaEditable({ nombre, onRenombrar, onBorrar }: { nombre: string; onRenombrar: () => void; onBorrar: () => void }) {
+/** Un método, categoría o grupo con Renombrar (o Editar) y Borrar. */
+function FilaEditable(props: { nombre: string; detalle?: string; accion?: string; onRenombrar: () => void; onBorrar: () => void }) {
+  const { nombre, detalle, accion = 'Renombrar', onRenombrar, onBorrar } = props
   return (
     <li className="item-ajuste">
-      <span>{nombre}</span>
+      <span>
+        {nombre}
+        {detalle && <small className="item-det">{detalle}</small>}
+      </span>
       <button className="enlace" onClick={onRenombrar}>
-        Renombrar
+        {accion}
       </button>
       <button className="enlace peligro" onClick={onBorrar}>
         Borrar

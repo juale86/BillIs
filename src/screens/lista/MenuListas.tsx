@@ -5,7 +5,7 @@ import { Miembros, PieMenu } from '../../components/Compartir'
 import { setAjuste } from '../../db/db'
 import { borrarLista, esDueno, renombrarLista, salirDeLista, type Lista as TLista } from '../../lib/listaCompras'
 import type { Props } from '../Lista'
-import { fmtFecha } from './fecha'
+import { fmtFecha } from '../../lib/fecha'
 
 
 export function ListasCerradas({ cerradas, onElegir }: { cerradas: TLista[]; onElegir: (l: TLista) => void }) {

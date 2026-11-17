@@ -30,14 +30,17 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 - **Lugar, fecha y pagador** se recuerdan entre cargas; el botón **Ubicar** toma la posición del GPS y, si ya compraste cerca, completa el lugar solo; la categoría se va completando mientras escribís el producto (por lo ya cargado, por el lugar o adivinándola por el nombre, como el grupo en la lista); las marcas ya compradas aparecen como chips dentro del campo Marca.
 - **Promociones**: NxM (3x2), N-ésima unidad con descuento (2ª al 70 %), porcentaje y "otra" con total manual; muestra el precio por unidad y el ahorro.
 - **Cuotas** en pesos: cargás el total financiado o el valor de cada cuota y se reparte por mes; calcula el interés.
+- **Fechas en DD/MM/AA** en toda la app (17/11/26).
 - **Montos con puntos de miles** mientras escribís (1.250.000), y la letra se achica para que el número entre entero.
 - Si cerrás el formulario con algo escrito, pregunta antes de descartarlo.
-- **Pesos y dólares** (opcional), con totales separados por moneda.
+- **Pesos, dólares y reales** (las otras monedas se activan en Ajustes), con totales separados por moneda. Un gasto nuevo arranca en la moneda del último que cargaste.
+- **Etiquetas** libres (por ejemplo *Brasil* para un viaje): se escriben en el gasto, sugiere las que ya usaste y se administran en Ajustes. Una etiqueta **fija** se pone sola en cada gasto nuevo hasta que la sacás; arriba de Movimientos se ve cuál está puesta.
 
 ### Compras y "Pagar"
 - Cada gasto que cargás se suma a la **compra** en curso; el formulario solo pide qué compraste y cuánto salió.
 - Si el gasto empieza una compra (no hay otra en curso), el botón principal es **Guardar y pagar** y abre Pagar enseguida: un gasto suelto se carga de una vez. Para varios productos, **Guardar y agregar otro** y al final **Pagar**.
 - El botón **Pagar** muestra el ticket y su total, y es un formulario donde se eligen **método de pago, cuotas, pagador y tu parte** una sola vez para toda la compra. El pagador se elige de un desplegable con vos, las personas que ya cargaste y quienes comparten tu lista; **Otra persona…** pide un nombre nuevo (para "pagó mi pareja y le debo la mitad").
+- **Medios de pago con tipo**: efectivo, billeteras (Mercado Pago, Personal Pay, Arq…), débito, tarjeta de crédito y transferencia. Las tarjetas dicen **de quién son**: pagando con la tarjeta de otra persona, queda como quien pagó y te calcula la deuda. Las **cuotas** se ofrecen solo con tarjeta de crédito.
 - Los formularios se cierran sin guardar con la **X** de arriba a la derecha.
 - En Movimientos cada compra (terminada o en curso) muestra su **Total** con cómo se pagó; tocándolo se corrige el pago de toda la compra.
 
@@ -73,9 +76,9 @@ Los gastos se guardan **solo en el teléfono**. Lo único que pasa por internet 
 
 ### Consulta
 - **Movimientos** del mes agrupados por día y por compra (las flechas saltan entre los meses que tienen movimientos): la última compra se ve abierta y las anteriores plegadas, con su total y su categoría en chico (si es de un solo producto, se titula con lo que compraste, "Carga SUBE", y el lugar pasa al renglón chico); edición y borrado con deshacer. Si guardás algo con fecha de otro mes, el aviso lo dice ("Gasto guardado en octubre") y su botón **Ver** te lleva a ese mes. Si algo falla (sin conexión, un respaldo que no es de BillIs) lo dice el aviso de abajo, con un punto rojo, sin ventanas que frenen la pantalla; las confirmaciones y los nombres se piden en un diálogo de la app, no en las ventanitas del navegador. Cada compra abierta tiene su propia **lupa** y su **orden** (como se cargó, A..Z o por grupos), y muestra también lo que otros compraron de la misma lista compartida, con el total real y "Solo lo tuyo".
-- **Resumen** mensual (el ícono de barras de abajo): ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas. Compara con el mes anterior ("+28% vs octubre", también por categoría) y, tocando una categoría, le ponés un **presupuesto mensual**: la barra se mide contra él y se pone roja si te pasaste.
-- **Cambio de moneda** (con otras monedas activadas): "Vendí US$ 500, recibí $725.000" desde el formulario. No cuenta como gasto ni ingreso: pasa la plata de una moneda a la otra en el balance del Resumen.
-- **Búsqueda** en movimientos y en las listas, con filtros por chip: los aplicados pasan a la izquierda con ✕ y siguen visibles. En Movimientos busca por defecto en el **último año**, con un selector Este mes / 3 meses / Un año / Todo.
+- **Resumen** mensual (el ícono de barras de abajo): ingresos, gastos (solo tu parte), balance, gastos por categoría, cuotas pendientes y saldos con personas. Compara con el mes anterior ("+28% vs octubre", también por categoría) y, tocando una categoría, le ponés un **presupuesto mensual**: la barra se mide contra él y se pone roja si te pasaste. Arriba, **Por mes** o una **#etiqueta**: todo lo del viaje junto, sin importar el mes, con el total en pesos y quién le debe a quién.
+- **Cambio de moneda** (con otras monedas activadas): "Vendí US$ 500, recibí $725.000" (o reales) desde el formulario. No cuenta como gasto ni ingreso: pasa la plata de una moneda a la otra en el balance del Resumen.
+- **Búsqueda** en movimientos y en las listas, con filtros por chip (también por #etiqueta): los aplicados pasan a la izquierda con ✕ y siguen visibles. En Movimientos busca por defecto en el **último año**, con un selector Este mes / 3 meses / Un año / Todo.
 - **Calculadora** al lado del engranaje: + − × ÷ %, paréntesis, coma decimal, C y borrar uno. Se apoya sobre las pestañas, muestra el resultado mientras escribís y tocando afuera se cierra recordando la última cuenta; sin historial. A la izquierda del = está el **conversor de moneda** (pesos, reales y dólares): los dos montos en una línea, "500 🇦🇷 ≈ 1,81 🇧🇷", con banderas dibujadas que abren las otras monedas; tocando el de la derecha convierte al revés. Las cotizaciones se cargan en Ajustes como "1 US$ = 1.450 ARS", en números grandes.
 
 ### Datos y apariencia

@@ -1,6 +1,6 @@
 import { db, normalizar, nuevoBase } from '../db/db'
 import type { Categoria, GastoCargado, Historial, Movimiento } from '../db/types'
-import { amPm } from './hora'
+import { fmtDiaSemana, fmtHora } from './fecha'
 import type { ItemLista } from './listaCompras'
 import { fmt } from './money'
 import { describirPromo, miParte } from './promo'
@@ -67,13 +67,8 @@ export const ETIQUETA_CAMPO: Record<CampoCarga, string> = {
 
 const CAMPOS = Object.keys(ETIQUETA_CAMPO) as CampoCarga[]
 
-/** "vie 13/11, 6:02pm" */
-export function fmtFechaHora(t: number): string {
-  const d = new Date(t)
-  const dia = d.toLocaleDateString('es-AR', { weekday: 'short' }).replace('.', '')
-  const hora = amPm(d.toLocaleTimeString('es-AR', { hour: 'numeric', minute: '2-digit' }))
-  return `${dia} ${d.getDate()}/${d.getMonth() + 1}, ${hora}`
-}
+/** "vie 13/11/26, 6:02pm" */
+export const fmtFechaHora = (t: number) => `${fmtDiaSemana(t)}, ${fmtHora(t)}`
 
 /** Cómo se lee el valor de un campo ("sin marca", "$ 1.890,00"). */
 export function textoCampo(c: CampoCarga, g: GastoCargado): string {

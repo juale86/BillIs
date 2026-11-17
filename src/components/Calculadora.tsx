@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useUltimo } from './useUltimo'
 import { evaluar, mostrar, teclear } from '../lib/calculadora'
-import { Bandera } from './Bandera'
+import { MenuMoneda } from './MenuMoneda'
 import { convertir, MONEDAS_CONVERSOR, redondear, type Cotizaciones } from '../lib/conversor'
 
 const TECLAS = ['(', ')', 'C', '⌫', '7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '%', '0', '.', '+', '=']
@@ -123,35 +123,16 @@ export function Calculadora({ cotizaciones, onCerrar }: { cotizaciones: Cotizaci
           onClick={() => activar(c)}
           onFocus={() => activar(c)}
         />
-        <button
-          type="button"
-          className="conv-moneda"
-          aria-label={'Moneda: ' + nombre}
-          aria-expanded={eligiendo === c}
-          onClick={() => setEligiendo(eligiendo === c ? null : c)}
-        >
-          <Bandera codigo={moneda} />
-        </button>
-        {eligiendo === c && (
-          <div className="conv-monedas" role="menu">
-            {MONEDAS_CONVERSOR.map((m) => (
-              <button
-                key={m.codigo}
-                type="button"
-                role="menuitemradio"
-                aria-checked={m.codigo === moneda}
-                aria-label={m.nombre}
-                title={m.nombre}
-                onClick={() => {
-                  setConv({ ...conv, [c]: m.codigo })
-                  setEligiendo(null)
-                }}
-              >
-                <Bandera codigo={m.codigo} />
-              </button>
-            ))}
-          </div>
-        )}
+        <MenuMoneda
+          moneda={moneda}
+          opciones={MONEDAS_CONVERSOR}
+          abierto={eligiendo === c}
+          onAbrir={() => setEligiendo(eligiendo === c ? null : c)}
+          onElegir={(codigo) => {
+            setConv({ ...conv, [c]: codigo })
+            setEligiendo(null)
+          }}
+        />
       </div>
     )
   }

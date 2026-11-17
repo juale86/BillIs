@@ -1,4 +1,5 @@
 import { db, getAjuste, setAjuste, TABLAS } from '../db/db'
+import { aInputFecha, fmtFecha } from './fecha'
 import { describirPromo } from './promo'
 
 const CLAVE_ULTIMO = 'ultimoRespaldo'
@@ -49,12 +50,12 @@ export async function exportarCSV() {
   ])
   const nombre = (lista: { id: string; nombre: string }[], id?: string) => lista.find((x) => x.id === id)?.nombre ?? ''
   const dec = (c?: number) => (c === undefined ? '' : (c / 100).toFixed(2).replace('.', ','))
-  const cab = ['Fecha', 'Tipo', 'Producto', 'Marca', 'Comentario', 'Categoría', 'Cantidad', 'Precio unitario', 'Promo', 'Total', 'Mi parte', 'Moneda', 'Cuotas', 'Lugar/Origen', 'Ubicación', 'Método', 'Pagador', 'Compartido con', 'Compra']
+  const cab = ['Fecha', 'Tipo', 'Producto', 'Marca', 'Comentario', 'Categoría', 'Cantidad', 'Precio unitario', 'Promo', 'Total', 'Mi parte', 'Moneda', 'Cuotas', 'Lugar/Origen', 'Ubicación', 'Método', 'Pagador', 'Compartido con', 'Compra', 'Etiquetas']
   const filas = movs
     .filter((m) => !m.borradoEn)
     .sort((a, b) => a.fecha - b.fecha)
     .map((m) => [
-      new Date(m.fecha).toLocaleString('es-AR'),
+      `${fmtFecha(m.fecha)} ${aInputFecha(m.fecha).slice(11)}`,
       m.tipo,
       m.descripcion,
       m.marca,
@@ -73,6 +74,7 @@ export async function exportarCSV() {
       nombre(personas, m.pagadorId),
       nombre(personas, m.contraparteId),
       m.compraId,
+      m.etiquetas?.join(', '),
     ])
   // Separador ";" para que Excel en español lo abra bien.
   const csv = [cab, ...filas].map((f) => f.map(csvCelda).join(';')).join('\n')

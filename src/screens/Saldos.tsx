@@ -6,8 +6,11 @@ import { saldos } from '../lib/calculos'
 import type { Datos } from '../lib/datos'
 import { fmt, montoAInput, parseMonto } from '../lib/money'
 
-/** Cuenta corriente con cada persona (no depende del mes), con botón para saldar. */
-export function Saldos({ datos }: { datos: Datos }) {
+/**
+ * Cuenta corriente con cada persona (no depende del mes), con botón para saldar. Con `etiqueta`,
+ * datos.movimientos son solo los de esa etiqueta y el pago que se anota también la lleva.
+ */
+export function Saldos({ datos, etiqueta }: { datos: Datos; etiqueta?: string }) {
   const { movimientos, personas, yo } = datos
   if (!yo) return null
   const tabla = saldos(movimientos, yo.id)
@@ -43,6 +46,7 @@ export function Saldos({ datos }: { datos: Datos }) {
       fecha: Date.now(),
       pagadorId: v > 0 ? persona.id : yo!.id,
       contraparteId: v > 0 ? yo!.id : persona.id,
+      etiquetas: etiqueta ? [etiqueta] : undefined,
     })
     avisar(`Pago registrado: ${fmt(monto, moneda)}`)
   }
@@ -51,7 +55,7 @@ export function Saldos({ datos }: { datos: Datos }) {
   if (filas.length === 0) return null
   return (
     <section className="seccion-saldos">
-      <h3>Saldos con personas</h3>
+      <h3>{etiqueta ? `Saldos en ${etiqueta}` : 'Saldos con personas'}</h3>
       <ul className="lista">
         {filas.map(({ persona, moneda, v }) => (
           <li key={persona.id + moneda} className="saldo">

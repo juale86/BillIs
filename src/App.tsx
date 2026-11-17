@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { fmtDiaSemana, fmtFecha } from './lib/fecha'
 import { confirmar } from './lib/dialogos'
 import { registrarAvisos, type Aviso } from './lib/avisos'
 import { BotonLupa } from './components/Buscador'
@@ -6,7 +7,7 @@ import { Calculadora } from './components/Calculadora'
 import { FormMovimiento, type Correccion } from './components/FormMovimiento'
 import { HojaCambio } from './components/HojaCambio'
 import { Pagar, textoTotal, totalCompra } from './components/Pagar'
-import { db, inicializar, setAjuste } from './db/db'
+import { db, inicializar, setAjuste, sumarBilleteras } from './db/db'
 import type { Movimiento } from './db/types'
 import { claveCompra, claveMes } from './lib/calculos'
 import { fmt } from './lib/money'
@@ -81,6 +82,7 @@ export default function App() {
   useEffect(() => {
     pedirPersistencia()
     necesitaRespaldo().then(setAvisoRespaldo)
+    sumarBilleteras().catch(() => {})
   }, [])
 
   const setInvitacion = useCallback((id: string | null) => {
@@ -217,10 +219,10 @@ export default function App() {
     .sort((a, b) => a.fecha - b.fecha)
   const cuandoVence = (t: number) => {
     const dias = Math.floor((t - hoy) / DIA)
-    if (dias < 0) return 'venció el ' + new Date(t).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric' })
+    if (dias < 0) return 'venció el ' + fmtFecha(t)
     if (dias === 0) return 'vence hoy'
     if (dias === 1) return 'vence mañana'
-    return 'vence el ' + new Date(t).toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric' })
+    return 'vence el ' + fmtDiaSemana(t)
   }
   const alertas = [
     ...facturasAlerta.map((m) => ({

@@ -9,8 +9,10 @@ export interface Base {
   borradoEn?: number | null
 }
 
-export type Moneda = 'ARS' | 'USD'
-export const MONEDAS: Moneda[] = ['ARS', 'USD']
+export type Moneda = 'ARS' | 'USD' | 'BRL'
+export const MONEDAS: Moneda[] = ['ARS', 'USD', 'BRL']
+/** Las otras monedas que se pueden activar en Ajustes (el peso está siempre). */
+export const NOMBRE_MONEDA: Record<Moneda, string> = { ARS: 'Pesos', USD: 'Dólares', BRL: 'Reales' }
 
 /** Promociones. Para agregar una nueva: sumar una variante acá y su cálculo en lib/promo.ts. */
 export type Promo =
@@ -83,6 +85,8 @@ export interface Movimiento extends Base {
   cambio?: { moneda: Moneda; totalCent: number }
   /** Factura todavía sin pagar: Pagar la marca como pagada. */
   porPagar?: boolean
+  /** Etiquetas libres (ej. "Brasil" para un viaje), para verlas juntas en Resumen y en la búsqueda. */
+  etiquetas?: string[]
 }
 
 /**
@@ -118,8 +122,14 @@ export interface Persona extends Base {
   esYo: boolean
 }
 
+export type TipoMetodo = 'efectivo' | 'billetera' | 'debito' | 'credito' | 'transferencia'
+
 export interface MetodoPago extends Base {
   nombre: string
+  /** Sin dato (los métodos viejos): se deduce del nombre (lib/metodos.ts). */
+  tipo?: TipoMetodo
+  /** Tarjetas: de quién es (una persona). Sin dato: tuya. */
+  titularId?: Id
   /** Previsto para calcular en qué resumen cae cada cuota. Sin uso en v1. */
   diaCierre?: number
 }

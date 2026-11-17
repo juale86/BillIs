@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { avisar, avisarError } from '../../lib/avisos'
 import { BotonCerrar } from '../../components/BotonCerrar'
+import { CampoFecha } from '../../components/CampoFecha'
 import { fmtFechaHora } from '../../lib/historial'
 import { permisosDe, type Lista } from '../../lib/listaCompras'
 import { borrarTarea, editarTarea, guardarConclusion, restaurarTarea, type DatosTarea, type Tarea } from '../../lib/tareas'
@@ -99,10 +100,9 @@ export function HojaTarea(props: { lista: Lista; tarea: Tarea; uid: string; onCe
             </label>
           )}
         </div>
-        <label className="campo fecha-limite">
-          <input type="date" aria-label="Fecha límite" value={vence} disabled={!editable} onChange={(e) => setVence(e.target.value)} />
-          {!vence && <span className="placeholder-fecha">Fecha límite</span>}
-        </label>
+        <div className="campo">
+          <CampoFecha tipo="date" etiqueta="Fecha límite" placeholder="Fecha límite" valor={vence} disabled={!editable} onCambio={setVence} />
+        </div>
         <label className="campo">
           <textarea
             value={nota}

@@ -35,7 +35,7 @@ import { grupoPorId, sugerirGrupo } from '../../lib/grupos'
 import { fmt } from '../../lib/money'
 import { sugerirDescripciones } from '../../lib/sugerencias'
 import type { Props } from '../Lista'
-import { fmtFecha } from './fecha'
+import { fmtFecha } from '../../lib/fecha'
 
 const inicioDeHoy = () => new Date(new Date().toDateString()).getTime()
 const fmtTotales = (t: [Moneda, number][]) => (t.length ? t.map(([m, c]) => fmt(c, m)).join(' + ') : fmt(0))

@@ -2,14 +2,13 @@ import { useEffect, useMemo, useRef, useState, type FocusEvent } from 'react'
 import { CamposPromo, type TipoPromo } from './CamposPromo'
 import { avisar } from '../lib/avisos'
 import { claveMes, nombreMes, sumarMeses } from '../lib/calculos'
-import { aInputFecha } from '../lib/fecha'
+import { aInputFecha, desdeInput, fmtFecha } from '../lib/fecha'
 import { confirmar, pedirTexto } from '../lib/dialogos'
 import { db, normalizar, nuevoBase, personaPorNombre, uuid } from '../db/db'
-import type { GastoCargado, Id, Moneda, Movimiento, Parte, Promo, Ubicacion } from '../db/types'
-import { MONEDAS } from '../db/types'
+import { NOMBRE_MONEDA, type GastoCargado, type Id, type Moneda, type Movimiento, type Parte, type Promo, type Ubicacion } from '../db/types'
 import type { Datos } from '../lib/datos'
 import { cambios, ETIQUETA_CAMPO, historialAlEditar, textoCampo, type CampoCarga } from '../lib/historial'
-import { conMiles, fmt, montoAInput, parseMonto } from '../lib/money'
+import { conMiles, fmt, montoAInput, parseMonto, simbolo } from '../lib/money'
 import { cantidadSugerida, miParte, totalConPromo } from '../lib/promo'
 import { guardarSesion, sesionActual, ultimoPagador } from '../lib/sesion'
 import { sugerirCategoria, sugerirDescripciones, sugerirLugares, sugerirMarcas, ultimoPrecio } from '../lib/sugerencias'
@@ -17,6 +16,9 @@ import { linkMapa, lugarCercano, obtenerUbicacion } from '../lib/ubicacion'
 import { BotonCerrar } from './BotonCerrar'
 import { Chips } from './Chips'
 import { MetodoCuotas } from './MetodoCuotas'
+import { CampoEtiquetas } from './CampoEtiquetas'
+import { CampoFecha } from './CampoFecha'
+import { MenuMoneda } from './MenuMoneda'
 import { HistorialMov } from './HistorialMov'
 
 type TipoForm = 'gasto' | 'ingreso'
@@ -68,7 +70,6 @@ const seleccionarTodo = (e: FocusEvent<HTMLInputElement>) => {
   setTimeout(() => el.setSelectionRange(0, el.value.length), 0)
 }
 
-const fmtDia = (t: number) => new Date(t).toLocaleDateString('es-AR', { day: 'numeric', month: 'numeric', year: 'numeric' })
 
 const num = (s: string, def: number) => {
   const n = Number(s.replace(',', '.'))
@@ -91,7 +92,7 @@ export function FormMovimiento({
   onSinGasto,
   correccion,
 }: Props) {
-  const { movimientos, metodos, categorias, yo, multimoneda } = datos
+  const { movimientos, metodos, categorias, yo, monedas } = datos
   // Para adivinar la categoría por el nombre, como el grupo en la lista.
   const dicc = { categorias, grupos: datos.grupos, aprendidos: datos.gruposAprendidos }
   const nombreYo = yo?.nombre ?? 'Yo'
@@ -169,7 +170,21 @@ export function FormMovimiento({
   const [fecha, setFecha] = useState(() => ini?.fecha ?? sesion.fecha ?? Date.now())
   const [fechaManual, setFechaManual] = useState(!!ini || sesion.fecha !== undefined)
   const [metodoPagoId, setMetodoPagoId] = useState<Id | ''>(ini?.metodoPagoId ?? '')
-  const [moneda, setMoneda] = useState<Moneda>(ini?.moneda ?? 'ARS')
+  // Uno nuevo arranca en la moneda del último que cargaste (en un viaje, reales), si sigue activa.
+  const [moneda, setMoneda] = useState<Moneda>(() => {
+    if (ini?.moneda) return ini.moneda
+    const ultimo = movimientos.reduce<Movimiento | undefined>(
+      (u, m) => ((m.tipo === 'gasto' || m.tipo === 'ingreso') && (!u || m.creadoEn > u.creadoEn) ? m : u),
+      undefined,
+    )
+    return ultimo && monedas.includes(ultimo.moneda) ? ultimo.moneda : 'ARS'
+  })
+  // Al corregir uno en una moneda que ya no está activa, se sigue ofreciendo.
+  const opcionesMoneda = monedas.includes(moneda) ? monedas : [...monedas, moneda]
+  const [eligeMoneda, setEligeMoneda] = useState(false)
+  // Etiquetas: las que tiene, o la fija (ej. "Brasil" durante el viaje) en uno nuevo.
+  const [etiquetas, setEtiquetas] = useState<string[]>(() => ini?.etiquetas ?? (!ini && datos.etiquetaFija ? [datos.etiquetaFija] : []))
+  const campoEtiquetas = <CampoEtiquetas valor={etiquetas} onCambio={setEtiquetas} todas={datos.etiquetas} />
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
 
@@ -278,7 +293,7 @@ export function FormMovimiento({
     const ult = ultimoPrecio(movimientos, desc, mar, lug)
     if (!ult) return
     setPrecio(montoAInput(ult.cent))
-    if (multimoneda) setMoneda(ult.moneda)
+    if (monedas.includes(ult.moneda)) setMoneda(ult.moneda)
     if (enfocarPrecio) {
       requestAnimationFrame(() => {
         refPrecio.current?.focus()
@@ -376,6 +391,7 @@ export function FormMovimiento({
     setPromoTipo('')
     setCategoriaId('')
     setCategoriaManual(false)
+    // Las etiquetas quedan: el siguiente producto suele ser de lo mismo (el viaje).
     if (!fechaManual) setFecha(Date.now())
     setError('')
     refDesc.current?.focus()
@@ -456,6 +472,7 @@ export function FormMovimiento({
         listaItem: editando?.listaItem ?? prefill?.listaItem,
         factura: editando?.factura,
         porPagar: editando?.porPagar,
+        etiquetas: etiquetas.length ? etiquetas : undefined,
       }
       // Factura: una por mes, cada una su propia "compra" por pagar, fuera de la compra en curso.
       if (factura) {
@@ -548,9 +565,11 @@ export function FormMovimiento({
       </header>
 
       <div className="campos">
-        {multimoneda && onCambio && !editando && !correccion && contexto !== 'lista' && (
+        {monedas.length > 1 && onCambio && !editando && !correccion && contexto !== 'lista' && (
           <button type="button" className="enlace" onClick={onCambio}>
-            ¿Vendiste o compraste dólares? Cargá un cambio de moneda
+            {monedas.length === 2 && monedas[1] === 'USD'
+              ? '¿Vendiste o compraste dólares? Cargá un cambio de moneda'
+              : '¿Cambiaste plata a otra moneda? Cargá un cambio de moneda'}
           </button>
         )}
         {contexto === 'lista' && onSinGasto && (
@@ -650,7 +669,7 @@ export function FormMovimiento({
           <label className="campo crece">
             <div className="monto-fila">
               <span className={'signo ' + tipo} aria-hidden="true">
-                {moneda === 'USD' ? 'US$' : '$'}
+                {simbolo(moneda)}
               </span>
               <input
                 ref={refPrecio}
@@ -667,24 +686,20 @@ export function FormMovimiento({
                   setPrecioTocado(true)
                 }}
               />
+              {opcionesMoneda.length > 1 && (
+                <MenuMoneda
+                  moneda={moneda}
+                  opciones={opcionesMoneda.map((m) => ({ codigo: m, nombre: NOMBRE_MONEDA[m] }))}
+                  abierto={eligeMoneda}
+                  onAbrir={() => setEligeMoneda(!eligeMoneda)}
+                  onElegir={(m) => {
+                    setMoneda(m as Moneda)
+                    setEligeMoneda(false)
+                  }}
+                />
+              )}
             </div>
           </label>
-          {multimoneda && (
-            <label className="campo">
-              <select
-                aria-label="Moneda"
-                value={moneda}
-                onChange={(e) => {
-                  const m = e.target.value as Moneda
-                  setMoneda(m)
-                }}
-              >
-                {MONEDAS.map((m) => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-            </label>
-          )}
           <div className="campo fecha">
             {fechaManual && !editando && !correccion && !factura && (
               <button
@@ -699,30 +714,31 @@ export function FormMovimiento({
               </button>
             )}
             {factura ? (
-              <label className="vence">
+              <div className="vence">
                 <span>Vence</span>
-                <input
-                  type="date"
-                  aria-label="Vence"
-                  value={aInputFecha(fecha).slice(0, 10)}
-                  onChange={(e) => {
-                    const t = new Date(`${e.target.value}T12:00`).getTime()
-                    if (Number.isFinite(t)) {
-                      setFecha(t)
+                <CampoFecha
+                  tipo="date"
+                  etiqueta="Vence"
+                  valor={aInputFecha(fecha).slice(0, 10)}
+                  onCambio={(v) => {
+                    const d = desdeInput(v)
+                    if (d) {
+                      d.setHours(12)
+                      setFecha(d.getTime())
                       setFechaManual(true)
                     }
                   }}
                 />
-              </label>
+              </div>
             ) : (
-              <input
-                type="datetime-local"
-                aria-label="Fecha"
-                value={aInputFecha(fecha)}
-                onChange={(e) => {
-                  const t = new Date(e.target.value).getTime()
-                  if (Number.isFinite(t)) {
-                    setFecha(t)
+              <CampoFecha
+                tipo="datetime-local"
+                etiqueta="Fecha"
+                valor={aInputFecha(fecha)}
+                onCambio={(v) => {
+                  const d = desdeInput(v)
+                  if (d) {
+                    setFecha(d.getTime())
                     setFechaManual(true)
                   }
                 }}
@@ -777,7 +793,7 @@ export function FormMovimiento({
         {factura && (
           <p className="nota">
             {nFactura > 1
-              ? `Se carga una por mes, del ${fmtDia(fecha)} al ${fmtDia(sumarMeses(fecha, nFactura - 1))}, cada una de ${fmt(contado, moneda)}. `
+              ? `Se carga una por mes, del ${fmtFecha(fecha)} al ${fmtFecha(sumarMeses(fecha, nFactura - 1))}, cada una de ${fmt(contado, moneda)}. `
               : ''}
             Queda por pagar: la pagás desde Movimientos, y antes del vencimiento te avisa la campanita.
           </p>
@@ -809,6 +825,7 @@ export function FormMovimiento({
               <option value="+">+ Nueva…</option>
             </select>
           </label>
+          {!correccion && esGasto && campoEtiquetas}
           {!esGasto && (
             <MetodoCuotas
               etiqueta="Medio de cobro"
@@ -823,6 +840,8 @@ export function FormMovimiento({
           )}
         </div>
         {antes('categoria')}
+        {/* En un ingreso, el renglón de la categoría ya lleva el medio de cobro: las etiquetas van abajo. */}
+        {!correccion && !esGasto && campoEtiquetas}
 
         <div className="campo">
           <div className="fila">
